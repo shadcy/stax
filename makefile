@@ -70,10 +70,10 @@ LDFLAGS := -T linker.ld        \
 # ---------------------------------------------------------------------------
 # Source files and derived object/output names
 # ---------------------------------------------------------------------------
-SRCS_C  := boot.c kernel.c
-SRCS_S  := startup.s
+SRCS_C  := boot.c kernel.c irq.c vic.c timer.c
+SRCS_S  := startup.s vectors.s
 
-OBJS    := startup.o boot.o kernel.o   # order matters: startup.o first
+OBJS    := startup.o vectors.o boot.o kernel.o vic.o timer.o irq.o   # order matters: startup.o first
 
 TARGET_ELF := kernel.elf   # linked ELF with debug symbols
 TARGET_BIN := kernel.bin   # raw binary stripped of ELF headers (for QEMU/flash)
@@ -120,6 +120,29 @@ boot.o: boot.c
 # ---------------------------------------------------------------------------
 kernel.o: kernel.c
 	$(CC) $(CFLAGS) -c $< -o $@
+# ---------------------------------------------------------------------------
+# Compile irq.c → irq.o
+# ---------------------------------------------------------------------------
+irq.o: irq.c irq.h vic.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# ---------------------------------------------------------------------------
+# Compile vic.c → vic.o
+# ---------------------------------------------------------------------------
+vic.o: vic.c vic.h
+
+# ---------------------------------------------------------------------------
+# Compile timer.c → timer.o
+# ---------------------------------------------------------------------------
+timer.o: timer.c timer.h vic.h irq.h
+	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# ---------------------------------------------------------------------------
+# Assemble vectors.s → irq.o
+# ---------------------------------------------------------------------------
+vectors.o: vectors.s
+	$(AS) $(ASFLAGS) -c $< -o $@
 
 
 # ---------------------------------------------------------------------------
