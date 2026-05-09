@@ -1,32 +1,17 @@
-/* =============================================================================
+/* ============================================================================
  * TIOS — kernel.c
- * The kernel entry point. boot_main() in boot.c calls kernel_main() here
- * after the stack is set up, BSS is zeroed, and the UART banner is printed.
- *
- * This is where YOUR operating system begins.
- *
- * Current state: Phase 5 skeleton.
- *   The kernel prints a status line over UART, then spins in an idle loop.
- *   Future phases will add interrupts, scheduling, memory allocation, etc.
- * =============================================================================
- */
+ * Phase 6b — Timer interrupt enabled (SP804 Timer0, 10 Hz)
+ * ============================================================================ */
 
-/* ---------------------------------------------------------------------------
- * UART0 — same base address as boot.c.
- * In a real OS you'd call the driver from a shared uart.c / uart.h pair.
- * Repeated here to keep kernel.c self-contained and easy to read.
- * ---------------------------------------------------------------------------
- */
+#include "irq.h"
+#include "timer.h"
+#include "vic.h"
+
 #define UART0_BASE  0x101f1000UL
 #define UART_DR     (*(volatile unsigned int *)(UART0_BASE + 0x000))
 #define UART_FR     (*(volatile unsigned int *)(UART0_BASE + 0x018))
 #define UART_FR_TXFF (1 << 5)
 
-/* ---------------------------------------------------------------------------
- * Simple kernel-side UART helpers
- * (boot.c already initialised the UART, so we just write to it)
- * ---------------------------------------------------------------------------
- */
 static void kputc(char c)
 {
     if (c == '\n') {
@@ -42,61 +27,69 @@ static void kputs(const char *s)
     while (*s) kputc(*s++);
 }
 
-/* ---------------------------------------------------------------------------
- * Kernel global state
- * These live in .bss (zeroed by startup.s before boot_main() runs).
- * ---------------------------------------------------------------------------
- */
-static unsigned int tick_count  = 0;  /* incremented in future timer ISR    */
-static unsigned int task_count  = 0;  /* number of tasks (scheduler: TODO)  */
+static void kput_uint(unsigned int n)
+{
+    char buf[12];
+    int i = 0;
+    if (n == 0) { kputc('0'); return; }
+    while (n > 0) { buf[i++] = '0' + (n % 10); n /= 10; }
+    while (i > 0) kputc(buf[--i]);
+}
 
 /* ---------------------------------------------------------------------------
- * kernel_main — called by boot.c after boot is complete
- *
- * This function must never return.
- * ---------------------------------------------------------------------------
- */
+ * Global state
+ * --------------------------------------------------------------------------- */
+static volatile unsigned int tick_count = 0;
+
+/* ---------------------------------------------------------------------------
+ * Timer ISR — called by the IRQ dispatcher every timer tick.
+ * --------------------------------------------------------------------------- */
+static void timer_isr(void)
+{
+    tick_count++;
+    timer_ack();   /* clear SP804 interrupt flag */
+
+    /* Print a brief tick marker */
+    kputs("[tick ");
+    kput_uint(tick_count);
+    kputs("]\n");
+}
+
+/* ---------------------------------------------------------------------------
+ * kernel_main
+ * --------------------------------------------------------------------------- */
 void kernel_main(void)
 {
+    /* ---- Phase 6a: IRQ subsystem ---- */
+    irq_system_init();
+
+    /* ---- Phase 6b: Timer ---- */
+    /* Register timer ISR with the VIC */
+    irq_register(VIC_TIMER0_INT, timer_isr);
+
+    /* Configure Timer0 for 100 ms periodic interrupts (10 Hz) */
+    timer_init(100000);   /* 100 000 us = 100 ms */
+
+    /* Enable IRQs globally */
+    irq_enable();
+
     kputs("========================================\n");
-    kputs("  TIOS Kernel — Phase 5\n");
+    kputs("  TIOS Kernel — Phase 6b\n");
     kputs("========================================\n");
     kputs("Status : running\n");
     kputs("Tasks  : 0 (scheduler not yet implemented)\n");
-    kputs("IRQs   : disabled (vector table not yet set)\n");
+    kputs("IRQs   : enabled\n");
+    kputs("Timer  : SP804 Timer0, 10 Hz (100 ms ticks)\n");
     kputs("Heap   : not initialised\n");
     kputs("----------------------------------------\n");
     kputs("Next steps:\n");
-    kputs("  Phase 6a — set up IRQ vector table\n");
-    kputs("  Phase 6b — enable timer interrupt\n");
     kputs("  Phase 6c — add simple round-robin scheduler\n");
     kputs("  Phase 6d — add slab/bump memory allocator\n");
     kputs("  Phase 6e — add FAT filesystem driver\n");
     kputs("========================================\n");
-    kputs("Kernel idle loop — halting CPU between ticks.\n\n");
+    kputs("Kernel idle loop — waiting for timer ticks.\n\n");
 
-    /*
-     * Idle loop.
-     *
-     * In a real kernel this would execute a 'WFI' (Wait For Interrupt)
-     * instruction to halt the CPU until the next timer IRQ fires,
-     * then the scheduler would pick the next runnable task.
-     *
-     * For now we just spin and count ticks to prove we're alive.
-     */
     while (1) {
-        /* placeholder: future timer IRQ will increment tick_count */
-        tick_count++;
-
-        /*
-         * WFI — Wait For Interrupt (ARM instruction).
-         * Saves power; CPU resumes when any interrupt arrives.
-         * Uncomment this once interrupts are configured in Phase 6b:
-         *
-         *   __asm__ volatile ("wfi");
-         */
-
-        /* suppress unused-variable warning until scheduler is added */
-        (void)task_count;
+        __asm__ volatile ("nop");
     }
 }
