@@ -10,12 +10,12 @@
 #include "fat.h"
 #include "vic.h"
 #include "console.h"
-#include "tasks.h"
+#include "command.h"
 
 /* ---------------------------------------------------------------------------
  * Global state
  * --------------------------------------------------------------------------- */
-static volatile unsigned int tick_count = 0;
+volatile unsigned int tick_count = 0;
 
 /* ---------------------------------------------------------------------------
  * Timer ISR — called by the IRQ dispatcher every timer tick.
@@ -24,7 +24,8 @@ static void timer_isr(void)
 {
     tick_count++;
     timer_ack();
-    need_schedule = 1;
+    /* Don't trigger scheduler for single-task system */
+    /* need_schedule = 1; */
 }
 
 /* ---------------------------------------------------------------------------
@@ -45,29 +46,81 @@ void kernel_main(void)
     fat_init();
 
     /* ---- Phase 6b: Timer ---- */
-    irq_register(VIC_TIMER0_INT, timer_isr);
-    timer_init(100000);   /* 100 ms = 10 Hz */
+    /* irq_register(VIC_TIMER0_INT, timer_isr); */
+    /* timer_init(100000);    */   /* 100 ms = 10 Hz */
 
     irq_enable();
 
     kputs("========================================\n");
-    kputs("  TIOS Kernel — Phase 6e\n");
+    kputs("  TIOS Kernel — Phase 6e - Interactive Mode\n");
     kputs("========================================\n");
     kputs("Status : running\n");
-    kputs("Tasks  : 2 user tasks + idle\n");
     kputs("IRQs   : enabled\n");
     kputs("Timer  : SP804 Timer0, 10 Hz (100 ms ticks)\n");
     kputs("Heap   : 64 KB bump allocator with free list\n");
     kputs("FS     : FAT12/16 driver (test image)\n");
     kputs("----------------------------------------\n");
-    kputs("Creating tasks...\n");
 
-    create_tasks();
-    kputs("Tasks created successfully\n");
+    /* Initialize command system */
+    command_init();
     
-    kputs("Scheduler active — round-robin every 100 ms.\n");
+    kputs("Type 'help' for available commands\n");
     kputs("========================================\n");
 
+    kputs("tios> Interactive command interface ready\n");
+    
+    /* Simple command loop - minimal memory usage */
+    static char input[32];  /* Smaller buffer to reduce stack usage */
+    static int input_pos = 0;
+    static int show_prompt = 1;
+    
+    /* Main kernel loop - never return */
+    while (1) {
+        /* Show prompt when needed */
+        if (show_prompt) {
+            kputs("tios> ");
+            show_prompt = 0;
+        }
+        
+        /* Check for input character */
+        char c = kgetc();
+        if (c == 0) {
+            /* No input - yield CPU briefly */
+            for (volatile int i = 0; i < 1000; i++) __asm__ volatile ("nop");
+            continue;
+        }
+        
+        /* Handle backspace */
+        if (c == '\b' || c == 127) {
+            if (input_pos > 0) {
+                input_pos--;
+                kputc('\b');
+                kputc(' ');
+                kputc('\b');
+            }
+        }
+        /* Handle enter */
+        else if (c == '\r' || c == '\n') {
+            input[input_pos] = '\0';
+            kputc('\n');
+            
+            /* Process command safely */
+            if (input_pos > 0) {
+                command_process(input);
+            }
+            
+            /* Reset for next command */
+            input_pos = 0;
+            show_prompt = 1;
+        }
+        /* Handle printable characters */
+        else if (c >= 32 && c <= 126 && input_pos < 31) {
+            kputc(c);
+            input[input_pos++] = c;
+        }
+    }
+    
+    /* Should never reach here */
     while (1) {
         __asm__ volatile ("nop");
     }

@@ -70,10 +70,10 @@ LDFLAGS := -T linker.ld        \
 # ---------------------------------------------------------------------------
 # Source files and derived object/output names
 # ---------------------------------------------------------------------------
-SRCS_C  := boot.c kernel.c irq.c vic.c timer.c scheduler.c heap.c fat.c disk.c
+SRCS_C  := boot.c kernel.c irq.c vic.c timer.c scheduler.c heap.c fat.c disk.c console.c command.c
 SRCS_S  := startup.s vectors.s
 
-OBJS    := startup.o vectors.o boot.o kernel.o vic.o timer.o scheduler.o heap.o fat.o disk.o irq.o console.o tasks.o   # order matters: startup.o first
+OBJS    := startup.o vectors.o boot.o kernel.o vic.o timer.o scheduler.o heap.o fat.o disk.o irq.o console.o command.o   # order matters: startup.o first
 
 TARGET_ELF := kernel.elf   # linked ELF with debug symbols
 TARGET_BIN := kernel.bin   # raw binary stripped of ELF headers (for QEMU/flash)
@@ -157,9 +157,11 @@ fat.o: fat.c fat.h
 # ---------------------------------------------------------------------------
 disk.o: disk.c fat.h
 	$(CC) $(CFLAGS) -c $< -o $@
-	$(CC) $(CFLAGS) -c $< -o $@
-	$(CC) $(CFLAGS) -c $< -o $@
-	$(CC) $(CFLAGS) -c $< -o $@
+
+# ---------------------------------------------------------------------------
+# Compile command.c → command.o
+# ---------------------------------------------------------------------------
+command.o: command.c command.h console.h heap.h fat.h scheduler.h timer.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ---------------------------------------------------------------------------
