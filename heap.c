@@ -1,0 +1,167 @@
+/* ============================================================================
+ * TIOS — heap.c
+ * Simple bump allocator with free list implementation
+ * ============================================================================ */
+
+#include "heap.h"
+#include <stddef.h>
+
+/* Heap region defined in linker script */
+extern uint8_t __heap_start[];
+extern uint8_t __heap_end[];
+
+/* Bump allocator state */
+static uint8_t *heap_bump = NULL;
+static block_t *free_list = NULL;
+
+/* Alignment for allocations */
+#define ALIGNMENT 8
+#define ALIGN_UP(size) (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1))
+
+/* ============================================================================
+ * heap_init — initialise heap region and free list
+ * ============================================================================ */
+void heap_init(void)
+{
+    heap_bump = __heap_start;
+    free_list = NULL;
+}
+
+/* ============================================================================
+ * add_to_free_list — insert a block into the free list (sorted by address)
+ * ============================================================================ */
+static void add_to_free_list(block_t *block)
+{
+    block->next = NULL;
+    
+    if (!free_list) {
+        free_list = block;
+        return;
+    }
+    
+    /* Insert at head if block address is before current head */
+    if (block < free_list) {
+        block->next = free_list;
+        free_list = block;
+        return;
+    }
+    
+    /* Find insertion point */
+    block_t *curr = free_list;
+    while (curr->next && curr->next < block) {
+        curr = curr->next;
+    }
+    
+    block->next = curr->next;
+    curr->next = block;
+}
+
+/* ============================================================================
+ * coalesce — merge adjacent free blocks
+ * ============================================================================ */
+static void coalesce(void)
+{
+    block_t *curr = free_list;
+    
+    while (curr && curr->next) {
+        if ((uint8_t*)curr + sizeof(block_t) + curr->size == (uint8_t*)curr->next) {
+            /* Merge with next block */
+            curr->size += sizeof(block_t) + curr->next->size;
+            curr->next = curr->next->next;
+        } else {
+            curr = curr->next;
+        }
+    }
+}
+
+/* ============================================================================
+ * kmalloc — allocate memory
+ * ============================================================================ */
+void *kmalloc(size_t size)
+{
+    if (size == 0) return NULL;
+    
+    /* Align size */
+    size = ALIGN_UP(size);
+    
+    /* Try free list first */
+    block_t *prev = NULL;
+    block_t *curr = free_list;
+    
+    while (curr) {
+        if (curr->size >= size) {
+            /* Found a suitable block */
+            if (prev) {
+                prev->next = curr->next;
+            } else {
+                free_list = curr->next;
+            }
+            
+            /* Return data portion */
+            return curr->data;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+    
+    /* No suitable free block, allocate from bump */
+    size_t total_size = sizeof(block_t) + size;
+    uint8_t *new_block = heap_bump;
+    
+    if (new_block + total_size > __heap_end) {
+        return NULL;  /* Out of memory */
+    }
+    
+    heap_bump += total_size;
+    
+    /* Initialize block header */
+    block_t *block = (block_t*)new_block;
+    block->size = size;
+    block->next = NULL;
+    
+    return block->data;
+}
+
+/* ============================================================================
+ * kfree — free memory
+ * ============================================================================ */
+void kfree(void *ptr)
+{
+    if (!ptr) return;
+    
+    /* Get block header */
+    block_t *block = (block_t*)((uint8_t*)ptr - offsetof(block_t, data));
+    
+    /* Add to free list and coalesce */
+    add_to_free_list(block);
+    coalesce();
+}
+
+/* ============================================================================
+ * heap_stats — print heap statistics
+ * ============================================================================ */
+void heap_stats(void)
+{
+    size_t free_blocks = 0;
+    size_t free_bytes = 0;
+    size_t bump_used = heap_bump - __heap_start;
+    
+    block_t *curr = free_list;
+    while (curr) {
+        free_blocks++;
+        free_bytes += curr->size;
+        curr = curr->next;
+    }
+    
+    /* Simple output for now */
+    const char *msg = "Heap stats: bump=";
+    const char *msg2 = ", free=";
+    const char *msg3 = ", total=";
+    
+    /* Print bump used */
+    while (*msg) {
+        /* Assume kputc is available from kernel.c - we'll define it locally if needed */
+        /* For now, this is a placeholder */
+        msg++;
+    }
+}
