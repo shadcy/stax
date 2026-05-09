@@ -16,7 +16,7 @@ task_t *current_task = NULL;
 /* ---------------------------------------------------------------------------
  * task_exit — called if a task function ever returns.
  * --------------------------------------------------------------------------- */
-static void task_exit(void)
+void task_exit(void)
 {
     current_task->state = TASK_STATE_BLOCKED;
     while (1) {
