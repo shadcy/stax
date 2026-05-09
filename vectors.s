@@ -117,54 +117,148 @@ irq_disable:
     .type irq_handler_stub, %function
 
 irq_handler_stub:
-    /* --- Step 1: save context on IRQ stack --- */
-    sub     lr, lr, #4          /* ARM adjusts LR_IRQ to PC+4 on IRQ entry */
-    stmfd   sp!, {r0-r3, r12, lr}   /* scratch regs + return address */
-
-    /* --- Step 2: switch to SVC mode --- */
+    sub     lr, lr, #4
+    stmfd   sp!, {r0-r3, r12, lr}
     mrs     r0, spsr
-    stmfd   sp!, {r0}           /* push SPSR onto IRQ stack temporarily */
-
+    stmfd   sp!, {r0}
     mrs     r0, cpsr
     bic     r0, r0, #0x1F
-    orr     r0, r0, #0x13       /* SVC mode = 0x13 */
+    orr     r0, r0, #0x13
     msr     cpsr_c, r0
 
-    /* --- Step 3: call C dispatcher --- */
     bl      irq_dispatch
 
-    /* --- Step 4: restore IRQ mode --- */
+    ldr     r0, =need_schedule
+    ldr     r1, [r0]
+    cmp     r1, #0
+    beq     no_schedule
+    mov     r1, #0
+    str     r1, [r0]
+    bl      schedule
+no_schedule:
+
     mrs     r0, cpsr
     bic     r0, r0, #0x1F
-    orr     r0, r0, #0x12       /* IRQ mode = 0x12 */
+    orr     r0, r0, #0x12
     msr     cpsr_c, r0
-
-    /* --- Step 5: restore context and return --- */
-    ldmfd   sp!, {r0}           /* pop SPSR */
+    ldmfd   sp!, {r0}
     msr     spsr_cxsf, r0
-    ldmfd   sp!, {r0-r3, r12, pc}^   /* ^ = restore CPSR from SPSR */
+    ldmfd   sp!, {r0-r3, r12, pc}^
 
 /* ============================================================================
- * Dummy handlers for exceptions we don't expect in normal operation.
- * They print a character over UART and spin forever so the fault is visible.
+ * schedule — assembly context switch, called from IRQ stub in SVC mode.
+ * Saves current task context, restores next task context.
+ * Returns to IRQ stub via r2 (preserves lr for task functions).
+ * ============================================================================ */
+    .global schedule
+    .type schedule, %function
+schedule:
+    mov r2, lr              /* save return address to IRQ stub in r2 */
+
+    ldr r0, =current_task
+    ldr r0, [r0]            /* r0 = current task TCB */
+    ldr r1, [r0, #48]       /* r1 = next task TCB */
+
+    cmp r0, r1
+    bxeq r2                 /* only one task, return */
+
+    ldr r3, [r1, #52]       /* r3 = next->state */
+    cmp r3, #0              /* READY? */
+    bxne r2                 /* not ready, return */
+
+    /* Save current task SVC context */
+    str r4,  [r0, #0]
+    str r5,  [r0, #4]
+    str r6,  [r0, #8]
+    str r7,  [r0, #12]
+    str r8,  [r0, #16]
+    str r9,  [r0, #20]
+    str r10, [r0, #24]
+    str r11, [r0, #28]
+    str sp,  [r0, #32]
+    str lr,  [r0, #36]
+
+    /* Switch to IRQ mode to access IRQ stack */
+    mrs r3, cpsr
+    bic r4, r3, #0x1F
+    orr r4, r4, #0x12
+    msr cpsr_c, r4
+
+    /* Save current task r0-r3, r12, pc, cpsr from IRQ stack */
+    ldr r4, [sp, #4]
+    ldr r5, [sp, #8]
+    ldr r6, [sp, #12]
+    ldr r7, [sp, #16]
+    str r4, [r0, #56]
+    str r5, [r0, #60]
+    str r6, [r0, #64]
+    str r7, [r0, #68]
+
+    ldr r4, [sp, #20]
+    ldr r5, [sp, #24]
+    ldr r6, [sp, #0]
+    str r4, [r0, #72]
+    str r5, [r0, #40]
+    str r6, [r0, #44]
+
+    /* Restore next task r0-r3, r12, pc, cpsr to IRQ stack */
+    ldr r4, [r1, #56]
+    ldr r5, [r1, #60]
+    ldr r6, [r1, #64]
+    ldr r7, [r1, #68]
+    str r4, [sp, #4]
+    str r5, [sp, #8]
+    str r6, [sp, #12]
+    str r7, [sp, #16]
+
+    ldr r4, [r1, #72]
+    ldr r5, [r1, #40]
+    ldr r6, [r1, #44]
+    str r4, [sp, #20]
+    str r5, [sp, #24]
+    str r6, [sp, #0]
+
+    /* Back to SVC mode */
+    msr cpsr_c, r3
+
+    /* Restore next task SVC context */
+    ldr r4,  [r1, #0]
+    ldr r5,  [r1, #4]
+    ldr r6,  [r1, #8]
+    ldr r7,  [r1, #12]
+    ldr r8,  [r1, #16]
+    ldr r9,  [r1, #20]
+    ldr r10, [r1, #24]
+    ldr r11, [r1, #28]
+    ldr sp,  [r1, #32]
+    ldr lr,  [r1, #36]
+
+    /* Update current_task and states */
+    ldr r3, =current_task
+    str r1, [r3]
+    mov r3, #0
+    str r3, [r0, #52]
+    mov r3, #1
+    str r3, [r1, #52]
+
+    bx r2                   /* return to IRQ stub */
+
+/* ============================================================================
+ * Dummy handlers for exceptions we do not expect in normal operation.
  * ============================================================================ */
 
-    /* Reset handler — should never be reached from the vector table,
-     * but we keep it here for completeness. */
 reset_handler:
     b _start
 
-    /* Undefined instruction */
 undef_handler:
-    ldr r0, =0x101F1000       /* UART0 base */
-1:  ldr r1, [r0, #0x18]       /* UART_FR */
+    ldr r0, =0x101F1000
+1:  ldr r1, [r0, #0x18]
     tst r1, #0x20
     bne 1b
     mov r1, #'U'
     str r1, [r0]
     b .
 
-    /* SVC / SWI */
 svc_handler:
     ldr r0, =0x101F1000
 1:  ldr r1, [r0, #0x18]
@@ -174,7 +268,6 @@ svc_handler:
     str r1, [r0]
     b .
 
-    /* Prefetch abort */
 prefetch_handler:
     ldr r0, =0x101F1000
 1:  ldr r1, [r0, #0x18]
@@ -184,7 +277,6 @@ prefetch_handler:
     str r1, [r0]
     b .
 
-    /* Data abort */
 data_handler:
     ldr r0, =0x101F1000
 1:  ldr r1, [r0, #0x18]
@@ -194,7 +286,6 @@ data_handler:
     str r1, [r0]
     b .
 
-    /* Reserved */
 reserved_handler:
     ldr r0, =0x101F1000
 1:  ldr r1, [r0, #0x18]
@@ -204,6 +295,6 @@ reserved_handler:
     str r1, [r0]
     b .
 
-    /* FIQ — we don't use FIQ in Phase 6a */
 fiq_handler:
+    subs pc, lr, #4
     subs pc, lr, #4
