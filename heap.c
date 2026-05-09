@@ -153,15 +153,27 @@ void heap_stats(void)
         curr = curr->next;
     }
     
-    /* Simple output for now */
-    const char *msg = "Heap stats: bump=";
-    const char *msg2 = ", free=";
-    const char *msg3 = ", total=";
+    /* Print heap statistics using console functions */
+    extern void kputs(const char *s);
+    extern void kput_uint(unsigned int n);
     
-    /* Print bump used */
-    while (*msg) {
-        /* Assume kputc is available from kernel.c - we'll define it locally if needed */
-        /* For now, this is a placeholder */
-        msg++;
-    }
+    kputs("Heap size: ");
+    kput_uint(HEAP_SIZE);
+    kputs(" bytes\n");
+    
+    kputs("Bump allocated: ");
+    kput_uint(bump_used);
+    kputs(" bytes\n");
+    
+    kputs("Free blocks: ");
+    kput_uint(free_blocks);
+    kputs("\n");
+    
+    kputs("Free bytes: ");
+    kput_uint(free_bytes);
+    kputs(" bytes\n");
+    
+    kputs("Total used: ");
+    kput_uint(bump_used - free_bytes);
+    kputs(" bytes\n");
 }
