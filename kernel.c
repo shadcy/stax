@@ -1,10 +1,11 @@
 /* ============================================================================
  * TIOS — kernel.c
- * Phase 6b — Timer interrupt enabled (SP804 Timer0, 10 Hz)
+ * Phase 6c — Round-robin scheduler added
  * ============================================================================ */
 
 #include "irq.h"
 #include "timer.h"
+#include "scheduler.h"
 #include "vic.h"
 
 #define UART0_BASE  0x101f1000UL
@@ -47,12 +48,28 @@ static volatile unsigned int tick_count = 0;
 static void timer_isr(void)
 {
     tick_count++;
-    timer_ack();   /* clear SP804 interrupt flag */
+    timer_ack();
+    need_schedule = 1;
+}
 
-    /* Print a brief tick marker */
-    kputs("[tick ");
-    kput_uint(tick_count);
-    kputs("]\n");
+/* ---------------------------------------------------------------------------
+ * Example user tasks
+ * --------------------------------------------------------------------------- */
+static void task_a(void)
+{
+    while (1) {
+        kputs("[task A]\n");
+        /* busy-wait a bit to see interleaving */
+        for (volatile int i = 0; i < 500000; i++) __asm__ volatile ("nop");
+    }
+}
+
+static void task_b(void)
+{
+    while (1) {
+        kputs("[task B]\n");
+        for (volatile int i = 0; i < 500000; i++) __asm__ volatile ("nop");
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -63,31 +80,37 @@ void kernel_main(void)
     /* ---- Phase 6a: IRQ subsystem ---- */
     irq_system_init();
 
+    /* ---- Phase 6c: Scheduler ---- */
+    scheduler_init();
+
     /* ---- Phase 6b: Timer ---- */
-    /* Register timer ISR with the VIC */
     irq_register(VIC_TIMER0_INT, timer_isr);
+    timer_init(100000);   /* 100 ms = 10 Hz */
 
-    /* Configure Timer0 for 100 ms periodic interrupts (10 Hz) */
-    timer_init(100000);   /* 100 000 us = 100 ms */
-
-    /* Enable IRQs globally */
     irq_enable();
 
     kputs("========================================\n");
-    kputs("  TIOS Kernel — Phase 6b\n");
+    kputs("  TIOS Kernel — Phase 6c\n");
     kputs("========================================\n");
     kputs("Status : running\n");
-    kputs("Tasks  : 0 (scheduler not yet implemented)\n");
+    kputs("Tasks  : 2 user tasks + idle\n");
     kputs("IRQs   : enabled\n");
     kputs("Timer  : SP804 Timer0, 10 Hz (100 ms ticks)\n");
     kputs("Heap   : not initialised\n");
     kputs("----------------------------------------\n");
-    kputs("Next steps:\n");
-    kputs("  Phase 6c — add simple round-robin scheduler\n");
-    kputs("  Phase 6d — add slab/bump memory allocator\n");
-    kputs("  Phase 6e — add FAT filesystem driver\n");
+    kputs("Creating tasks...\n");
+
+    int tid_a = task_create(task_a);
+    int tid_b = task_create(task_b);
+
+    kputs("Task A created: ");
+    kput_uint(tid_a);
+    kputs("\n");
+    kputs("Task B created: ");
+    kput_uint(tid_b);
+    kputs("\n");
+    kputs("Scheduler active — round-robin every 100 ms.\n");
     kputs("========================================\n");
-    kputs("Kernel idle loop — waiting for timer ticks.\n\n");
 
     while (1) {
         __asm__ volatile ("nop");
