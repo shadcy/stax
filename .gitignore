@@ -1,0 +1,40 @@
+# Auto-generated object files
+*.o
+*.obj
+
+# Compiled binaries
+*.elf
+*.bin
+*.hex
+*.out
+
+# Build artifacts
+*.map
+*.lst
+*.sym
+
+# Debug files
+*.d
+
+# QEMU output files
+output.log
+qemu.log
+
+# Editor backup files
+*~
+*.bak
+*.backup
+*.swp
+*.swo
+
+# IDE files
+.vscode/
+.idea/
+*.tmp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Local development files
+*.local
