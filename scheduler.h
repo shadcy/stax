@@ -47,3 +47,4 @@ void scheduler_init(void);
 int task_create(void (*entry)(void));
 
 #endif /* SCHEDULER_H */
+void task_exit(void);
