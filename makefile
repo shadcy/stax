@@ -70,10 +70,10 @@ LDFLAGS := -T linker.ld        \
 # ---------------------------------------------------------------------------
 # Source files and derived object/output names
 # ---------------------------------------------------------------------------
-SRCS_C  := boot.c kernel.c irq.c vic.c timer.c scheduler.c
+SRCS_C  := boot.c kernel.c irq.c vic.c timer.c scheduler.c heap.c
 SRCS_S  := startup.s vectors.s
 
-OBJS    := startup.o vectors.o boot.o kernel.o vic.o timer.o scheduler.o irq.o   # order matters: startup.o first
+OBJS    := startup.o vectors.o boot.o kernel.o vic.o timer.o scheduler.o heap.o irq.o   # order matters: startup.o first
 
 TARGET_ELF := kernel.elf   # linked ELF with debug symbols
 TARGET_BIN := kernel.bin   # raw binary stripped of ELF headers (for QEMU/flash)
@@ -140,6 +140,12 @@ timer.o: timer.c timer.h vic.h irq.h
 # Compile scheduler.c → scheduler.o
 # ---------------------------------------------------------------------------
 scheduler.o: scheduler.c scheduler.h
+
+# ---------------------------------------------------------------------------
+# Compile heap.c → heap.o
+# ---------------------------------------------------------------------------
+heap.o: heap.c heap.h
+	$(CC) $(CFLAGS) -c $< -o $@
 	$(CC) $(CFLAGS) -c $< -o $@
 	$(CC) $(CFLAGS) -c $< -o $@
 	$(CC) $(CFLAGS) -c $< -o $@

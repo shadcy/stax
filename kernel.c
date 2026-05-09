@@ -1,11 +1,12 @@
 /* ============================================================================
  * TIOS — kernel.c
- * Phase 6c — Round-robin scheduler added
+ * Phase 6d — Memory allocator added
  * ============================================================================ */
 
 #include "irq.h"
 #include "timer.h"
 #include "scheduler.h"
+#include "heap.h"
 #include "vic.h"
 
 #define UART0_BASE  0x101f1000UL
@@ -57,17 +58,33 @@ static void timer_isr(void)
  * --------------------------------------------------------------------------- */
 static void task_a(void)
 {
+    kputs("[task A start]\n");
+    char *buf = kmalloc(64);
+    if (buf) {
+        kputs("[task A allocated 64 bytes]\n");
+        kfree(buf);
+    }
     while (1) {
         kputs("[task A]\n");
-        /* busy-wait a bit to see interleaving */
         for (volatile int i = 0; i < 500000; i++) __asm__ volatile ("nop");
     }
 }
 
 static void task_b(void)
 {
+    static int count = 0;
+    kputs("[task B start]\n");
+    char *buf1 = kmalloc(32);
+    char *buf2 = kmalloc(128);
+    if (buf1 && buf2) {
+        kputs("[task B allocated 32+128 bytes]\n");
+        kfree(buf2);
+        kfree(buf1);
+    }
     while (1) {
-        kputs("[task B]\n");
+        kputs("[task B ");
+        kput_uint(count++);
+        kputs("]\n");
         for (volatile int i = 0; i < 500000; i++) __asm__ volatile ("nop");
     }
 }
@@ -83,6 +100,9 @@ void kernel_main(void)
     /* ---- Phase 6c: Scheduler ---- */
     scheduler_init();
 
+    /* ---- Phase 6d: Heap ---- */
+    heap_init();
+
     /* ---- Phase 6b: Timer ---- */
     irq_register(VIC_TIMER0_INT, timer_isr);
     timer_init(100000);   /* 100 ms = 10 Hz */
@@ -90,25 +110,26 @@ void kernel_main(void)
     irq_enable();
 
     kputs("========================================\n");
-    kputs("  TIOS Kernel — Phase 6c\n");
+    kputs("  TIOS Kernel — Phase 6d\n");
     kputs("========================================\n");
     kputs("Status : running\n");
     kputs("Tasks  : 2 user tasks + idle\n");
     kputs("IRQs   : enabled\n");
     kputs("Timer  : SP804 Timer0, 10 Hz (100 ms ticks)\n");
-    kputs("Heap   : not initialised\n");
+    kputs("Heap   : 64 KB bump allocator with free list\n");
     kputs("----------------------------------------\n");
     kputs("Creating tasks...\n");
 
     int tid_a = task_create(task_a);
-    int tid_b = task_create(task_b);
-
-    kputs("Task A created: ");
+    kputs("Task A creation returned: ");
     kput_uint(tid_a);
     kputs("\n");
-    kputs("Task B created: ");
+    
+    int tid_b = task_create(task_b);
+    kputs("Task B creation returned: ");
     kput_uint(tid_b);
     kputs("\n");
+    
     kputs("Scheduler active — round-robin every 100 ms.\n");
     kputs("========================================\n");
 
