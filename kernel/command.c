@@ -72,6 +72,7 @@ static int parse_args(char *input, char *argv[], int max_args)
 /* Command implementations */
 void cmd_help(int argc, char *argv[])
 {
+    (void)argc; (void)argv;
     kputs("Available commands:\n");
     kputs("==================\n");
     
@@ -86,11 +87,13 @@ void cmd_help(int argc, char *argv[])
 
 void cmd_clear(int argc, char *argv[])
 {
+    (void)argc; (void)argv;
     kputs("\033[2J\033[H");  /* ANSI clear screen and home cursor */
 }
 
 void cmd_status(int argc, char *argv[])
 {
+    (void)argc; (void)argv;
     kputs("System Status:\n");
     kputs("=============\n");
     kputs("Kernel: TIOS Phase 6e\n");
@@ -105,6 +108,7 @@ void cmd_status(int argc, char *argv[])
 
 void cmd_mem(int argc, char *argv[])
 {
+    (void)argc; (void)argv;
     kputs("Memory Information:\n");
     kputs("==================\n");
     heap_stats();
@@ -112,6 +116,7 @@ void cmd_mem(int argc, char *argv[])
 
 void cmd_tasks(int argc, char *argv[])
 {
+    (void)argc; (void)argv;
     kputs("Task Information:\n");
     kputs("================\n");
     kputs("Scheduler: Round-robin\n");
@@ -121,6 +126,7 @@ void cmd_tasks(int argc, char *argv[])
 
 void cmd_fs(int argc, char *argv[])
 {
+    (void)argc; (void)argv;
     kputs("Filesystem Information:\n");
     kputs("======================\n");
     kputs("FAT12/16 driver active\n");
@@ -138,6 +144,7 @@ void cmd_fs(int argc, char *argv[])
 
 void cmd_test(int argc, char *argv[])
 {
+    (void)argc; (void)argv;
     kputs("Running system tests...\n");
     
     /* Test memory allocation */

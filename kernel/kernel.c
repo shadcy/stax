@@ -46,8 +46,8 @@ void kernel_main(void)
     fat_init();
 
     /* ---- Phase 6b: Timer ---- */
-    /* irq_register(VIC_TIMER0_INT, timer_isr); */
-    /* timer_init(100000);    */   /* 100 ms = 10 Hz */
+    irq_register(VIC_TIMER0_INT, timer_isr);
+    timer_init(100000);       /* 100 ms = 10 Hz */
 
     irq_enable();
 
