@@ -1,7 +1,12 @@
 ENTRY(_start)
 SECTIONS {
-    . = 0x20000;
+    . = 0x10000;
     .text : { *(.text*) *(.rodata*) }
     .data : { *(.data*) }
-    .bss : { *(.bss*) }
+    .bss : {
+        __bss_start = .;
+        *(.bss*)
+        *(COMMON)
+        __bss_end = .;
+    }
 }

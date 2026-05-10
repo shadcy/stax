@@ -13,7 +13,7 @@ ENTRY(_start)
  * -------------------------------------------- */
 MEMORY
 {
-    RAM (rwx) : ORIGIN = KERNEL_EXEC_ADDR, LENGTH = 64K
+    RAM (rwx) : ORIGIN = KERNEL_EXEC_ADDR, LENGTH = 4M
 }
 
 /* --------------------------------------------
@@ -45,16 +45,17 @@ SECTIONS
         __bss_end = .;
     } > RAM
 
-    /* ---- Stack ---- */
-    . = ALIGN(8);
-    . += 8192;                /* 8 KB stack */
-    stack_top = .;
-
-    /* ---- Heap ---- */
+    /* ---- Heap (grows upward from end of BSS) ---- */
     . = ALIGN(4);
     __heap_start = .;
     . += 32768;               /* 32 KB heap */
     __heap_end = .;
+
+    /* ---- Stack (allocated ABOVE heap, grows downward) ---- */
+    /* stack_top is the highest address; stack grows down toward __heap_end. */
+    . = ALIGN(8);
+    . += 8192;                /* 8 KB stack guard space */
+    stack_top = .;
 
     /* ---- Discard debug sections ---- */
     /DISCARD/ : {

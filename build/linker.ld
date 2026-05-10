@@ -1,7 +1,7 @@
 ENTRY(_start)
 MEMORY
 {
-    RAM (rwx) : ORIGIN = 0x30000, LENGTH = 64K
+    RAM (rwx) : ORIGIN = 0x100000, LENGTH = 4M
 }
 SECTIONS
 {
@@ -23,13 +23,13 @@ SECTIONS
         . = ALIGN(4);
         __bss_end = .;
     } > RAM
-    . = ALIGN(8);
-    . += 8192;
-    stack_top = .;
     . = ALIGN(4);
     __heap_start = .;
     . += 32768;
     __heap_end = .;
+    . = ALIGN(8);
+    . += 8192;
+    stack_top = .;
     /DISCARD/ : {
         *(.ARM.exidx*)
         *(.comment)
