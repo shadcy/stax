@@ -4,7 +4,7 @@ This document describes the design, implementation, and hardware-readiness audit
 
 ## 1. Overview
 
-The TIOS bootloader is a bare-metal First Stage Bootloader (FSBL) designed to initialize the PL181 SD Card Controller, load the kernel from a raw sector offset on an SD card into RAM, and transfer execution to the kernel.
+The TIOS bootloader is a bare-metal First Stage Bootloader (FSBL) designed to    initialize the PL181 SD Card Controller, load the kernel from a raw sector offset on an SD card into RAM, and transfer execution to the kernel.
 
 ## 2. Boot Flow
 
