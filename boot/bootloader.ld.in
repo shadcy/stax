@@ -1,0 +1,9 @@
+#include "memory_map.h"
+
+ENTRY(_start)
+SECTIONS {
+    . = BOOTLOADER_EXEC_ADDR;
+    .text : { *(.text*) *(.rodata*) }
+    .data : { *(.data*) }
+    .bss : { *(.bss*) }
+}

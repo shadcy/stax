@@ -1,3 +1,5 @@
+#include "memory_map.h"
+
 #define UART0_BASE   0x101f1000UL
 #define UART_DR      (*(volatile unsigned int *)(UART0_BASE + 0x000))
 #define UART_FR      (*(volatile unsigned int *)(UART0_BASE + 0x018))
@@ -15,9 +17,11 @@ static void uart_init(void) {
 static void uart_puts(const char *s) {
     while (*s) {
         if (*s == '\n') {
-            while (UART_FR & (1 << 5)); UART_DR = '\r';
+            while (UART_FR & (1 << 5));
+            UART_DR = '\r';
         }
-        while (UART_FR & (1 << 5)); UART_DR = *s++;
+        while (UART_FR & (1 << 5));
+        UART_DR = *s++;
     }
 }
 
@@ -26,18 +30,18 @@ void bootloader_main(void) {
     uart_puts("--------------------------------------------------\n");
     uart_puts("  TIOS Bootloader v0.2 [3-Stage MBR-BL-K]\n");
     uart_puts("--------------------------------------------------\n");
-    uart_puts("Loading kernel from sector 63...\n");
+    uart_puts("Loading kernel...\n");
 
-    /* Copy Kernel from 0x17E00 to 0x30000 */
-    unsigned int *src = (unsigned int *)0x17E00;
-    unsigned int *dst = (unsigned int *)0x30000;
-    unsigned int size = 0x20000; /* 128KB max kernel size */
+    /* Copy Kernel from SRC to EXEC */
+    unsigned int *src = (unsigned int *)KERNEL_SRC_ADDR;
+    unsigned int *dst = (unsigned int *)KERNEL_EXEC_ADDR;
+    unsigned int size = KERNEL_MAX_SIZE;
     while (size > 0) {
         *dst++ = *src++;
         size -= 4;
     }
 
-    uart_puts("Jumping to kernel at 0x30000...\n\n");
-    void (*kernel_entry)(void) = (void (*)(void))0x30000;
+    uart_puts("Jumping to kernel...\n\n");
+    void (*kernel_entry)(void) = (void (*)(void))KERNEL_EXEC_ADDR;
     kernel_entry();
 }

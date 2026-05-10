@@ -1,47 +1,31 @@
 # =============================================================================
 # TIOS — Makefile
 # Builds the bootloader and kernel into a raw binary for QEMU or real hardware.
-#
-# Usage:
-#   make          — compile and link everything → kernel.bin
-#   make qemu     — build then boot in QEMU (no window, UART to stdout)
-#   make debug    — build then start QEMU in GDB-server mode (port 1234)
-#   make gdb      — attach GDB to a running QEMU debug session
-#   make dump     — disassemble kernel.elf (great for learning)
-#   make size     — show section sizes (Flash / RAM usage)
-#   make clean    — remove all generated files
-#
-# Requirements (Ubuntu):
-#   sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi \
-#                    gdb-multiarch qemu-system-arm make
 # =============================================================================
 
-
-# ---------------------------------------------------------------------------
-# Toolchain — every tool is the arm-none-eabi cross-compiler variant
-# ---------------------------------------------------------------------------
 CROSS   := arm-none-eabi
-CC      := $(CROSS)-gcc        # C compiler
-AS      := $(CROSS)-gcc        # Use gcc to assemble (handles .s pre-processing)
-LD      := $(CROSS)-ld         # Linker
-OBJCOPY := $(CROSS)-objcopy    # Convert ELF → raw binary
-OBJDUMP := $(CROSS)-objdump    # Disassembler
-SIZE    := $(CROSS)-size       # Section-size reporter
-GDB     := gdb-multiarch       # Multi-architecture GDB
+CC      := $(CROSS)-gcc
+AS      := $(CROSS)-gcc
+LD      := $(CROSS)-ld
+OBJCOPY := $(CROSS)-objcopy
+OBJDUMP := $(CROSS)-objdump
+SIZE    := $(CROSS)-size
+GDB     := gdb-multiarch
 
+# ---------------------------------------------------------------------------
+# Directories
+# ---------------------------------------------------------------------------
+BUILD_DIR   := build
+INC_DIR     := include
+BOOT_DIR    := boot
+KERNEL_DIR  := kernel
+DRIVERS_DIR := drivers
+FS_DIR      := fs
+MM_DIR      := mm
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
 # ---------------------------------------------------------------------------
-
-# -mcpu=arm926ej-s  : matches the versatilepb CPU in QEMU
-# -mthumb-interwork : allow interworking between ARM and Thumb instructions
-# -ffreestanding    : no libc, no startup files, no hosted environment assumed
-# -nostdlib         : do not link against the standard library
-# -nostartfiles     : do not add the compiler's own crt0.o startup code
-# -Wall -Wextra     : enable comprehensive warnings
-# -O1               : light optimisation (safe for bare metal)
-# -g                : include DWARF debug info (used by GDB)
 CFLAGS  := -mcpu=arm926ej-s    \
             -mthumb-interwork   \
             -ffreestanding      \
@@ -50,222 +34,161 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -Wall               \
             -Wextra             \
             -O1                 \
-            -g
+            -g                  \
+            -I$(INC_DIR)
 
-ASFLAGS := $(CFLAGS)           # Same flags for the assembler pass
+ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
-
-# ---------------------------------------------------------------------------
-# Linker flags
-# ---------------------------------------------------------------------------
-
-# -T linker.ld  : use our custom linker script (defines RAM layout)
-# -nostdlib     : don't pull in any standard libraries
-# --gc-sections : remove dead code sections (saves space)
-LDFLAGS := -T linker.ld        \
-            -nostdlib           \
-            --gc-sections
-
+LDFLAGS := -nostdlib --gc-sections
 
 # ---------------------------------------------------------------------------
-# Source files and derived object/output names
+# Source files and objects
 # ---------------------------------------------------------------------------
-SRCS_C  := kernel.c irq.c vic.c timer.c scheduler.c heap.c fat.c disk.c console.c command.c
-SRCS_S  := startup.s vectors.s
+# Bootloader targets
+MBR_SRC      := $(BOOT_DIR)/mbr.s
+MBR_OBJ      := $(BUILD_DIR)/mbr.o
+MBR_BIN      := $(BUILD_DIR)/mbr.bin
 
-OBJS    := startup.o vectors.o kernel.o vic.o timer.o scheduler.o heap.o fat.o disk.o irq.o console.o command.o   # order matters: startup.o first
+BOOT_STARTUP := $(BOOT_DIR)/boot_startup.s
+BOOT_SRC     := $(BOOT_DIR)/bootloader.c
+BOOT_OBJS    := $(BUILD_DIR)/boot_startup.o $(BUILD_DIR)/bootloader.o
+BOOT_LD_IN   := $(BOOT_DIR)/bootloader.ld.in
+BOOT_LD      := $(BUILD_DIR)/bootloader.ld
+BOOT_ELF     := $(BUILD_DIR)/bootloader.elf
+BOOT_BIN     := $(BUILD_DIR)/bootloader.bin
 
-TARGET_ELF := kernel.elf   # linked ELF with debug symbols
-TARGET_BIN := kernel.bin   # raw binary stripped of ELF headers (for QEMU/flash)
-OS_BIN     := os.bin       # full assembled image
+# Kernel targets (Order of objects matters: startup.o must be first)
+KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
+                $(BUILD_DIR)/vectors.o \
+                $(BUILD_DIR)/kernel.o \
+                $(BUILD_DIR)/vic.o \
+                $(BUILD_DIR)/timer.o \
+                $(BUILD_DIR)/scheduler.o \
+                $(BUILD_DIR)/heap.o \
+                $(BUILD_DIR)/fat.o \
+                $(BUILD_DIR)/disk.o \
+                $(BUILD_DIR)/irq.o \
+                $(BUILD_DIR)/console.o \
+                $(BUILD_DIR)/command.o
 
+# tasks.o was added in previous git commits but was not in makefile. I'll add it.
+KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
+
+KERNEL_LD_IN := linker.ld.in
+KERNEL_LD    := $(BUILD_DIR)/linker.ld
+KERNEL_ELF   := $(BUILD_DIR)/kernel.elf
+KERNEL_BIN   := $(BUILD_DIR)/kernel.bin
+
+OS_BIN       := os.bin
 
 # ---------------------------------------------------------------------------
 # QEMU invocation
 # ---------------------------------------------------------------------------
-QEMU        := qemu-system-arm
-QEMU_MACHINE := versatilepb          # ARM Versatile Platform Baseboard
-QEMU_FLAGS  := -M $(QEMU_MACHINE) -kernel $(OS_BIN) -nographic -serial mon:stdio
-
+QEMU         := qemu-system-arm
+QEMU_MACHINE := versatilepb
+QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(OS_BIN) -nographic -serial mon:stdio
 
 # =============================================================================
 # Rules
 # =============================================================================
+.PHONY: all clean qemu debug gdb dump size
 
-# Default target
-.PHONY: all
-all: $(OS_BIN)
+all: $(BUILD_DIR) $(OS_BIN)
 
-$(OS_BIN): mbr.bin bootloader.bin $(TARGET_BIN)
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(OS_BIN): $(MBR_BIN) $(BOOT_BIN) $(KERNEL_BIN)
 	@echo ""
 	@echo "Assembling OS Image → $@"
 	@dd if=/dev/zero of=$@ bs=512 count=1000 2>/dev/null
-	@dd if=mbr.bin of=$@ conv=notrunc 2>/dev/null
-	@dd if=bootloader.bin of=$@ seek=1 conv=notrunc 2>/dev/null
-	@dd if=$(TARGET_BIN) of=$@ seek=63 conv=notrunc 2>/dev/null
+	@dd if=$(MBR_BIN) of=$@ conv=notrunc 2>/dev/null
+	@dd if=$(BOOT_BIN) of=$@ seek=1 conv=notrunc 2>/dev/null
+	@dd if=$(KERNEL_BIN) of=$@ seek=63 conv=notrunc 2>/dev/null
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
 	@echo ""
 
-
 # ---------------------------------------------------------------------------
-# Assemble startup.s → startup.o
+# MBR
 # ---------------------------------------------------------------------------
-startup.o: startup.s
+$(MBR_OBJ): $(MBR_SRC) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) -c $< -o $@
 
-
-# ---------------------------------------------------------------------------
-# Compile MBR & Bootloader
-# ---------------------------------------------------------------------------
-mbr.o: mbr.s
-	$(AS) $(ASFLAGS) -c $< -o $@
-
-mbr.bin: mbr.o
+$(MBR_BIN): $(MBR_OBJ)
 	$(OBJCOPY) -O binary $< $@
 
-boot_startup.o: boot_startup.s
+# ---------------------------------------------------------------------------
+# Bootloader
+# ---------------------------------------------------------------------------
+$(BUILD_DIR)/boot_startup.o: $(BOOT_STARTUP) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) -c $< -o $@
 
-bootloader.o: bootloader.c
+$(BUILD_DIR)/bootloader.o: $(BOOT_SRC) $(INC_DIR)/memory_map.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-bootloader.elf: boot_startup.o bootloader.o bootloader.ld
-	$(LD) -T bootloader.ld -nostdlib --gc-sections boot_startup.o bootloader.o -o $@
+$(BOOT_LD): $(BOOT_LD_IN) $(INC_DIR)/memory_map.h | $(BUILD_DIR)
+	$(CC) -E -P -x c -I$(INC_DIR) $< -o $@
 
-bootloader.bin: bootloader.elf
+$(BOOT_ELF): $(BOOT_OBJS) $(BOOT_LD)
+	$(LD) -T $(BOOT_LD) $(LDFLAGS) $(BOOT_OBJS) -o $@
+
+$(BOOT_BIN): $(BOOT_ELF)
 	$(OBJCOPY) -O binary $< $@
 
-
 # ---------------------------------------------------------------------------
-# Compile kernel.c → kernel.o
+# Kernel Pattern Rules
 # ---------------------------------------------------------------------------
-kernel.o: kernel.c
-	$(CC) $(CFLAGS) -c $< -o $@
-# ---------------------------------------------------------------------------
-# Compile irq.c → irq.o
-# ---------------------------------------------------------------------------
-irq.o: irq.c irq.h vic.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# ---------------------------------------------------------------------------
-# Compile vic.c → vic.o
-# ---------------------------------------------------------------------------
-vic.o: vic.c vic.h
-
-# ---------------------------------------------------------------------------
-# Compile timer.c → timer.o
-# ---------------------------------------------------------------------------
-timer.o: timer.c timer.h vic.h irq.h
-
-# ---------------------------------------------------------------------------
-# Compile scheduler.c → scheduler.o
-# ---------------------------------------------------------------------------
-scheduler.o: scheduler.c scheduler.h
-
-# ---------------------------------------------------------------------------
-# Compile heap.c → heap.o
-# ---------------------------------------------------------------------------
-heap.o: heap.c heap.h
-
-# ---------------------------------------------------------------------------
-# Compile fat.c → fat.o
-# ---------------------------------------------------------------------------
-fat.o: fat.c fat.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# ---------------------------------------------------------------------------
-# Compile disk.c → disk.o
-# ---------------------------------------------------------------------------
-disk.o: disk.c fat.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# ---------------------------------------------------------------------------
-# Compile command.c → command.o
-# ---------------------------------------------------------------------------
-command.o: command.c command.h console.h heap.h fat.h scheduler.h timer.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# ---------------------------------------------------------------------------
-# Assemble vectors.s → irq.o
-# ---------------------------------------------------------------------------
-vectors.o: vectors.s
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.s | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(DRIVERS_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(FS_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # ---------------------------------------------------------------------------
-# Link all object files → kernel.elf
+# Kernel Linking
 # ---------------------------------------------------------------------------
-$(TARGET_ELF): $(OBJS) linker.ld
-	$(LD) $(LDFLAGS) $(OBJS) -o $@
+$(KERNEL_LD): $(KERNEL_LD_IN) $(INC_DIR)/memory_map.h | $(BUILD_DIR)
+	$(CC) -E -P -x c -I$(INC_DIR) $< -o $@
+
+$(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_LD)
+	$(LD) -T $(KERNEL_LD) $(LDFLAGS) $(KERNEL_OBJS) -o $@
 	@echo "Linked → $@"
 
-
-# ---------------------------------------------------------------------------
-# Strip ELF → raw binary
-#
-# -O binary : output format is a flat raw binary
-# The resulting kernel.bin is what QEMU's -kernel flag expects, and what
-# OpenOCD / st-flash will write to real hardware.
-# ---------------------------------------------------------------------------
-$(TARGET_BIN): $(TARGET_ELF)
+$(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 	@echo "Binary → $@ ($(shell wc -c < $@) bytes)"
 
-
 # ---------------------------------------------------------------------------
-# Run in QEMU
-# Press Ctrl-A then X to exit QEMU.
+# Utilities
 # ---------------------------------------------------------------------------
-.PHONY: qemu
-qemu: $(TARGET_BIN)
+qemu: $(OS_BIN)
 	@echo "Booting TIOS in QEMU (Ctrl-A X to quit)..."
 	$(QEMU) $(QEMU_FLAGS)
 
-
-# ---------------------------------------------------------------------------
-# Debug: start QEMU halted, waiting for GDB on port 1234
-# In a second terminal run:  make gdb
-# ---------------------------------------------------------------------------
-.PHONY: debug
-debug: $(TARGET_BIN)
+debug: $(OS_BIN)
 	@echo "QEMU waiting for GDB on :1234  (run 'make gdb' in another terminal)"
 	$(QEMU) $(QEMU_FLAGS) -S -gdb tcp::1234
 
+gdb: $(KERNEL_ELF)
+	$(GDB) $(KERNEL_ELF) -ex "target remote localhost:1234" -ex "load" -ex "continue"
 
-# ---------------------------------------------------------------------------
-# GDB: connect to QEMU debug session
-# ---------------------------------------------------------------------------
-.PHONY: gdb
-gdb: $(TARGET_ELF)
-	$(GDB) $(TARGET_ELF)                    \
-	    -ex "target remote localhost:1234"   \
-	    -ex "load"                           \
-	    -ex "break boot_main"                \
-	    -ex "continue"
-
-
-# ---------------------------------------------------------------------------
-# Disassemble: show the full mixed source + assembly listing
-# ---------------------------------------------------------------------------
-.PHONY: dump
-dump: $(TARGET_ELF)
+dump: $(KERNEL_ELF)
 	$(OBJDUMP) -D -S $<
 
-
-# ---------------------------------------------------------------------------
-# Size: show how many bytes each section uses
-# ---------------------------------------------------------------------------
-.PHONY: size
-size: $(TARGET_ELF)
+size: $(KERNEL_ELF)
 	$(SIZE) $<
 
-
-# ---------------------------------------------------------------------------
-# Clean: remove all generated files
-# ---------------------------------------------------------------------------
-.PHONY: clean
 clean:
-	rm -f $(OBJS) $(TARGET_ELF) $(TARGET_BIN) mbr.o mbr.bin boot_startup.o bootloader.o bootloader.elf bootloader.bin $(OS_BIN)
+	rm -rf $(BUILD_DIR) $(OS_BIN)
 	@echo "Cleaned."
