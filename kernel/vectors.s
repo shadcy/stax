@@ -121,127 +121,122 @@ irq_handler_stub:
     stmfd   sp!, {r0-r3, r12, lr}
     mrs     r0, spsr
     stmfd   sp!, {r0}
-    mrs     r0, cpsr
-    bic     r0, r0, #0x1F
-    orr     r0, r0, #0x13
-    msr     cpsr_c, r0
 
+    /* Call C handler in IRQ mode */
     bl      irq_dispatch
 
     ldr     r0, =need_schedule
     ldr     r1, [r0]
     cmp     r1, #0
     beq     no_schedule
+    
     mov     r1, #0
     str     r1, [r0]
     bl      schedule
-no_schedule:
 
-    mrs     r0, cpsr
-    bic     r0, r0, #0x1F
-    orr     r0, r0, #0x12
-    msr     cpsr_c, r0
+no_schedule:
     ldmfd   sp!, {r0}
     msr     spsr_cxsf, r0
     ldmfd   sp!, {r0-r3, r12, pc}^
 
 /* ============================================================================
- * schedule — assembly context switch, called from IRQ stub in SVC mode.
- * Saves current task context, restores next task context.
- * Returns to IRQ stub via r2 (preserves lr for task functions).
+ * schedule — assembly context switch, called from IRQ stub in IRQ mode.
  * ============================================================================ */
     .global schedule
     .type schedule, %function
 schedule:
-    mov r2, lr              /* save return address to IRQ stub in r2 */
+    stmfd   sp!, {lr}               /* Save IRQ lr (return address to irq_handler_stub) */
 
-    ldr r0, =current_task
-    ldr r0, [r0]            /* r0 = current task TCB */
-    ldr r1, [r0, #48]       /* r1 = next task TCB */
+    ldr     r0, =current_task
+    ldr     r0, [r0]                /* r0 = current task TCB */
+    ldr     r1, [r0, #48]           /* r1 = next task TCB */
 
-    cmp r0, r1
-    bxeq r2                 /* only one task, return */
+    cmp     r0, r1
+    beq     sched_return            /* only one task, return */
 
-    ldr r3, [r1, #52]       /* r3 = next->state */
-    cmp r3, #0              /* READY? */
-    bxne r2                 /* not ready, return */
+    ldr     r3, [r1, #52]           /* r3 = next->state */
+    cmp     r3, #0                  /* READY? */
+    bne     sched_return            /* not ready, return */
 
-    /* Save current task SVC context */
-    str r4,  [r0, #0]
-    str r5,  [r0, #4]
-    str r6,  [r0, #8]
-    str r7,  [r0, #12]
-    str r8,  [r0, #16]
-    str r9,  [r0, #20]
-    str r10, [r0, #24]
-    str r11, [r0, #28]
-    str sp,  [r0, #32]
-    str lr,  [r0, #36]
+    /* Save current task r4-r11 */
+    str     r4,  [r0, #0]
+    str     r5,  [r0, #4]
+    str     r6,  [r0, #8]
+    str     r7,  [r0, #12]
+    str     r8,  [r0, #16]
+    str     r9,  [r0, #20]
+    str     r10, [r0, #24]
+    str     r11, [r0, #28]
 
-    /* Switch to IRQ mode to access IRQ stack */
-    mrs r3, cpsr
-    bic r4, r3, #0x1F
-    orr r4, r4, #0x12
-    msr cpsr_c, r4
+    /* Save current task SVC/System sp and lr */
+    mrs     r2, cpsr
+    orr     r3, r2, #0x1F           /* Switch to System mode */
+    msr     cpsr_c, r3
+    str     sp,  [r0, #32]
+    str     lr,  [r0, #36]
+    msr     cpsr_c, r2              /* Back to IRQ mode */
 
-    /* Save current task r0-r3, r12, pc, cpsr from IRQ stack */
-    ldr r4, [sp, #4]
-    ldr r5, [sp, #8]
-    ldr r6, [sp, #12]
-    ldr r7, [sp, #16]
-    str r4, [r0, #56]
-    str r5, [r0, #60]
-    str r6, [r0, #64]
-    str r7, [r0, #68]
+    /* Save caller-saved registers from IRQ stack */
+    /* Stack: [sp,#4]=spsr, [sp,#8]=r0, [sp,#12]=r1, [sp,#16]=r2, [sp,#20]=r3, [sp,#24]=r12, [sp,#28]=pc */
+    ldr     r3, [sp, #4]
+    str     r3, [r0, #44]           /* cpsr */
+    ldr     r3, [sp, #8]
+    str     r3, [r0, #56]           /* r0 */
+    ldr     r3, [sp, #12]
+    str     r3, [r0, #60]           /* r1 */
+    ldr     r3, [sp, #16]
+    str     r3, [r0, #64]           /* r2 */
+    ldr     r3, [sp, #20]
+    str     r3, [r0, #68]           /* r3 */
+    ldr     r3, [sp, #24]
+    str     r3, [r0, #72]           /* r12 */
+    ldr     r3, [sp, #28]
+    str     r3, [r0, #40]           /* pc */
 
-    ldr r4, [sp, #20]
-    ldr r5, [sp, #24]
-    ldr r6, [sp, #0]
-    str r4, [r0, #72]
-    str r5, [r0, #40]
-    str r6, [r0, #44]
+    /* Update states */
+    ldr     r3, =current_task
+    str     r1, [r3]
+    mov     r3, #0
+    str     r3, [r0, #52]
+    mov     r3, #1
+    str     r3, [r1, #52]
 
-    /* Restore next task r0-r3, r12, pc, cpsr to IRQ stack */
-    ldr r4, [r1, #56]
-    ldr r5, [r1, #60]
-    ldr r6, [r1, #64]
-    ldr r7, [r1, #68]
-    str r4, [sp, #4]
-    str r5, [sp, #8]
-    str r6, [sp, #12]
-    str r7, [sp, #16]
+    /* Restore next task caller-saved registers to IRQ stack */
+    ldr     r3, [r1, #44]
+    str     r3, [sp, #4]            /* cpsr */
+    ldr     r3, [r1, #56]
+    str     r3, [sp, #8]            /* r0 */
+    ldr     r3, [r1, #60]
+    str     r3, [sp, #12]           /* r1 */
+    ldr     r3, [r1, #64]
+    str     r3, [sp, #16]           /* r2 */
+    ldr     r3, [r1, #68]
+    str     r3, [sp, #20]           /* r3 */
+    ldr     r3, [r1, #72]
+    str     r3, [sp, #24]           /* r12 */
+    ldr     r3, [r1, #40]
+    str     r3, [sp, #28]           /* pc */
 
-    ldr r4, [r1, #72]
-    ldr r5, [r1, #40]
-    ldr r6, [r1, #44]
-    str r4, [sp, #20]
-    str r5, [sp, #24]
-    str r6, [sp, #0]
+    /* Restore next task SVC/System sp and lr */
+    mrs     r2, cpsr
+    orr     r3, r2, #0x1F           /* Switch to System mode */
+    msr     cpsr_c, r3
+    ldr     sp,  [r1, #32]
+    ldr     lr,  [r1, #36]
+    msr     cpsr_c, r2              /* Back to IRQ mode */
 
-    /* Back to SVC mode */
-    msr cpsr_c, r3
+    /* Restore next task r4-r11 */
+    ldr     r4,  [r1, #0]
+    ldr     r5,  [r1, #4]
+    ldr     r6,  [r1, #8]
+    ldr     r7,  [r1, #12]
+    ldr     r8,  [r1, #16]
+    ldr     r9,  [r1, #20]
+    ldr     r10, [r1, #24]
+    ldr     r11, [r1, #28]
 
-    /* Restore next task SVC context */
-    ldr r4,  [r1, #0]
-    ldr r5,  [r1, #4]
-    ldr r6,  [r1, #8]
-    ldr r7,  [r1, #12]
-    ldr r8,  [r1, #16]
-    ldr r9,  [r1, #20]
-    ldr r10, [r1, #24]
-    ldr r11, [r1, #28]
-    ldr sp,  [r1, #32]
-    ldr lr,  [r1, #36]
-
-    /* Update current_task and states */
-    ldr r3, =current_task
-    str r1, [r3]
-    mov r3, #0
-    str r3, [r0, #52]
-    mov r3, #1
-    str r3, [r1, #52]
-
-    bx r2                   /* return to IRQ stub */
+sched_return:
+    ldmfd   sp!, {pc}
 
 /* ============================================================================
  * Dummy handlers for exceptions we do not expect in normal operation.
