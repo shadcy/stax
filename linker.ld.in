@@ -3,6 +3,8 @@
  * GNU ld linker script for the ARM Versatile Platform Baseboard (versatilepb).
  * ============================================================================ */
 
+#include "memory_map.h"
+
 /* Entry point: _start is defined in startup.s */
 ENTRY(_start)
 
@@ -11,7 +13,7 @@ ENTRY(_start)
  * -------------------------------------------- */
 MEMORY
 {
-    RAM (rwx) : ORIGIN = 0x00030000, LENGTH = 64K
+    RAM (rwx) : ORIGIN = KERNEL_EXEC_ADDR, LENGTH = 64K
 }
 
 /* --------------------------------------------
