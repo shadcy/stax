@@ -45,10 +45,6 @@ LDFLAGS := -nostdlib --gc-sections
 # Source files and objects
 # ---------------------------------------------------------------------------
 # Bootloader targets
-MBR_SRC      := $(BOOT_DIR)/mbr.s
-MBR_OBJ      := $(BUILD_DIR)/mbr.o
-MBR_BIN      := $(BUILD_DIR)/mbr.bin
-
 BOOT_STARTUP := $(BOOT_DIR)/boot_startup.s
 BOOT_SRC     := $(BOOT_DIR)/bootloader.c
 BOOT_OBJS    := $(BUILD_DIR)/boot_startup.o $(BUILD_DIR)/bootloader.o
@@ -86,38 +82,27 @@ OS_BIN       := os.bin
 # ---------------------------------------------------------------------------
 QEMU         := qemu-system-arm
 QEMU_MACHINE := versatilepb
-QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(OS_BIN) -nographic -serial mon:stdio
+QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -nographic -serial mon:stdio
 
 # =============================================================================
 # Rules
 # =============================================================================
 .PHONY: all clean qemu debug gdb dump size
 
-all: $(BUILD_DIR) $(OS_BIN)
+all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(OS_BIN): $(MBR_BIN) $(BOOT_BIN) $(KERNEL_BIN)
+$(OS_BIN): $(KERNEL_BIN)
 	@echo ""
 	@echo "Assembling OS Image → $@"
-	@dd if=/dev/zero of=$@ bs=512 count=1000 2>/dev/null
-	@dd if=$(MBR_BIN) of=$@ conv=notrunc 2>/dev/null
-	@dd if=$(BOOT_BIN) of=$@ seek=1 conv=notrunc 2>/dev/null
-	@dd if=$(KERNEL_BIN) of=$@ seek=63 conv=notrunc 2>/dev/null
+	@dd if=/dev/zero of=$@ bs=512 count=1024 2>/dev/null
+	@dd if=$(KERNEL_BIN) of=$@ seek=64 conv=notrunc 2>/dev/null
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
 	@echo ""
-
-# ---------------------------------------------------------------------------
-# MBR
-# ---------------------------------------------------------------------------
-$(MBR_OBJ): $(MBR_SRC) | $(BUILD_DIR)
-	$(AS) $(ASFLAGS) -c $< -o $@
-
-$(MBR_BIN): $(MBR_OBJ)
-	$(OBJCOPY) -O binary $< $@
 
 # ---------------------------------------------------------------------------
 # Bootloader
