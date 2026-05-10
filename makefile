@@ -70,13 +70,14 @@ LDFLAGS := -T linker.ld        \
 # ---------------------------------------------------------------------------
 # Source files and derived object/output names
 # ---------------------------------------------------------------------------
-SRCS_C  := boot.c kernel.c irq.c vic.c timer.c scheduler.c heap.c fat.c disk.c console.c command.c
+SRCS_C  := kernel.c irq.c vic.c timer.c scheduler.c heap.c fat.c disk.c console.c command.c
 SRCS_S  := startup.s vectors.s
 
-OBJS    := startup.o vectors.o boot.o kernel.o vic.o timer.o scheduler.o heap.o fat.o disk.o irq.o console.o command.o   # order matters: startup.o first
+OBJS    := startup.o vectors.o kernel.o vic.o timer.o scheduler.o heap.o fat.o disk.o irq.o console.o command.o   # order matters: startup.o first
 
 TARGET_ELF := kernel.elf   # linked ELF with debug symbols
 TARGET_BIN := kernel.bin   # raw binary stripped of ELF headers (for QEMU/flash)
+OS_BIN     := os.bin       # full assembled image
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +85,7 @@ TARGET_BIN := kernel.bin   # raw binary stripped of ELF headers (for QEMU/flash)
 # ---------------------------------------------------------------------------
 QEMU        := qemu-system-arm
 QEMU_MACHINE := versatilepb          # ARM Versatile Platform Baseboard
-QEMU_FLAGS  := -M $(QEMU_MACHINE) -kernel $(TARGET_BIN) -nographic -serial mon:stdio
+QEMU_FLAGS  := -M $(QEMU_MACHINE) -kernel $(OS_BIN) -nographic -serial mon:stdio
 
 
 # =============================================================================
@@ -93,9 +94,16 @@ QEMU_FLAGS  := -M $(QEMU_MACHINE) -kernel $(TARGET_BIN) -nographic -serial mon:s
 
 # Default target
 .PHONY: all
-all: $(TARGET_BIN)
+all: $(OS_BIN)
+
+$(OS_BIN): mbr.bin bootloader.bin $(TARGET_BIN)
 	@echo ""
-	@echo "Build complete → $(TARGET_BIN)"
+	@echo "Assembling OS Image → $@"
+	@dd if=/dev/zero of=$@ bs=512 count=1000 2>/dev/null
+	@dd if=mbr.bin of=$@ conv=notrunc 2>/dev/null
+	@dd if=bootloader.bin of=$@ seek=1 conv=notrunc 2>/dev/null
+	@dd if=$(TARGET_BIN) of=$@ seek=63 conv=notrunc 2>/dev/null
+	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
 	@echo ""
@@ -109,10 +117,25 @@ startup.o: startup.s
 
 
 # ---------------------------------------------------------------------------
-# Compile boot.c → boot.o
+# Compile MBR & Bootloader
 # ---------------------------------------------------------------------------
-boot.o: boot.c
+mbr.o: mbr.s
+	$(AS) $(ASFLAGS) -c $< -o $@
+
+mbr.bin: mbr.o
+	$(OBJCOPY) -O binary $< $@
+
+boot_startup.o: boot_startup.s
+	$(AS) $(ASFLAGS) -c $< -o $@
+
+bootloader.o: bootloader.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+bootloader.elf: boot_startup.o bootloader.o bootloader.ld
+	$(LD) -T bootloader.ld -nostdlib --gc-sections boot_startup.o bootloader.o -o $@
+
+bootloader.bin: bootloader.elf
+	$(OBJCOPY) -O binary $< $@
 
 
 # ---------------------------------------------------------------------------
@@ -244,5 +267,5 @@ size: $(TARGET_ELF)
 # ---------------------------------------------------------------------------
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(TARGET_ELF) $(TARGET_BIN)
+	rm -f $(OBJS) $(TARGET_ELF) $(TARGET_BIN) mbr.o mbr.bin boot_startup.o bootloader.o bootloader.elf bootloader.bin $(OS_BIN)
 	@echo "Cleaned."

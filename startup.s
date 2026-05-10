@@ -45,10 +45,10 @@ bss_done:
 
     @ ── Step 4: Call boot_main() ─
     @ bl = Branch with Link — saves return address in lr register.
-    @ boot_main() is defined in boot.c.
-    bl boot_main
+    @ kernel_main() is defined in kernel.c.
+    bl kernel_main
 
-    @ ── Step 5: Hang if boot_main returns (it should not) ─
+    @ ── Step 5: Hang if kernel_main returns (it should not) ─
     @ An infinite loop prevents the CPU from executing garbage memory.
 hang:
     b hang
