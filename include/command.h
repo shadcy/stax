@@ -29,5 +29,7 @@ void cmd_mem(int argc, char *argv[]);
 void cmd_tasks(int argc, char *argv[]);
 void cmd_fs(int argc, char *argv[]);
 void cmd_test(int argc, char *argv[]);
+void cmd_read(int argc, char *argv[]);
+void cmd_snake(int argc, char *argv[]);
 
 #endif
