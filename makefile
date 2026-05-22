@@ -22,6 +22,7 @@ KERNEL_DIR  := kernel
 DRIVERS_DIR := drivers
 FS_DIR      := fs
 MM_DIR      := mm
+GAMES_DIR   := games
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
@@ -70,6 +71,9 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 
+# Games
+KERNEL_OBJS  += $(BUILD_DIR)/snake.o
+
 KERNEL_LD_IN := linker.ld.in
 KERNEL_LD    := $(BUILD_DIR)/linker.ld
 KERNEL_ELF   := $(BUILD_DIR)/kernel.elf
@@ -96,9 +100,10 @@ $(BUILD_DIR):
 
 $(OS_BIN): $(KERNEL_BIN)
 	@echo ""
-	@echo "Assembling OS Image → $@"
-	@dd if=/dev/zero of=$@ bs=512 count=1024 2>/dev/null
-	@dd if=$(KERNEL_BIN) of=$@ seek=64 conv=notrunc 2>/dev/null
+	@echo "Assembling FAT16 OS Image → $@"
+	@dd if=/dev/zero of=$@ bs=1M count=16 2>/dev/null
+	@mkfs.vfat -F 16 $@
+	@mcopy -i $@ $(KERNEL_BIN) ::/KERNEL.BIN
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -140,6 +145,9 @@ $(BUILD_DIR)/%.o: $(FS_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # ---------------------------------------------------------------------------
 # Kernel Linking
 # ---------------------------------------------------------------------------
@@ -152,16 +160,16 @@ $(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_LD)
 
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
-	@echo "Binary → $@ ($(shell wc -c < $@) bytes)"
+	@echo "Binary → $@ ($$(wc -c < $@) bytes)"
 
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
-qemu: $(OS_BIN)
+qemu: $(BOOT_BIN) $(OS_BIN)
 	@echo "Booting TIOS in QEMU (Ctrl-A X to quit)..."
 	$(QEMU) $(QEMU_FLAGS)
 
-debug: $(OS_BIN)
+debug: $(BOOT_BIN) $(OS_BIN)
 	@echo "QEMU waiting for GDB on :1234  (run 'make gdb' in another terminal)"
 	$(QEMU) $(QEMU_FLAGS) -S -gdb tcp::1234
 

@@ -9,19 +9,22 @@
 #include "fat.h"
 #include "scheduler.h"
 #include "timer.h"
+#include "snake.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
 
 /* Command table */
 static const command_t commands[] = {
-    {"help", "Show available commands", cmd_help},
-    {"clear", "Clear screen", cmd_clear},
-    {"status", "Show system status", cmd_status},
-    {"mem", "Show memory information", cmd_mem},
-    {"tasks", "Show task information", cmd_tasks},
-    {"fs", "Show filesystem information", cmd_fs},
-    {"test", "Run system tests", cmd_test},
+    {"help",   "Show available commands",           cmd_help},
+    {"clear",  "Clear screen",                        cmd_clear},
+    {"status", "Show system status",                  cmd_status},
+    {"mem",    "Show memory information",              cmd_mem},
+    {"tasks",  "Show task information",               cmd_tasks},
+    {"fs",     "Show filesystem information",          cmd_fs},
+    {"test",   "Run system tests",                    cmd_test},
+    {"read",   "Read system memory space info",        cmd_read},
+    {"snake",  "Play Snake (WASD/arrows, Q to quit)",  cmd_snake},
     {NULL, NULL, NULL}  /* End marker */
 };
 
@@ -178,6 +181,97 @@ void cmd_test(int argc, char *argv[])
     kputs("Tests completed.\n");
 }
 
+extern unsigned char _text_start[];
+extern unsigned char _text_end[];
+extern unsigned char _data_start[];
+extern unsigned char _data_end[];
+extern unsigned char __bss_start[];
+extern unsigned char __bss_end[];
+extern unsigned char __heap_start[];
+extern unsigned char __heap_end[];
+extern unsigned char stack_top[];
+
+static void print_size_optimal(unsigned int bytes) {
+    if (bytes >= 1024 * 1024) {
+        unsigned int mb = bytes / (1024 * 1024);
+        unsigned int rem = (bytes % (1024 * 1024)) * 100 / (1024 * 1024);
+        kput_uint(mb);
+        kputc('.');
+        if (rem < 10) kputc('0');
+        kput_uint(rem);
+        kputs(" MB (");
+        kput_uint(bytes);
+        kputs(" B)");
+    } else if (bytes >= 1024) {
+        unsigned int kb = bytes / 1024;
+        unsigned int rem = (bytes % 1024) * 100 / 1024;
+        kput_uint(kb);
+        kputc('.');
+        if (rem < 10) kputc('0');
+        kput_uint(rem);
+        kputs(" KB (");
+        kput_uint(bytes);
+        kputs(" B)");
+    } else {
+        kput_uint(bytes);
+        kputs(" B");
+    }
+}
+
+void cmd_read(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    
+    unsigned int total_ram = 4 * 1024 * 1024; /* 4 MB as defined in linker script */
+    
+    /* Using actual linker boundary markers */
+    unsigned int kernel_size = _text_end - _text_start;
+    unsigned int data_size   = _data_end - _data_start;
+    unsigned int bss_size    = __bss_end - __bss_start;
+    
+    unsigned int heap_size = __heap_end - __heap_start;
+    unsigned int stack_size = 8192;
+    
+    unsigned int total_static = kernel_size + data_size + bss_size;
+    unsigned int user_program_space = total_ram - total_static;
+    unsigned int free_space = user_program_space - (heap_size + stack_size);
+    
+    kputs("System Memory Space Info:\n");
+    kputs("=========================\n");
+    
+    kputs("Total Available RAM : ");
+    print_size_optimal(total_ram);
+    kputs("\n");
+    
+    kputs("Kernel Text Size    : ");
+    print_size_optimal(kernel_size);
+    kputs("\n");
+    
+    kputs("Kernel Data Size    : ");
+    print_size_optimal(data_size);
+    kputs("\n");
+    
+    kputs("BSS Size            : ");
+    print_size_optimal(bss_size);
+    kputs("\n");
+    
+    kputs("User Program Space  : ");
+    print_size_optimal(user_program_space);
+    kputs("\n");
+    
+    kputs("  |- Heap Space     : ");
+    print_size_optimal(heap_size);
+    kputs("\n");
+    
+    kputs("  |- Stack Space    : ");
+    print_size_optimal(stack_size);
+    kputs("\n");
+    
+    kputs("  |- Unallocated    : ");
+    print_size_optimal(free_space);
+    kputs("\n");
+}
+
 /* Main command processing */
 void command_process(char *input)
 {
@@ -225,4 +319,19 @@ void command_process(char *input)
 void command_init(void)
 {
     kputs("Command system initialized\n");
+}
+
+/* ============================================================================
+ * cmd_snake — launch the Snake game
+ * ============================================================================ */
+void cmd_snake(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("Starting Snake...\n");
+    snake_run();
+    /* snake_run() clears screen before returning; re-print the prompt banner */
+    kputs("========================================\n");
+    kputs("  TIOS Kernel — back in shell\n");
+    kputs("========================================\n");
+    kputs("Type 'help' for available commands\n");
 }

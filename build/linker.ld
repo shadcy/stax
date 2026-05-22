@@ -10,10 +10,19 @@ SECTIONS
         *(.text._start)
         *(.text*)
         *(.rodata*)
+        *(.glue_7)
+        *(.glue_7t)
+        *(.vfp11_veneer)
+        *(.v4_bx)
+        . = ALIGN(4);
         _text_end = .;
     } > RAM
     .data : {
+        . = ALIGN(4);
+        _data_start = .;
         *(.data*)
+        . = ALIGN(4);
+        _data_end = .;
     } > RAM
     .bss : {
         . = ALIGN(4);
@@ -25,7 +34,7 @@ SECTIONS
     } > RAM
     . = ALIGN(4);
     __heap_start = .;
-    . += 32768;
+    . += 65536;
     __heap_end = .;
     . = ALIGN(8);
     . += 8192;
