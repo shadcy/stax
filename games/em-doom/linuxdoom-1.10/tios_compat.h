@@ -137,7 +137,7 @@ void *tios_doom_alloca(int size);
 #define alloca(n)      tios_doom_alloca(n)
 
 /* ---- Process control ---- */
-extern volatile int tios_doom_quit_requested;
+extern volatile int tios_doom_quit_requested;  /* set to exit D_DoomLoop / I_Error */
 static inline void tios_exit(int code) { (void)code; tios_doom_quit_requested = 1; while(1) { __asm__ volatile("nop"); } }
 #define exit(c)  tios_exit(c)
 #define abort()  tios_exit(-1)
