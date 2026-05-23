@@ -362,11 +362,11 @@ byte *I_ZoneBase(int *size)
     return (byte *)doom_zone_buf;
 }
 
-/* DOOM runs at 35 tics/sec; our timer runs at 10 Hz */
+/* DOOM runs at 35 tics/sec; our timer runs at 100 Hz */
 int I_GetTime(void)
 {
-    /* tick_count * 35/10 = tick_count * 7/2 */
-    return (int)(tick_count * 7 / 2);
+    /* tick_count * 35/100 = tick_count * 7/20 */
+    return (int)(tick_count * 7 / 20);
 }
 
 void I_Init(void)
