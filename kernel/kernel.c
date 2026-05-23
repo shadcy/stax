@@ -12,6 +12,7 @@
 #include "console.h"
 #include "command.h"
 #include "gfx_console.h"
+#include "keyboard.h"
 
 /* ---------------------------------------------------------------------------
  * Global state
@@ -34,8 +35,9 @@ static void timer_isr(void)
  * --------------------------------------------------------------------------- */
 void kernel_main(void)
 {
-    /* ---- Initialize graphical console first ---- */
-    gfx_console_init();  /* This also initializes the framebuffer */
+    /* ---- Initialize graphical console + keyboard ---- */
+    gfx_console_init();  /* also initializes the framebuffer */
+    kb_init();           /* enable PL050 PS/2 keyboard */
     
     /* ---- Phase 6a: IRQ subsystem ---- */
     irq_system_init();
@@ -76,7 +78,7 @@ void kernel_main(void)
     kputs("tios> Interactive command interface ready\n");
     
     /* Simple command loop - minimal memory usage */
-    static char input[32];  /* Smaller buffer to reduce stack usage */
+    static char input[64];
     static int input_pos = 0;
     static int show_prompt = 1;
     
@@ -91,8 +93,9 @@ void kernel_main(void)
         /* Check for input character */
         char c = kgetc();
         if (c == 0) {
-            /* No input - yield CPU briefly */
-            for (volatile int i = 0; i < 1000; i++) __asm__ volatile ("nop");
+            /* No input — run idle delay then tick cursor blink */
+            for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
+            gfx_tick();
             continue;
         }
         
@@ -100,9 +103,7 @@ void kernel_main(void)
         if (c == '\b' || c == 127) {
             if (input_pos > 0) {
                 input_pos--;
-                kputc('\b');
-                kputc(' ');
-                kputc('\b');
+                kputc('\b');   /* gfx_putc handles erase + cursor redraw */
             }
         }
         /* Handle enter */
@@ -120,7 +121,7 @@ void kernel_main(void)
             show_prompt = 1;
         }
         /* Handle printable characters */
-        else if (c >= 32 && c <= 126 && input_pos < 31) {
+        else if (c >= 32 && c <= 126 && input_pos < 63) {
             kputc(c);
             input[input_pos++] = c;
         }
