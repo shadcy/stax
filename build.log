@@ -1,0 +1,108 @@
+mkdir -p build
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -x assembler-with-cpp -c boot/boot_startup.s -o build/boot_startup.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c boot/bootloader.c -o build/bootloader.o
+arm-none-eabi-gcc -E -P -x c -Iinclude boot/bootloader.ld.in -o build/bootloader.ld
+arm-none-eabi-ld -T build/bootloader.ld -nostdlib --gc-sections build/boot_startup.o build/bootloader.o /usr/lib/gcc/arm-none-eabi/13.2.1/libgcc.a -o build/bootloader.elf
+arm-none-eabi-objcopy -O binary build/bootloader.elf build/bootloader.bin
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -x assembler-with-cpp -c kernel/startup.s -o build/startup.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -x assembler-with-cpp -c kernel/vectors.s -o build/vectors.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c kernel/kernel.c -o build/kernel.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/vic.c -o build/vic.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/timer.c -o build/timer.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c kernel/scheduler.c -o build/scheduler.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c mm/heap.c -o build/heap.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c fs/fat.c -o build/fat.o
+fs/fat.c: In function 'r_memcpy':
+fs/fat.c:19:5: warning: this 'while' clause does not guard... [-Wmisleading-indentation]
+   19 |     while (n--) *dst++=*src++; return d;
+      |     ^~~~~
+fs/fat.c:19:32: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'while'
+   19 |     while (n--) *dst++=*src++; return d;
+      |                                ^~~~~~
+fs/fat.c: In function 'r_strncasecmp':
+fs/fat.c:26:9: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+   26 |         if(ca!=cb) return ca-cb; if(!ca) return 0; a++; b++;
+      |         ^~
+fs/fat.c:26:34: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+   26 |         if(ca!=cb) return ca-cb; if(!ca) return 0; a++; b++;
+      |                                  ^~
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c fs/disk.c -o build/disk.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/irq.c -o build/irq.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/keyboard.c -o build/keyboard.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/console.c -o build/console.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/framebuffer.c -o build/framebuffer.o
+drivers/framebuffer.c: In function 'fb_clear':
+drivers/framebuffer.c:60:23: warning: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]
+   60 |     for (int i = 0; i < (FB_WIDTH * FB_HEIGHT / 2); i++) p[i] = w;
+      |                       ^
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/font8x16.c -o build/font8x16.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c drivers/gfx_console.c -o build/gfx_console.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c kernel/command.c -o build/command.o
+kernel/command.c: In function 'cmd_snake':
+kernel/command.c:352:5: warning: implicit declaration of function 'gfx_console_init' [-Wimplicit-function-declaration]
+  352 |     gfx_console_init();
+      |     ^~~~~~~~~~~~~~~~
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c kernel/tasks.c -o build/tasks.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c games/snake.c -o build/snake.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -c games/doom.c -o build/doom.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/am_map.c -o build/am_map.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/d_items.c -o build/d_items.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/d_main.c -o build/d_main.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/d_net.c -o build/d_net.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/doomdef.c -o build/doomdef.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/doomstat.c -o build/doomstat.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/dstrings.c -o build/dstrings.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/f_finale.c -o build/f_finale.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/f_wipe.c -o build/f_wipe.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/g_game.c -o build/g_game.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/hu_lib.c -o build/hu_lib.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/hu_stuff.c -o build/hu_stuff.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/info.c -o build/info.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_argv.c -o build/m_argv.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_bbox.c -o build/m_bbox.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_cheat.c -o build/m_cheat.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_fixed.c -o build/m_fixed.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_menu.c -o build/m_menu.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_misc.c -o build/m_misc.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_random.c -o build/m_random.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/m_swap.c -o build/m_swap.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_ceilng.c -o build/p_ceilng.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_doors.c -o build/p_doors.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_enemy.c -o build/p_enemy.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_floor.c -o build/p_floor.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_inter.c -o build/p_inter.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_lights.c -o build/p_lights.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_map.c -o build/p_map.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_maputl.c -o build/p_maputl.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_mobj.c -o build/p_mobj.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_plats.c -o build/p_plats.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_pspr.c -o build/p_pspr.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_saveg.c -o build/p_saveg.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_setup.c -o build/p_setup.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_sight.c -o build/p_sight.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_spec.c -o build/p_spec.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_switch.c -o build/p_switch.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_telept.c -o build/p_telept.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_tick.c -o build/p_tick.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/p_user.c -o build/p_user.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_bsp.c -o build/r_bsp.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_data.c -o build/r_data.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_draw.c -o build/r_draw.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_main.c -o build/r_main.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_plane.c -o build/r_plane.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_segs.c -o build/r_segs.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_sky.c -o build/r_sky.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/r_things.c -o build/r_things.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/sounds.c -o build/sounds.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/s_sound.c -o build/s_sound.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/st_lib.c -o build/st_lib.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/st_stuff.c -o build/st_stuff.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/tables.c -o build/tables.o
+arm-none-eabi-gcc -mcpu=arm926ej-s -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -O1 -g -Iinclude -w -O2 -include games/em-doom/linuxdoom-1.10/tios_compat.h -c games/em-doom/linuxdoom-1.10/tios_platform.c -o build/tios_platform.o
+games/em-doom/linuxdoom-1.10/tios_platform.c:135:7: error: redefinition of 'strcat'
+  135 | char *strcat(char *d, const char *s)
+      |       ^~~~~~
+games/em-doom/linuxdoom-1.10/tios_platform.c:119:7: note: previous definition of 'strcat' with type 'char *(char *, const char *)'
+  119 | char *strcat(char *d, const char *s)
+      |       ^~~~~~
+make: *** [makefile:167: build/tios_platform.o] Error 1
