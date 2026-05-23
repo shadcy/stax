@@ -16,6 +16,7 @@
 #include "../../../include/font8x16.h"
 #include "../../../include/fat.h"
 #include "../../../include/console.h"
+#include "../../../include/gfx_console.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -379,6 +380,7 @@ void I_Quit(void)
 {
     doom_running = 0;
     tios_doom_quit_requested = 1;
+    /* D_DoomLoop checks tios_doom_quit_requested and returns here */
 }
 
 void I_WaitVBL(int count) { (void)count; }
@@ -405,7 +407,8 @@ void I_Error(char *error, ...)
     kputc('\n');
     doom_running = 0;
     tios_doom_quit_requested = 1;
-    while (1) __asm__ volatile("nop");
+    while (1)
+	__asm__ volatile("nop");
 }
 
 /* ============================================================================
@@ -424,7 +427,7 @@ static uint16_t doom_palette[256];
 void I_InitGraphics(void)
 {
     fb_init();
-    fb_clear(0x0000);
+    fb_clear(0x0000);   /* full screen — DOOM only draws the 320x200 window */
     /* Default greyscale palette until DOOM loads its own */
     for (int i = 0; i < 256; i++) {
         uint8_t v = (uint8_t)i;
@@ -545,7 +548,8 @@ void I_StartTic(void)
     if (!c) return;
 
     /* Check for quit */
-    if (c == 'q' || c == 'Q') {
+    if (c == 'q' || c == 'Q' || c == '\033') {
+        tios_doom_quit_requested = 1;
         doom_running = 0;
         return;
     }
@@ -687,6 +691,11 @@ void doom_engine_run(void)
 {
     kputs("[DOOM] Initializing em-doom engine\n");
 
+    /* Stop shell text from drawing over the DOOM framebuffer */
+    gfx_console_enable(0);
+    fb_init();
+    fb_clear(0x0000);
+
     /* Reset slab allocator for a fresh run */
     doom_slab_pos = 0;
     tios_doom_quit_requested = 0;
@@ -705,9 +714,9 @@ void doom_engine_run(void)
 
     doom_running = 1;
 
-    /* Delegate to DOOM's main() */
     D_DoomMain();
 
     kputs("[DOOM] Engine returned\n");
     fb_clear(0x0000);
+    gfx_console_enable(1);
 }
