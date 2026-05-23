@@ -45,7 +45,8 @@ extern volatile unsigned int tick_count;  /* 10 Hz kernel timer */
 /* console.c */
 extern void  kputs(const char *s);
 extern void  kputc(char c);
-extern char  kgetc(void);
+/* keyboard.h exposes kb_getevent() for press/release events */
+extern int  kb_getevent(void);
 extern void  kput_uint(unsigned int n);
 
 /* ============================================================================
@@ -525,7 +526,7 @@ void I_InitNetwork(void)
 void I_NetCmd(void)      {}
 
 /* ============================================================================
- * Input — poll kgetc(), translate to DOOM key events
+ * Input — translate ASCII to DOOM key codes
  * ============================================================================ */
 static int translate_key(char c, int *doom_key)
 {
@@ -534,10 +535,19 @@ static int translate_key(char c, int *doom_key)
         case 's': case 'S': *doom_key = KEY_DOWNARROW;  return 1;
         case 'a': case 'A': *doom_key = KEY_LEFTARROW;  return 1;
         case 'd': case 'D': *doom_key = KEY_RIGHTARROW; return 1;
+        case 'f': case 'F': *doom_key = KEY_RCTRL;      return 1;  /* fire   */
+        case 'e': case 'E': *doom_key = KEY_RSHIFT;     return 1;  /* run    */
+        case 'z': case 'Z': *doom_key = ',';            return 1;  /* strafe L */
+        case 'x': case 'X': *doom_key = '.';            return 1;  /* strafe R */
         case '\r': case '\n': *doom_key = KEY_ENTER;    return 1;
         case '\033': *doom_key = KEY_ESCAPE;             return 1;
-        case ' ':   *doom_key = ' ';                     return 1;
+        case ' ':   *doom_key = ' ';                     return 1;  /* use    */
         case '\b':  *doom_key = KEY_BACKSPACE;           return 1;
+        case '8': *doom_key = KEY_UPARROW;      return 1;
+        case '2': *doom_key = KEY_DOWNARROW;    return 1;
+        case '4': *doom_key = KEY_LEFTARROW;    return 1;
+        case '6': *doom_key = KEY_RIGHTARROW;   return 1;
+        case '5': *doom_key = ' ';              return 1;
         default:
             if (c >= 'a' && c <= 'z') { *doom_key = c; return 1; }
             if (c >= '1' && c <= '9') { *doom_key = c; return 1; }
@@ -548,25 +558,48 @@ static int translate_key(char c, int *doom_key)
 
 void I_StartTic(void)
 {
-    char c = kgetc();
-    if (!c) return;
+    event_t ev;
+    int dk;
 
-    /* Check for quit */
-    if (c == 'q' || c == 'Q' || c == '\033') {
-        tios_doom_quit_requested = 1;
-        doom_running = 0;
-        return;
+    /* --- PS/2 keyboard: proper press AND release events (held keys work) --- */
+    int kev;
+    while ((kev = kb_getevent()) != 0) {
+        char c = (kev > 0) ? (char)kev : (char)(-kev);
+        int is_press = (kev > 0);
+
+        /* Quit on Q or Escape press only */
+        if (is_press && (c == 'q' || c == 'Q' || c == '\033')) {
+            tios_doom_quit_requested = 1;
+            doom_running = 0;
+            return;
+        }
+
+        if (translate_key(c, &dk)) {
+            ev.type  = is_press ? ev_keydown : ev_keyup;
+            ev.data1 = dk;
+            D_PostEvent(&ev);
+        }
     }
 
-    int dk;
-    if (translate_key(c, &dk)) {
-        event_t ev;
-        ev.type  = ev_keydown;
-        ev.data1 = dk;
-        D_PostEvent(&ev);
-        /* Immediate key-up so DOOM sees discrete presses */
-        ev.type = ev_keyup;
-        D_PostEvent(&ev);
+    /* --- UART fallback (serial / make qemu mode): discrete press+release --- */
+    {
+        /* Check UART directly */
+        #define UART0_BASE  0x101f1000UL
+        #define UART_DR_I   (*(volatile unsigned int *)(UART0_BASE + 0x000))
+        #define UART_FR_I   (*(volatile unsigned int *)(UART0_BASE + 0x018))
+        #define UART_FR_RXFE_I (1 << 4)
+        if (!(UART_FR_I & UART_FR_RXFE_I)) {
+            char c = (char)(UART_DR_I & 0xFF);
+            if (c == 'q' || c == 'Q' || c == '\033') {
+                tios_doom_quit_requested = 1;
+                doom_running = 0;
+                return;
+            }
+            if (translate_key(c, &dk)) {
+                ev.type = ev_keydown; ev.data1 = dk; D_PostEvent(&ev);
+                ev.type = ev_keyup;                  D_PostEvent(&ev);
+            }
+        }
     }
 }
 
@@ -696,7 +729,7 @@ static char  doom_nosnd[]   = "-nosound";
  * TryRunTics catch-up storm that freezes the game after level load). */
 extern boolean singletics;
 
-void doom_engine_run(void)
+static void doom_engine_run_wad(const char* wadname)
 {
     /* Keep the gfx console alive so all init/debug messages are visible
      * while the WAD loads.  I_InitGraphics() will take over the FB when
@@ -716,12 +749,17 @@ void doom_engine_run(void)
     doom_slab_pos = 0;
     tios_doom_quit_requested = 0;
 
-    /* Wipe fd table */
-    for (int i = 0; i < TIOS_MAX_FD; i++) fd_table[i].used = 0;
+    /* Wipe fd table & close leaked handles from previous run */
+    for (int i = 0; i < TIOS_MAX_FD; i++) {
+        if (fd_table[i].used) {
+            fat_close(fd_table[i].ff);
+            fd_table[i].used = 0;
+        }
+    }
 
     /* Build argv */
     doom_argv[0] = (char *)"tios-doom";
-    doom_argv[1] = (char *)doom_wadpath;
+    doom_argv[1] = (char *)wadname;
     doom_argv[2] = (char *)doom_nomus;
     doom_argv[3] = (char *)doom_nosnd;
 
@@ -736,4 +774,14 @@ void doom_engine_run(void)
     kputs("[DOOM] Engine returned\n");
     fb_clear(0x0000);
     gfx_console_enable(1);
+}
+
+void doom_engine_run(void)
+{
+    doom_engine_run_wad("DOOM.WAD");
+}
+
+void doom2_engine_run(void)
+{
+    doom_engine_run_wad("DOOM2.WAD");
 }

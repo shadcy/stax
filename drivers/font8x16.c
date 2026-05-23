@@ -1,5 +1,6 @@
 /* Linux kernel font_8x16 — GPL-2.0 */
 /* Source: linux/lib/fonts/font_8x16.c */
+// Thank you linux; regards shadcy:>
 #include "font8x16.h"
 
 const unsigned char font8x16_data[256][16] = {
