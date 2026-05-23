@@ -1,12 +1,12 @@
 /* ============================================================================
  * tios_platform.c — T-OS platform layer for linuxdoom-1.10
- *
+ *this is the most  shitty thing youll ever encounter my friend trust me
  * Implements:
  *   - i_system   : timer, memory zone, error, quit
  *   - i_video    : framebuffer blit (320x200 centered in 640x480)
- *   - i_sound    : all stubs
+ *   - i_sound    : all stubs {for future implementation i guess}
  *   - i_net      : all stubs
- *   - POSIX shim : open/read/lseek/close → FAT, malloc → static pool
+ *   - POSIX shim : open/read/lseek/close → FAT, malloc → static pool (idk cursor agent cooked this too well)
  *   - String/mem : memcpy, memset, strlen, sprintf, etc.
  * ============================================================================ */
 
@@ -614,6 +614,7 @@ int tios_open(const char *path, int flags, ...)
         if (!fd_table[i].used) {
             fat_file_t *ff = fat_open(fatname);
             if (!ff) { kputs("[DOOM] open failed: "); kputs(fatname); kputc('\n'); return -1; }
+            kputs("Troubleshot Dawg:\n check you have placed doom.wad at /games/em-doom/ for qemu, else try command doom gfx -iwad doom1.wad\n");  
             fd_table[i].ff   = ff;
             fd_table[i].pos  = 0;
             fd_table[i].size = (int)fat_file_size(ff);
