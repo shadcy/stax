@@ -58,7 +58,7 @@ void kernel_main(void)
     irq_enable();
 
     kputs("========================================\n");
-    kputs("  TIOS Kernel — Graphical Mode\n");
+    kputs("  TIOS Kernel - Graphical Mode\n");
     kputs("========================================\n");
     kputs("Status : running\n");
     kputs("IRQs   : enabled\n");

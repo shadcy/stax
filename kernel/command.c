@@ -96,7 +96,22 @@ void cmd_help(int argc, char *argv[])
 void cmd_clear(int argc, char *argv[])
 {
     (void)argc; (void)argv;
-    kputs("\033[2J\033[H");  /* ANSI clear screen and home cursor */
+    
+    /* 1. Clear the serial UART terminal (ANSI escape) */
+    #define UART0_BASE  0x101f1000UL
+    #define UART_DR     (*(volatile unsigned int *)(UART0_BASE + 0x000))
+    #define UART_FR     (*(volatile unsigned int *)(UART0_BASE + 0x018))
+    #define UART_FR_TXFF (1 << 5)
+    
+    const char *ansi_clear = "\033[2J\033[H";
+    while (*ansi_clear) {
+        while (UART_FR & UART_FR_TXFF);
+        UART_DR = (unsigned int)(*ansi_clear++);
+    }
+    
+    /* 2. Clear the graphical console cleanly */
+    extern void gfx_clear(void);
+    gfx_clear();
 }
 
 void cmd_status(int argc, char *argv[])
@@ -334,9 +349,11 @@ void cmd_snake(int argc, char *argv[])
     (void)argc; (void)argv;
     kputs("Starting Snake...\n");
     snake_run();
-    /* snake_run() clears screen before returning; re-print the prompt banner */
+    
+    gfx_console_init();
+    
     kputs("========================================\n");
-    kputs("  TIOS Kernel — back in shell\n");
+    kputs("  TIOS Kernel - back in shell\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
 }
@@ -349,9 +366,11 @@ void cmd_doom(int argc, char *argv[])
     (void)argc; (void)argv;
     kputs("Starting DOOM (ASCII version)...\n");
     doom_run();
-    /* doom_run() clears screen before returning; re-print the prompt banner */
+    
+    gfx_console_init();
+    
     kputs("========================================\n");
-    kputs("  TIOS Kernel — back in shell\n");
+    kputs("  TIOS Kernel - back in shell\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
 }
@@ -365,8 +384,12 @@ void cmd_doomgfx(int argc, char *argv[])
     kputs("Starting DOOM (Graphical version)...\n");
     kputs("This requires QEMU with -serial stdio\n");
     doom_gfx_run();
+    
+    /* Re-initialize console to clear screen and restore the shell layout */
+    gfx_console_init();
+    
     kputs("========================================\n");
-    kputs("  TIOS Kernel — back in shell\n");
+    kputs("  TIOS Kernel - back in shell\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
 }
