@@ -49,14 +49,19 @@ static void draw_glyph(int col, int row, unsigned char c, uint16_t color)
 
 static void scroll_up(void)
 {
-    uint16_t *fbuf = fb_get_buffer();
-    int line = FONT8X16_HEIGHT * (int)FB_WIDTH;
-    /* Shift all rows up by one */
-    for (int i = 0; i < (ROWS - 1) * line; i++)
-        fbuf[i] = fbuf[i + line];
-    /* Clear last row */
-    uint16_t *last = fbuf + (ROWS - 1) * line;
-    for (int i = 0; i < line; i++) last[i] = FB_BG;
+    uint32_t *dst = (uint32_t *)fb_get_buffer();
+    int line_words = (FONT8X16_HEIGHT * (int)FB_WIDTH) / 2;
+    int total_words = (ROWS - 1) * line_words;
+    
+    /* 32-bit transfer for 2x speedup and bus efficiency */
+    for (int i = 0; i < total_words; i++)
+        dst[i] = dst[i + line_words];
+        
+    /* Clear last row using 32-bit write */
+    uint32_t clear_word = ((uint32_t)FB_BG << 16) | FB_BG;
+    uint32_t *last = dst + total_words;
+    for (int i = 0; i < line_words; i++)
+        last[i] = clear_word;
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */
