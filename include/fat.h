@@ -93,6 +93,8 @@ int fat_init(void);
 fat_file_t *fat_open(const char *filename);
 int fat_read(fat_file_t *file, void *buffer, uint32_t count);
 int fat_close(fat_file_t *file);
+int fat_seek(fat_file_t *file, int offset);
+uint32_t fat_file_size(fat_file_t *file);
 void fat_list_root(void);
 
 #endif /* FAT_H */

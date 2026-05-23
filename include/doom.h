@@ -10,6 +10,6 @@
 void doom_run(void);
 
 /* Graphical version (requires framebuffer) */
-void doom_gfx_run(void);
+void doom_engine_run(void);
 
 #endif

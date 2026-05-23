@@ -363,9 +363,8 @@ void cmd_snake(int argc, char *argv[])
 void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
-    kputs("Starting DOOM (Graphical version)...\n");
-    kputs("This requires QEMU with -serial stdio\n");
-    doom_gfx_run();
+    kputs("Starting DOOM (em-doom)...\n");
+    doom_engine_run();
     
     /* Re-initialize console to clear screen and restore the shell layout */
     gfx_console_init();

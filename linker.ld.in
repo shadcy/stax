@@ -13,7 +13,7 @@ ENTRY(_start)
  * -------------------------------------------- */
 MEMORY
 {
-    RAM (rwx) : ORIGIN = KERNEL_EXEC_ADDR, LENGTH = 4M
+    RAM (rwx) : ORIGIN = KERNEL_EXEC_ADDR, LENGTH = 32M
 }
 
 /* --------------------------------------------

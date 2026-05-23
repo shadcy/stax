@@ -41,6 +41,7 @@ CFLAGS  := -mcpu=arm926ej-s    \
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
 LDFLAGS := -nostdlib --gc-sections
+LIBGCC := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
 # ---------------------------------------------------------------------------
 # Source files and objects
@@ -78,8 +79,13 @@ KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
-KERNEL_OBJS  += $(BUILD_DIR)/doom_gfx.o
 
+# em-doom objects
+DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
+# Filter out the original platform files, we use tios_platform.c instead
+DOOM_SRCS := $(filter-out %/i_main.c %/i_system.c %/i_sound.c %/i_video.c %/i_net.c, $(DOOM_SRCS))
+DOOM_OBJS := $(patsubst $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c, $(BUILD_DIR)/%.o, $(DOOM_SRCS))
+KERNEL_OBJS  += $(DOOM_OBJS)
 KERNEL_LD_IN := linker.ld.in
 KERNEL_LD    := $(BUILD_DIR)/linker.ld
 KERNEL_ELF   := $(BUILD_DIR)/kernel.elf
@@ -110,7 +116,8 @@ $(OS_BIN): $(KERNEL_BIN)
 	@echo "Assembling FAT16 OS Image → $@"
 	@dd if=/dev/zero of=$@ bs=1M count=16 2>/dev/null
 	@mkfs.vfat -F 16 $@
-	@mcopy -i $@ $(KERNEL_BIN) ::/KERNEL.BIN
+	@mcopy -i $@ build/kernel.bin ::/KERNEL.BIN
+	@if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -129,7 +136,7 @@ $(BOOT_LD): $(BOOT_LD_IN) $(INC_DIR)/memory_map.h | $(BUILD_DIR)
 	$(CC) -E -P -x c -I$(INC_DIR) $< -o $@
 
 $(BOOT_ELF): $(BOOT_OBJS) $(BOOT_LD)
-	$(LD) -T $(BOOT_LD) $(LDFLAGS) $(BOOT_OBJS) -o $@
+	$(LD) -T $(BOOT_LD) $(LDFLAGS) $(BOOT_OBJS) $(LIBGCC) -o $@
 
 $(BOOT_BIN): $(BOOT_ELF)
 	$(OBJCOPY) -O binary $< $@
@@ -155,6 +162,10 @@ $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# DOOM files need special flags and the tios_compat.h included
+$(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -w -O2 -include $(GAMES_DIR)/em-doom/linuxdoom-1.10/tios_compat.h -c $< -o $@
+
 # ---------------------------------------------------------------------------
 # Kernel Linking
 # ---------------------------------------------------------------------------
@@ -162,7 +173,7 @@ $(KERNEL_LD): $(KERNEL_LD_IN) $(INC_DIR)/memory_map.h | $(BUILD_DIR)
 	$(CC) -E -P -x c -I$(INC_DIR) $< -o $@
 
 $(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_LD)
-	$(LD) -T $(KERNEL_LD) $(LDFLAGS) $(KERNEL_OBJS) -o $@
+	$(LD) -T $(KERNEL_LD) $(LDFLAGS) $(KERNEL_OBJS) $(LIBGCC) -o $@
 	@echo "Linked → $@"
 
 $(KERNEL_BIN): $(KERNEL_ELF)
