@@ -10,21 +10,26 @@
 #include "scheduler.h"
 #include "timer.h"
 #include "snake.h"
+#include "doom.h"
+#include "framebuffer.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
 
 /* Command table */
 static const command_t commands[] = {
-    {"help",   "Show available commands",           cmd_help},
-    {"clear",  "Clear screen",                        cmd_clear},
-    {"status", "Show system status",                  cmd_status},
-    {"mem",    "Show memory information",              cmd_mem},
-    {"tasks",  "Show task information",               cmd_tasks},
-    {"fs",     "Show filesystem information",          cmd_fs},
-    {"test",   "Run system tests",                    cmd_test},
-    {"read",   "Read system memory space info",        cmd_read},
-    {"snake",  "Play Snake (WASD/arrows, Q to quit)",  cmd_snake},
+    {"help",    "Show available commands",           cmd_help},
+    {"clear",   "Clear screen",                        cmd_clear},
+    {"status",  "Show system status",                  cmd_status},
+    {"mem",     "Show memory information",              cmd_mem},
+    {"tasks",   "Show task information",               cmd_tasks},
+    {"fs",      "Show filesystem information",          cmd_fs},
+    {"test",    "Run system tests",                    cmd_test},
+    {"read",    "Read system memory space info",        cmd_read},
+    {"snake",   "Play Snake (WASD/arrows, Q to quit)",  cmd_snake},
+    {"doom",    "Play DOOM ASCII (WASD, Q to quit)",    cmd_doom},
+    {"doomgfx", "Play DOOM Graphics (WASD, Q to quit)", cmd_doomgfx},
+    {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
     {NULL, NULL, NULL}  /* End marker */
 };
 
@@ -334,4 +339,78 @@ void cmd_snake(int argc, char *argv[])
     kputs("  TIOS Kernel — back in shell\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
+}
+
+/* ============================================================================
+ * cmd_doom — launch the DOOM game
+ * ============================================================================ */
+void cmd_doom(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("Starting DOOM (ASCII version)...\n");
+    doom_run();
+    /* doom_run() clears screen before returning; re-print the prompt banner */
+    kputs("========================================\n");
+    kputs("  TIOS Kernel — back in shell\n");
+    kputs("========================================\n");
+    kputs("Type 'help' for available commands\n");
+}
+
+/* ============================================================================
+ * cmd_doomgfx — launch the graphical DOOM game
+ * ============================================================================ */
+void cmd_doomgfx(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("Starting DOOM (Graphical version)...\n");
+    kputs("This requires QEMU with -serial stdio\n");
+    doom_gfx_run();
+    kputs("========================================\n");
+    kputs("  TIOS Kernel — back in shell\n");
+    kputs("========================================\n");
+    kputs("Type 'help' for available commands\n");
+}
+
+/* ============================================================================
+ * cmd_fbtest — test framebuffer
+ * ============================================================================ */
+void cmd_fbtest(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("Testing framebuffer...\n");
+    
+    /* Initialize framebuffer */
+    if (fb_init() != 0) {
+        kputs("Failed to initialize framebuffer!\n");
+        kputs("Make sure you're running with: make qemu-gfx\n");
+        return;
+    }
+    
+    kputs("Framebuffer initialized successfully!\n");
+    kputs("Drawing test pattern...\n");
+    
+    /* Draw test pattern */
+    fb_clear(COLOR_BLACK);
+    
+    /* Draw colored rectangles */
+    fb_fillrect(50, 50, 100, 100, COLOR_RED);
+    fb_fillrect(200, 50, 100, 100, COLOR_GREEN);
+    fb_fillrect(350, 50, 100, 100, COLOR_BLUE);
+    
+    fb_fillrect(50, 200, 100, 100, COLOR_YELLOW);
+    fb_fillrect(200, 200, 100, 100, COLOR_CYAN);
+    fb_fillrect(350, 200, 100, 100, COLOR_MAGENTA);
+    
+    fb_fillrect(125, 350, 250, 80, COLOR_WHITE);
+    
+    kputs("Test pattern drawn!\n");
+    kputs("You should see colored rectangles on the display.\n");
+    kputs("Press any key to continue...\n");
+    
+    /* Wait for key */
+    while (kgetc() == 0);
+    
+    /* Clear screen */
+    fb_clear(COLOR_BLACK);
+    kputs("Framebuffer test complete.\n");
 }

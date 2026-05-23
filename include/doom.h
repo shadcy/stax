@@ -1,0 +1,15 @@
+/* ============================================================================
+ * TIOS — doom.h
+ * DOOM-like games (ASCII and graphical versions)
+ * ============================================================================ */
+
+#ifndef DOOM_H
+#define DOOM_H
+
+/* ASCII version (text-only) */
+void doom_run(void);
+
+/* Graphical version (requires framebuffer) */
+void doom_gfx_run(void);
+
+#endif
