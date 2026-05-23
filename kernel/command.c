@@ -26,8 +26,7 @@ static const command_t commands[] = {
     {"fs",      "Show filesystem information",          cmd_fs},
     {"test",    "Run system tests",                    cmd_test},
     {"read",    "Read system memory space info",        cmd_read},
-    {"snake",   "Play Snake (WASD/arrows, Q to quit)",  cmd_snake},
-    {"doom",    "Play DOOM ASCII (WASD, Q to quit)",    cmd_doom},
+    {"snake",   "Play Graphical Snake (WASD, Q to quit)", cmd_snake},
     {"doomgfx", "Play DOOM Graphics (WASD, Q to quit)", cmd_doomgfx},
     {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
     {NULL, NULL, NULL}  /* End marker */
@@ -349,23 +348,6 @@ void cmd_snake(int argc, char *argv[])
     (void)argc; (void)argv;
     kputs("Starting Snake...\n");
     snake_run();
-    
-    gfx_console_init();
-    
-    kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
-    kputs("========================================\n");
-    kputs("Type 'help' for available commands\n");
-}
-
-/* ============================================================================
- * cmd_doom — launch the DOOM game
- * ============================================================================ */
-void cmd_doom(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    kputs("Starting DOOM (ASCII version)...\n");
-    doom_run();
     
     gfx_console_init();
     
