@@ -66,6 +66,9 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/disk.o \
                 $(BUILD_DIR)/irq.o \
                 $(BUILD_DIR)/console.o \
+                $(BUILD_DIR)/framebuffer.o \
+                $(BUILD_DIR)/font8x16.o \
+                $(BUILD_DIR)/gfx_console.o \
                 $(BUILD_DIR)/command.o
 
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
@@ -73,6 +76,8 @@ KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
+KERNEL_OBJS  += $(BUILD_DIR)/doom.o
+KERNEL_OBJS  += $(BUILD_DIR)/doom_gfx.o
 
 KERNEL_LD_IN := linker.ld.in
 KERNEL_LD    := $(BUILD_DIR)/linker.ld
@@ -87,11 +92,12 @@ OS_BIN       := os.bin
 QEMU         := qemu-system-arm
 QEMU_MACHINE := versatilepb
 QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -nographic -serial mon:stdio
+QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -serial stdio
 
 # =============================================================================
 # Rules
 # =============================================================================
-.PHONY: all clean qemu debug gdb dump size
+.PHONY: all clean qemu qemu-gfx debug gdb dump size
 
 all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 
@@ -168,6 +174,11 @@ $(KERNEL_BIN): $(KERNEL_ELF)
 qemu: $(BOOT_BIN) $(OS_BIN)
 	@echo "Booting TIOS in QEMU (Ctrl-A X to quit)..."
 	$(QEMU) $(QEMU_FLAGS)
+
+qemu-gfx: $(BOOT_BIN) $(OS_BIN)
+	@echo "Booting TIOS in QEMU with graphics (Ctrl-C to quit)..."
+	@echo "Use 'doomgfx' command to run graphical DOOM"
+	$(QEMU) $(QEMU_GFX_FLAGS)
 
 debug: $(BOOT_BIN) $(OS_BIN)
 	@echo "QEMU waiting for GDB on :1234  (run 'make gdb' in another terminal)"

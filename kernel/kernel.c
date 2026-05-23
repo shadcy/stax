@@ -1,6 +1,6 @@
 /* ============================================================================
  * TIOS — kernel.c
- * Phase 6e — FAT filesystem driver added
+ * Phase 6e — FAT filesystem driver added + Graphical console
  * ============================================================================ */
 
 #include "irq.h"
@@ -11,6 +11,7 @@
 #include "vic.h"
 #include "console.h"
 #include "command.h"
+#include "gfx_console.h"
 
 /* ---------------------------------------------------------------------------
  * Global state
@@ -33,6 +34,9 @@ static void timer_isr(void)
  * --------------------------------------------------------------------------- */
 void kernel_main(void)
 {
+    /* ---- Initialize graphical console first ---- */
+    gfx_console_init();  /* This also initializes the framebuffer */
+    
     /* ---- Phase 6a: IRQ subsystem ---- */
     irq_system_init();
 
@@ -52,19 +56,21 @@ void kernel_main(void)
     irq_enable();
 
     kputs("========================================\n");
-    kputs("  TIOS Kernel — Phase 6e - Interactive Mode\n");
+    kputs("  TIOS Kernel — Graphical Mode\n");
     kputs("========================================\n");
     kputs("Status : running\n");
     kputs("IRQs   : enabled\n");
     kputs("Timer  : SP804 Timer0, 10 Hz (100 ms ticks)\n");
     kputs("Heap   : 64 KB bump allocator with free list\n");
     kputs("FS     : FAT12/16 driver (test image)\n");
+    kputs("Display: 640x480 framebuffer (80x60 text)\n");
     kputs("----------------------------------------\n");
 
     /* Initialize command system */
     command_init();
     
     kputs("Type 'help' for available commands\n");
+    kputs("Type 'doomgfx' to play graphical DOOM\n");
     kputs("========================================\n");
 
     kputs("tios> Interactive command interface ready\n");

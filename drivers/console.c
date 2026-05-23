@@ -1,9 +1,10 @@
 /* ============================================================================
  * TIOS — console.c
- * Simple console output functions
+ * Simple console output functions (dual output: UART + Framebuffer)
  * ============================================================================ */
 
 #include "console.h"
+#include "gfx_console.h"
 
 #define UART0_BASE  0x101f1000UL
 #define UART_DR     (*(volatile unsigned int *)(UART0_BASE + 0x000))
@@ -13,12 +14,16 @@
 
 void kputc(char c)
 {
+    /* Output to UART */
     if (c == '\n') {
         while (UART_FR & UART_FR_TXFF);
         UART_DR = '\r';
     }
     while (UART_FR & UART_FR_TXFF);
     UART_DR = (unsigned int)c;
+    
+    /* Also output to graphical console */
+    gfx_putc(c);
 }
 
 void kputs(const char *s)
