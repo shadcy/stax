@@ -692,6 +692,10 @@ static char  doom_wadpath[] = "DOOM.WAD";
 static char  doom_nomus[]   = "-nomusic";
 static char  doom_nosnd[]   = "-nosound";
 
+/* Declare singletics so we can force it on for bare-metal (avoids the
+ * TryRunTics catch-up storm that freezes the game after level load). */
+extern boolean singletics;
+
 void doom_engine_run(void)
 {
     /* Keep the gfx console alive so all init/debug messages are visible
@@ -702,6 +706,11 @@ void doom_engine_run(void)
     kputs("  DOOM Loading — please wait...\n");
     kputs("========================================\n");
     kputs("[DOOM] Initializing em-doom engine\n");
+
+    /* Force singletics: run exactly 1 game tic per rendered frame.
+     * Without this, TryRunTics catches up all tics missed during the slow
+     * level load (hundreds of tics), causing an apparent freeze. */
+    singletics = true;
 
     /* Reset slab allocator for a fresh run */
     doom_slab_pos = 0;
