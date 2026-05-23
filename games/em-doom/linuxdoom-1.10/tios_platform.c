@@ -426,6 +426,10 @@ static uint16_t doom_palette[256];
 
 void I_InitGraphics(void)
 {
+    /* Take over the framebuffer now that DOOM is ready to render.
+     * Disable the gfx console here (not at engine startup) so all the
+     * WAD-loading / init kputs() messages are visible during loading. */
+    gfx_console_enable(0);
     fb_init();
     fb_clear(0x0000);   /* full screen — DOOM only draws the 320x200 window */
     /* Default greyscale palette until DOOM loads its own */
@@ -690,12 +694,14 @@ static char  doom_nosnd[]   = "-nosound";
 
 void doom_engine_run(void)
 {
+    /* Keep the gfx console alive so all init/debug messages are visible
+     * while the WAD loads.  I_InitGraphics() will take over the FB when
+     * DOOM is actually ready to render (disabling the console there). */
+    kputs("\n");
+    kputs("========================================\n");
+    kputs("  DOOM Loading — please wait...\n");
+    kputs("========================================\n");
     kputs("[DOOM] Initializing em-doom engine\n");
-
-    /* Stop shell text from drawing over the DOOM framebuffer */
-    gfx_console_enable(0);
-    fb_init();
-    fb_clear(0x0000);
 
     /* Reset slab allocator for a fresh run */
     doom_slab_pos = 0;
@@ -717,6 +723,7 @@ void doom_engine_run(void)
 
     D_DoomMain();
 
+    /* Restore console after DOOM exits */
     kputs("[DOOM] Engine returned\n");
     fb_clear(0x0000);
     gfx_console_enable(1);
