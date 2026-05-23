@@ -1,0 +1,63 @@
+--------------------------------------------------
+  TIOS Bootloader v0.3 [Bare-Metal PL181 SD]
+--------------------------------------------------
+Initializing PL181 SD Card Controller...
+  - CMD0: Card Reset... OK
+  - ACMD41 (card initialization): Ready. OCR=0x80FFFF00 [SDSC]
+  - CMD2: CID received
+  - CMD3: RCA set to 0x00004567
+  - CMD7: Card Selected
+Parsing FAT16 filesystem to find KERNEL.BIN...
+Found KERNEL.BIN, loading clusters...................................................................................................................................................................
+Kernel loaded.
+Verifying kernel integrity... OK
+Jumping to kernel...
+
+FB: PL110 640x480 16bpp OK
+========================================
+  TIOS Kernel - Graphical Mode
+========================================
+Status : running
+IRQs   : enabled
+Timer  : SP804 Timer0, 10 Hz (100 ms ticks)
+Heap   : 64 KB bump allocator with free list
+FS     : FAT12/16 driver (test image)
+Display: 640x480 framebuffer (80x60 text)
+----------------------------------------
+Command system initialized
+Type 'help' for available commands
+Type 'doomgfx' to play graphical DOOM
+========================================
+tios> Interactive command interface ready
+tios> doomgfx
+Starting DOOM (em-doom)...
+[DOOM] Initializing em-doom engine
+                         The Ultimate DOOM Startup v1.10                           
+V_Init: allocate screens.
+M_LoadDefaults: Load system defaults.
+Z_Init: Init zone memory allocation daemon. 
+W_Init: Init WADfiles.
+[FAT] Checking entry: 'KERNEL  BIN' against 'DOOM    WAD'
+[FAT] Checking entry: 'DOOM    WAD' against 'DOOM    WAD'
+[DOOM] opened DOOM.WAD
+ adding DOOM.WAD
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - [                    ]...
+InitTextures
+InitFlats........
+InitSprites
+InitColormaps
+R_InitData
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap
+R_InitTranslationsTables
+P_Init: Init Playloop state.
+[DOOM ERROR] R_TextureNumForName: ¦# not found
+qemu: terminating on signal 15 from pid 249203 (killall)
