@@ -114,10 +114,11 @@ $(BUILD_DIR):
 $(OS_BIN): $(KERNEL_BIN)
 	@echo ""
 	@echo "Assembling FAT16 OS Image → $@"
-	@dd if=/dev/zero of=$@ bs=1M count=16 2>/dev/null
+	@dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null
 	@mkfs.vfat -F 16 $@
 	@mcopy -i $@ build/kernel.bin ::/KERNEL.BIN
 	@if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi
+	@if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"

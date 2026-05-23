@@ -28,6 +28,7 @@ static const command_t commands[] = {
     {"read",    "Read system memory space info",        cmd_read},
     {"snake",   "Play Graphical Snake (WASD, Q to quit)", cmd_snake},
     {"doomgfx", "Play DOOM Graphics (WASD, Q to quit)", cmd_doomgfx},
+    {"doom2gfx","Play DOOM 2 Graphics (WASD, Q to quit)", cmd_doom2gfx},
     {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
     {NULL, NULL, NULL}  /* End marker */
 };
@@ -365,6 +366,24 @@ void cmd_doomgfx(int argc, char *argv[])
     (void)argc; (void)argv;
     kputs("Starting DOOM (em-doom)...\n");
     doom_engine_run();
+    
+    /* Re-initialize console to clear screen and restore the shell layout */
+    gfx_console_init();
+    
+    kputs("========================================\n");
+    kputs("  TIOS Kernel - back in shell\n");
+    kputs("========================================\n");
+    kputs("Type 'help' for available commands\n");
+}
+
+/* ============================================================================
+ * cmd_doom2gfx — launch the graphical DOOM 2 game
+ * ============================================================================ */
+void cmd_doom2gfx(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("Starting DOOM 2 (em-doom)...\n");
+    doom2_engine_run();
     
     /* Re-initialize console to clear screen and restore the shell layout */
     gfx_console_init();

@@ -61,44 +61,30 @@ static const unsigned char sc2_shifted[256] = {
 /*7e*/  0,    0,    0,    0,    0,    0,    0,    0,
 };
 
-/* ── internal PS/2 state ─────────────────────────────────────────────────── */
+/* ── internal PS/2 state ─────────────────────────────────────────────────────── */
 static int shift_held = 0;  /* 1 when L/R shift is pressed   */
 static int skip_next  = 0;  /* 1 after 0xF0 (break prefix)   */
 static int extended   = 0;  /* 1 after 0xE0 (extended prefix) */
 
-/* ── Ring buffer for IRQ-driven key capture ──────────────────────────────── */
-#define KB_BUF_SIZE 16u
+/* ── Ring buffer: press = raw char (1–127), release = char | 0x80 (129–254) ── */
+#define KB_BUF_SIZE 32u
 static volatile unsigned char kb_buf[KB_BUF_SIZE];
-static volatile unsigned int  kb_head = 0;  /* write index (producer: timer ISR) */
-static volatile unsigned int  kb_tail = 0;  /* read  index (consumer: game loop) */
+static volatile unsigned int  kb_head = 0;
+static volatile unsigned int  kb_tail = 0;
 
-/* ── internal: decode one raw scancode from hardware ───────────────────── */
-static char kb_decode_raw(void)
+/* ── internal: decode scancode; *release set to 1 if this is a break code ─ */
+static char kb_decode_sc(unsigned char sc, int is_break)
 {
-    if (!(KMI_STAT & KMI_STAT_RXFULL))
-        return 0;
-
-    unsigned char sc = (unsigned char)(KMI_DATA & 0xFFu);
-
-    if (sc == 0xE0) { extended = 1; return 0; }
-    if (sc == 0xF0) { skip_next = 1; return 0; }
-
-    if (skip_next) {
-        skip_next = 0;
-        if (sc == 0x12 || sc == 0x59) shift_held = 0;
-        extended = 0;
+    if (sc == 0x12 || sc == 0x59) {    /* shift */
+        shift_held = is_break ? 0 : 1;
         return 0;
     }
-
-    if (extended) { extended = 0; return 0; }
-
-    if (sc == 0x12 || sc == 0x59) { shift_held = 1; return 0; }
-
+    if (extended) { extended = 0; return 0; }   /* ignore extended for now */
     unsigned char ascii = shift_held ? sc2_shifted[sc] : sc2_normal[sc];
     return (char)ascii;
 }
 
-/* ── public functions ────────────────────────────────────────────────────── */
+/* ── public functions ────────────────────────────────────────────────────────────────────────────── */
 
 void kb_init(void)
 {
@@ -107,33 +93,82 @@ void kb_init(void)
 
 /*
  * kb_poll — drain the PL050 FIFO into the ring buffer.
- * Call this from the timer ISR every tick so no key press is ever dropped.
+ * Press events are stored as-is (char value 1–127).
+ * Release events are stored with bit 7 set (char | 0x80).
+ * Called from the timer ISR every 10 ms.
  */
 void kb_poll(void)
 {
-    /* Drain all bytes currently in the PL050 FIFO */
     while (KMI_STAT & KMI_STAT_RXFULL) {
-        char c = kb_decode_raw();
-        if (c == 0) continue;   /* prefix byte or unmapped scancode */
+        unsigned char sc = (unsigned char)(KMI_DATA & 0xFFu);
+
+        if (sc == 0xE0) { extended = 1; continue; }
+        if (sc == 0xF0) { skip_next = 1; continue; }
+
+        int is_break = skip_next;
+        skip_next = 0;
+
+        /* Handle extended codes (E0-prefixed: arrow keys etc.) */
+        if (extended) {
+            extended = 0;
+            if (!is_break) {   /* only emit on key press, not release */
+                unsigned char entry = 0;
+                if      (sc == 0x75) entry = 0x11u;  /* Up arrow    */
+                else if (sc == 0x72) entry = 0x12u;  /* Down arrow  */
+                /* left (0x6B) / right (0x74) ignored for now */
+                if (entry) {
+                    unsigned int next = (kb_head + 1u) % KB_BUF_SIZE;
+                    if (next != kb_tail) { kb_buf[kb_head] = entry; kb_head = next; }
+                }
+            }
+            continue;
+        }
+
+        char c = kb_decode_sc(sc, is_break);
+        if (c == 0) continue;
+
+        /* Encode: press = c, release = c | 0x80 */
+        unsigned char entry = (unsigned char)c;
+        if (is_break) entry |= 0x80u;
+
 
         unsigned int next = (kb_head + 1u) % KB_BUF_SIZE;
-        if (next != kb_tail) {  /* drop silently if buffer full */
-            kb_buf[kb_head] = (unsigned char)c;
+        if (next != kb_tail)
+        {
+            kb_buf[kb_head] = entry;
             kb_head = next;
         }
     }
 }
 
 /*
- * kb_getc — read one character from the ring buffer.
- * Returns 0 if the buffer is empty (non-blocking).
+ * kb_getc — read next PRESS from the ring buffer (skips releases).
+ * Returns 0 if empty. Used by console and snake.
  */
 char kb_getc(void)
 {
-    if (kb_head == kb_tail)
-        return 0;   /* buffer empty */
+    while (kb_head != kb_tail) {
+        unsigned char ev = kb_buf[kb_tail];
+        kb_tail = (kb_tail + 1u) % KB_BUF_SIZE;
+        if (!(ev & 0x80u))
+            return (char)ev;   /* press event */
+        /* release event — skip for console use */
+    }
+    return 0;
+}
 
-    char c = (char)kb_buf[kb_tail];
+/*
+ * kb_getevent — read next press OR release from the ring buffer.
+ * Returns +char for key press, -char for key release, 0 if empty.
+ * Used by DOOM's I_StartTic for proper held-key movement.
+ */
+int kb_getevent(void)
+{
+    if (kb_head == kb_tail)
+        return 0;
+    unsigned char ev = kb_buf[kb_tail];
     kb_tail = (kb_tail + 1u) % KB_BUF_SIZE;
-    return c;
+    if (ev & 0x80u)
+        return -(int)(ev & 0x7Fu);   /* release */
+    return (int)ev;                  /* press   */
 }

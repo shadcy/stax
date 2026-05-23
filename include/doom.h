@@ -11,5 +11,6 @@ void doom_run(void);
 
 /* Graphical version (requires framebuffer) */
 void doom_engine_run(void);
+void doom2_engine_run(void);
 
 #endif
