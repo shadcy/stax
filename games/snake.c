@@ -194,15 +194,13 @@ void snake_run(void)
             if (c == 'q' || c == 'Q') { g_alive = 0; break; }
         }
 
-        /* Speed control */
+        /* Speed control — 100 Hz timer: 8 ticks × 10ms = 80ms/step (normal)
+         *                               4 ticks × 10ms = 40ms/step (fast) */
         unsigned int current = tick_count;
-        /* Score-based game speed */
-        unsigned int ticks_needed = 2;
-        if (g_score >= 150) ticks_needed = 1;
+        unsigned int ticks_needed = 8;
+        if (g_score >= 150) ticks_needed = 4;
         
         if (current - last_tick < ticks_needed) {
-            /* Yield a tiny bit */
-            for (volatile int nop = 0; nop < 1000; nop++) __asm__ volatile ("nop");
             continue;
         }
         last_tick = current;
