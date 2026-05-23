@@ -7,7 +7,10 @@
 
 void kb_init(void);
 
-/* Poll: returns ASCII char if a key was pressed, 0 if nothing ready */
+/* Drain PL050 FIFO into ring buffer — call from timer ISR each tick */
+void kb_poll(void);
+
+/* Read one ASCII char from ring buffer; returns 0 if empty */
 char kb_getc(void);
 
 #endif
