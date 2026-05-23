@@ -14,4 +14,7 @@ void gfx_set_color(uint16_t color);
 void gfx_clear(void);
 void gfx_console_enable(int enable);
 
+/* Call from the main idle loop to drive the cursor blink */
+void gfx_tick(void);
+
 #endif

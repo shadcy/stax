@@ -65,6 +65,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/fat.o \
                 $(BUILD_DIR)/disk.o \
                 $(BUILD_DIR)/irq.o \
+                $(BUILD_DIR)/keyboard.o \
                 $(BUILD_DIR)/console.o \
                 $(BUILD_DIR)/framebuffer.o \
                 $(BUILD_DIR)/font8x16.o \

@@ -5,6 +5,7 @@
 
 #include "console.h"
 #include "gfx_console.h"
+#include "keyboard.h"
 
 #define UART0_BASE  0x101f1000UL
 #define UART_DR     (*(volatile unsigned int *)(UART0_BASE + 0x000))
@@ -42,11 +43,12 @@ void kput_uint(unsigned int n)
 
 char kgetc(void)
 {
-    /* Check if RX FIFO has data */
-    if (UART_FR & UART_FR_RXFE) {
-        return 0;  /* No data available */
-    }
-    return (char)UART_DR;
+    /* 1. Check UART RX first (works for: make qemu / serial terminal) */
+    if (!(UART_FR & UART_FR_RXFE))
+        return (char)UART_DR;
+
+    /* 2. Fall back to PL050 PS/2 keyboard (works for: make qemu-gfx window) */
+    return kb_getc();
 }
 
 void kgets(char *buf, int max_len)
