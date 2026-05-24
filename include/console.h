@@ -9,6 +9,7 @@
 void kputc(char c);
 void kputs(const char *s);
 void kput_uint(unsigned int n);
+void kprintf(const char *format, ...);
 
 /* Input functions */
 char kgetc(void);

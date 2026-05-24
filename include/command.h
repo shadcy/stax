@@ -20,6 +20,11 @@ typedef struct {
 void command_init(void);
 void command_process(char *input);
 void command_show_help(void);
+int command_register(const char *name, const char *desc, cmd_func_t func);
+
+/* App initializers */
+void ping_init(void);
+void fetch_init(void);
 
 /* Individual command functions */
 void cmd_help(int argc, char *argv[]);
@@ -44,6 +49,8 @@ void cmd_rm(int argc, char *argv[]);
 void cmd_cat(int argc, char *argv[]);
 void cmd_mkdir(int argc, char *argv[]);
 void cmd_nano(int argc, char *argv[]);
+void cmd_ping(int argc, char *argv[]);
+void cmd_fetch(int argc, char *argv[]);
 void cmd_game(int argc, char *argv[]);
 
 #endif

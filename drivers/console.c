@@ -32,13 +32,32 @@ void kputs(const char *s)
     while (*s) kputc(*s++);
 }
 
-void kput_uint(unsigned int n)
-{
-    char buf[12];
+void kput_uint(unsigned int n) {
+    if (n == 0) {
+        kputc('0');
+        return;
+    }
+    char buf[16];
     int i = 0;
-    if (n == 0) { kputc('0'); return; }
-    while (n > 0) { buf[i++] = '0' + (n % 10); n /= 10; }
-    while (i > 0) kputc(buf[--i]);
+    while (n > 0) {
+        buf[i++] = (n % 10) + '0';
+        n /= 10;
+    }
+    while (i > 0) {
+        kputc(buf[--i]);
+    }
+}
+
+#include <stdarg.h>
+extern int tios_vsprintf(char *str, const char *format, va_list ap);
+
+void kprintf(const char *format, ...) {
+    char buf[256];
+    va_list args;
+    va_start(args, format);
+    tios_vsprintf(buf, format, args);
+    va_end(args);
+    kputs(buf);
 }
 
 char kgetc(void)

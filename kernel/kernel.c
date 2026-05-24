@@ -91,7 +91,17 @@ void kernel_main(void)
     kputs("----------------------------------------\n");
 
     /* Initialize command system */
+    extern void net_init(void);
+    net_init();
     command_init();
+    
+    /* Initialize apps */
+    extern void ping_init(void);
+    extern void fetch_init(void);
+    extern void ifconfig_init(void);
+    ping_init();
+    fetch_init();
+    ifconfig_init();
     
     kputs("Type 'help' for available commands\n");
     kputs("Type 'game --doom' to play graphical DOOM\n");
@@ -127,6 +137,8 @@ void kernel_main(void)
     kputs("        \b\b\b\b\b\b\b\b");             \
 } while (0)
 
+    extern void net_poll(void);
+
     /* Main kernel loop - never return */
     while (1) {
         if (show_prompt) {
@@ -138,8 +150,11 @@ void kernel_main(void)
         if (c == 0) {
             for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
             gfx_tick();
+            net_poll();
             continue;
         }
+
+        net_poll();
 
         /* ---- UART arrow-key escape sequence decoder ---- */
         if (esc_state == 0 && c == '\x1b') { esc_state = 1; continue; }

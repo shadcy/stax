@@ -37,7 +37,9 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -O1                 \
             -g                  \
             -I$(INC_DIR)        \
-            -I$(FS_DIR)
+            -I$(FS_DIR)         \
+            -Ithird_party/lwip/src/include \
+            -Inet
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -89,6 +91,21 @@ KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
 
+# Networking
+KERNEL_OBJS  += $(BUILD_DIR)/smc91c111.o \
+                $(BUILD_DIR)/sys_arch.o \
+                $(BUILD_DIR)/net_init.o \
+                $(BUILD_DIR)/netif_smc.o \
+                $(BUILD_DIR)/ping.o \
+                $(BUILD_DIR)/fetch.o
+
+LWIP_DIR := third_party/lwip/src
+LWIP_SRCS := $(wildcard $(LWIP_DIR)/core/*.c) \
+             $(wildcard $(LWIP_DIR)/core/ipv4/*.c) \
+             $(wildcard $(LWIP_DIR)/netif/*.c)
+LWIP_OBJS := $(patsubst $(LWIP_DIR)/%.c, $(BUILD_DIR)/lwip/%.o, $(LWIP_SRCS))
+KERNEL_OBJS  += $(LWIP_OBJS)
+
 # em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
 # Filter out the original platform files, we use tios_platform.c instead
@@ -107,8 +124,9 @@ OS_BIN       := os.bin
 # ---------------------------------------------------------------------------
 QEMU         := qemu-system-arm
 QEMU_MACHINE := versatilepb
-QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -nographic -serial mon:stdio
-QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -serial stdio
+QEMU_NET     := -nic user,model=smc91c111
+QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -nographic -serial mon:stdio
+QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -serial stdio
 
 # =============================================================================
 # Rules
@@ -178,6 +196,19 @@ $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: drivers/net/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: net/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: apps/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/lwip/%.o: $(LWIP_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # DOOM files need special flags and the tios_compat.h included

@@ -196,9 +196,9 @@ static void emit_str(char *out, char **cursor, const char *s, int width, int zer
 
     if (len < width) {
         char pad = zero_pad ? '0' : ' ';
-        while (len < width) {
+        int pads = width - len;
+        for (int i = 0; i < pads; i++) {
             emit_char(out, cursor, pad);
-            len++;
         }
     }
     while (*s) emit_char(out, cursor, *s++);
@@ -211,9 +211,9 @@ static void emit_uint(char *out, char **cursor, unsigned int v, int base, int wi
     uint_to_str(v, tmp, base, &len);
     if ((int)len < width) {
         char pad = zero_pad ? '0' : ' ';
-        while (len < width) {
+        int pads = width - len;
+        for (int i = 0; i < pads; i++) {
             emit_char(out, cursor, pad);
-            len++;
         }
     }
     for (int i = 0; i < len; i++)
