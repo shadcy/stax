@@ -44,15 +44,15 @@ void cmd_game(int argc, char *argv[])
 {
     if (argc < 2) {
         kputs("Usage:\n");
-        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m  game ");
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom   ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM Graphics\n");
         
-        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m  game ");
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom2  ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM 2 Graphics\n");
         
-        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m  game ");
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Graphical Snake\n");
         return;
@@ -127,7 +127,7 @@ void cmd_help(int argc, char *argv[])
     
     for (int i = 0; commands[i].name != NULL; i++) {
         kputs("  ");
-        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m");
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
         kputs(commands[i].name);
         
         int len = strlen(commands[i].name);
@@ -334,7 +334,7 @@ void cmd_read(int argc, char *argv[])
         } else if (strcmp(argv[1], "--img") == 0) {
             if (argc < 3) {
                 kputs("Usage: ");
-                gfx_set_color(COLOR_YELLOW); kputs("\x1b[33mread ");
+                gfx_set_color(COLOR_GREEN); kputs("\x1b[32mread ");
                 gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--img ");
                 gfx_set_color(COLOR_WHITE); kputs("\x1b[0m<filename.bmp>\n");
                 return;
