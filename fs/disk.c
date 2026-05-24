@@ -9,6 +9,7 @@
  * ============================================================================ */
 
 #include "fat.h"
+#include "irq.h"
 #include <stdint.h>
 
 /* ---- PL181 register offsets ---- */
@@ -54,7 +55,7 @@
 #define MCI_DCTRL_FROMCARD (1u << 1)
 #define MCI_DCTRL_BLK512   (9u << 4)   /* blocksize = 2^9 = 512 */
 
-static int mci_initialized = 0;
+static int mci_initialized = 1; /* Bootloader initialized it */
 static int mci_sdhc = 0;   /* 1 = SDHC/SDXC card (block addressing) */
 
 /* ---- Send a command and wait ---- */
@@ -84,7 +85,7 @@ static int mci_send_cmd(uint32_t cmd, uint32_t arg, uint32_t *resp)
 }
 
 /* ---- Initialize PL181 + SD card ---- */
-static int mci_init(void)
+int mci_init(void)
 {
     if (mci_initialized) return 0;
 
@@ -138,7 +139,7 @@ static int mci_init(void)
     return 0;
 }
 
-int disk_read(uint32_t lba, uint8_t *buf)
+int pl181_disk_read(uint32_t lba, uint8_t *buf)
 {
     MCI_CLEAR      = 0x1DC07FF;
     MCI_DATATIMER  = 0xFFFFFFFFu;
@@ -158,6 +159,7 @@ int disk_read(uint32_t lba, uint8_t *buf)
 
     /* Drain RX FIFO one 32-bit word at a time */
     int words_read = 0;
+    irq_disable();
     for (int i = 0; i < 512; ) {
         uint32_t st = MCI_STATUS;
         if (st & (1 << 21)) { /* ST_RXDATAAVAIL */
@@ -167,10 +169,52 @@ int disk_read(uint32_t lba, uint8_t *buf)
             buf[i++] = (uint8_t)(w >> 16);
             buf[i++] = (uint8_t)(w >> 24);
             words_read++;
+        } else if (st & ((1 << 3) | (1 << 1) | (1 << 5))) { /* ST_DATATIMEOUT | ST_DATACRCFAIL | ST_RXOVERR */
+            break;
+        }
+    }
+    irq_enable();
+
+    /* Wait for data state machine to finish */
+    while (!(MCI_STATUS & ((1 << 8) | (1 << 3) | (1 << 1)))); /* ST_DATAEND | ST_DATATIMEOUT | ST_DATACRCFAIL */
+    
+    MCI_CLEAR = 0x1DC07FF;
+    return 0;
+}
+
+int pl181_disk_write(uint32_t lba, const uint8_t *buf)
+{
+    MCI_CLEAR      = 0x1DC07FF;
+    MCI_DATATIMER  = 0xFFFFFFFFu;
+    MCI_DATALENGTH = 512;
+
+    /* Arm the data path BEFORE the command. Direction is host -> card */
+    MCI_DATACTRL   = (9 << 4) | (0 << 1) | (1 << 0);
+
+    uint32_t arg = mci_sdhc ? lba : (lba * 512);
+    
+    /* Send CMD24 */
+    MCI_CLEAR = 0xFFF;
+    MCI_ARGUMENT = arg;
+    MCI_COMMAND = (24 & 0x3F) | (1 << 6) | (1 << 10); /* CMD_WAITRESP | CMD_ENABLE */
+    
+    while (!(MCI_STATUS & ((1 << 6) | (1 << 0) | (1 << 2)))); /* ST_CMDRESPEND | ST_CMDCRCFAIL | ST_CMDTIMEOUT */
+
+    /* Fill TX FIFO one 32-bit word at a time */
+    irq_disable();
+    for (int i = 0; i < 512; ) {
+        uint32_t st = MCI_STATUS;
+        if (!(st & (1 << 16))) { /* ST_TXFIFOFULL not set */
+            uint32_t w = buf[i++];
+            w |= (uint32_t)buf[i++] << 8;
+            w |= (uint32_t)buf[i++] << 16;
+            w |= (uint32_t)buf[i++] << 24;
+            MCI_FIFO = w;
         } else if (st & ((1 << 3) | (1 << 1))) { /* ST_DATATIMEOUT | ST_DATACRCFAIL */
             break;
         }
     }
+    irq_enable();
 
     /* Wait for data state machine to finish */
     while (!(MCI_STATUS & ((1 << 8) | (1 << 3) | (1 << 1)))); /* ST_DATAEND | ST_DATATIMEOUT | ST_DATACRCFAIL */

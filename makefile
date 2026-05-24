@@ -36,7 +36,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -Wextra             \
             -O1                 \
             -g                  \
-            -I$(INC_DIR)
+            -I$(INC_DIR)        \
+            -I$(FS_DIR)
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -59,6 +60,7 @@ BOOT_BIN     := $(BUILD_DIR)/bootloader.bin
 KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/vectors.o \
                 $(BUILD_DIR)/kernel.o \
+                $(BUILD_DIR)/string.o \
                 $(BUILD_DIR)/vic.o \
                 $(BUILD_DIR)/timer.o \
                 $(BUILD_DIR)/scheduler.o \
@@ -73,6 +75,12 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/gfx_console.o \
                 $(BUILD_DIR)/command.o \
                 $(BUILD_DIR)/bmp.o
+
+# FatFs objects
+KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
+                $(BUILD_DIR)/ff.o \
+                $(BUILD_DIR)/ffunicode.o \
+                $(BUILD_DIR)/ffsystem.o
 
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
@@ -114,13 +122,17 @@ $(BUILD_DIR):
 
 $(OS_BIN): $(KERNEL_BIN)
 	@echo ""
-	@echo "Assembling FAT16 OS Image → $@"
-	@dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null
-	@mkfs.vfat -F 16 $@
-	@mcopy -i $@ build/kernel.bin ::/KERNEL.BIN
-	@if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi
-	@if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi
-	@if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi
+	@if [ ! -f $@ ]; then \
+		echo "Creating new FAT16 OS Image → $@"; \
+		dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null; \
+		mkfs.vfat -F 16 $@; \
+		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
+		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
+		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
+	else \
+		echo "Updating KERNEL.BIN in existing OS Image → $@"; \
+	fi
+	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -159,6 +171,9 @@ $(BUILD_DIR)/%.o: $(DRIVERS_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(FS_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/%.o: $(FS_DIR)/fatfs/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -192,7 +207,7 @@ qemu: $(BOOT_BIN) $(OS_BIN)
 
 qemu-gfx: $(BOOT_BIN) $(OS_BIN)
 	@echo "Booting TIOS in QEMU with graphics (Ctrl-C to quit)..."
-	@echo "Use 'doomgfx' command to run graphical DOOM"
+	@echo "Use 'game --doom' command to run graphical DOOM"
 	$(QEMU) $(QEMU_GFX_FLAGS)
 
 debug: $(BOOT_BIN) $(OS_BIN)
@@ -209,5 +224,9 @@ size: $(KERNEL_ELF)
 	$(SIZE) $<
 
 clean:
-	rm -rf $(BUILD_DIR) $(OS_BIN)
-	@echo "Cleaned."
+	rm -rf $(BUILD_DIR)
+	@echo "Cleaned build directory. (os.bin is preserved to protect your data)"
+
+clean-all: clean
+	rm -f $(OS_BIN)
+	@echo "Cleaned everything, including os.bin."

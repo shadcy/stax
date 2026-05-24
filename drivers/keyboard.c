@@ -33,10 +33,9 @@ static const unsigned char sc2_normal[256] = {
 /*50*/  0,    0,  '\'',  0,   '[',  '=',   0,    0,
 /*58*/  0,    0,  '\n',  ']',   0,  '\\',  0,    0,
 /*60*/  0,    0,    0,    0,    0,    0,  '\b',   0,
-/*66*/ '\b',  0,    0,   '1',   0,   '4',  '7',   0,
-/*6e*/  0,    0,   '0',  '.',  '2',  '5',  '6',  '8',
-/*76*/'\x1b', 0,    0,   '+',  '3',  '-',  '*',  '9',
-/*7e*/  0,    0,    0,    0,    0,    0,    0,    0,
+/*68*/  0,   '1',   0,   '4',  '7',   0,    0,    0,
+/*70*/ '0',  '.',  '2',  '5',  '6',  '8', '\x1b', 0,
+/*78*/  0,   '+',  '3',  '-',  '*',  '9',   0,    0,
 /* 0x80-0xFF: not used for basic ASCII */
 };
 
@@ -55,16 +54,18 @@ static const unsigned char sc2_shifted[256] = {
 /*50*/  0,    0,   '"',   0,   '{',  '+',   0,    0,
 /*58*/  0,    0,  '\n',  '}',   0,   '|',   0,    0,
 /*60*/  0,    0,    0,    0,    0,    0,  '\b',   0,
-/*66*/ '\b',  0,    0,   '1',   0,   '4',  '7',   0,
-/*6e*/  0,    0,   '0',  '.',  '2',  '5',  '6',  '8',
-/*76*/'\x1b', 0,    0,   '+',  '3',  '-',  '*',  '9',
-/*7e*/  0,    0,    0,    0,    0,    0,    0,    0,
+/*68*/  0,   '1',   0,   '4',  '7',   0,    0,    0,
+/*70*/ '0',  '.',  '2',  '5',  '6',  '8', '\x1b', 0,
+/*78*/  0,   '+',  '3',  '-',  '*',  '9',   0,    0,
 };
 
 /* ── internal PS/2 state ─────────────────────────────────────────────────────── */
 static int shift_held = 0;  /* 1 when L/R shift is pressed   */
+static int ctrl_held  = 0;  /* 1 when L Ctrl is pressed      */
 static int skip_next  = 0;  /* 1 after 0xF0 (break prefix)   */
 static int extended   = 0;  /* 1 after 0xE0 (extended prefix) */
+
+extern volatile int fs_abort_flag;
 
 /* ── Ring buffer: press = raw char (1–127), release = char | 0x80 (129–254) ── */
 #define KB_BUF_SIZE 32u
@@ -79,8 +80,21 @@ static char kb_decode_sc(unsigned char sc, int is_break)
         shift_held = is_break ? 0 : 1;
         return 0;
     }
+    if (sc == 0x14) {                  /* ctrl */
+        ctrl_held = is_break ? 0 : 1;
+        return 0;
+    }
     if (extended) { extended = 0; return 0; }   /* ignore extended for now */
     unsigned char ascii = shift_held ? sc2_shifted[sc] : sc2_normal[sc];
+    
+    /* Handle Ctrl+Q (0x11 is ASCII Device Control 1) */
+    if (ctrl_held && (ascii == 'q' || ascii == 'Q')) {
+        if (!is_break) {
+            fs_abort_flag = 1;
+        }
+        return 0x11;
+    }
+    
     return (char)ascii;
 }
 
