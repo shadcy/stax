@@ -204,7 +204,7 @@ int pl181_disk_write(uint32_t lba, const uint8_t *buf)
     irq_disable();
     for (int i = 0; i < 512; ) {
         uint32_t st = MCI_STATUS;
-        if (!(st & (1 << 18))) { /* ST_TXFIFOF not set */
+        if (!(st & (1 << 16))) { /* ST_TXFIFOFULL not set */
             uint32_t w = buf[i++];
             w |= (uint32_t)buf[i++] << 8;
             w |= (uint32_t)buf[i++] << 16;

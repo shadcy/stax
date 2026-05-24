@@ -19,6 +19,7 @@
  * Global state
  * --------------------------------------------------------------------------- */
 volatile unsigned int tick_count = 0;
+volatile int fs_abort_flag = 0;
 
 /* ---------------------------------------------------------------------------
  * Timer ISR — called by the IRQ dispatcher every timer tick.

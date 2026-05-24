@@ -13,6 +13,7 @@
 #include "doom.h"
 #include "framebuffer.h"
 #include "bmp.h"
+#include "gfx_console.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
@@ -38,6 +39,8 @@ static const command_t commands[] = {
     {"touch",   "Create empty file", cmd_touch},
     {"rm",      "Remove file or directory", cmd_rm},
     {"cat",     "Print file contents", cmd_cat},
+    {"mkdir",   "Create directory", cmd_mkdir},
+    {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
     {NULL, NULL, NULL}  /* End marker */
 };
 
@@ -86,19 +89,50 @@ static int parse_args(char *input, char *argv[], int max_args)
 }
 
 /* Command implementations */
+static void print_fat_error(FRESULT res) {
+    switch (res) {
+        case FR_OK: kputs("OK"); break;
+        case FR_DISK_ERR: kputs("Disk error (Hardware/Timeout)"); break;
+        case FR_INT_ERR: kputs("Internal assertion failed"); break;
+        case FR_NOT_READY: kputs("Disk not ready"); break;
+        case FR_NO_FILE: kputs("File not found"); break;
+        case FR_NO_PATH: kputs("Path not found"); break;
+        case FR_INVALID_NAME: kputs("Invalid name"); break;
+        case FR_DENIED: kputs("Access denied / Read-only / Dir not empty"); break;
+        case FR_EXIST: kputs("Already exists"); break;
+        case FR_INVALID_OBJECT: kputs("Invalid object"); break;
+        case FR_WRITE_PROTECTED: kputs("Write protected"); break;
+        case FR_INVALID_DRIVE: kputs("Invalid drive"); break;
+        case FR_NOT_ENABLED: kputs("Drive not mounted"); break;
+        case FR_NO_FILESYSTEM: kputs("No filesystem"); break;
+        case FR_LOCKED: kputs("File locked"); break;
+        case FR_NOT_ENOUGH_CORE: kputs("Not enough memory"); break;
+        case FR_TOO_MANY_OPEN_FILES: kputs("Too many open files"); break;
+        case FR_INVALID_PARAMETER: kputs("Invalid parameter"); break;
+        default: kputs("Unknown error"); break;
+    }
+}
+
 void cmd_help(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     kputs("Available commands:\n");
-    kputs("==================\n");
+    kputs("================================================\n");
+    kputs("  COMMAND    | DESCRIPTION\n");
+    kputs("------------------------------------------------\n");
     
     for (int i = 0; commands[i].name != NULL; i++) {
         kputs("  ");
         kputs(commands[i].name);
-        kputs(" - ");
+        
+        int len = strlen(commands[i].name);
+        for (int j = len; j < 10; j++) kputc(' ');
+        
+        kputs(" | ");
         kputs(commands[i].desc);
         kputc('\n');
     }
+    kputs("================================================\n");
 }
 
 void cmd_clear(int argc, char *argv[])
@@ -159,18 +193,34 @@ void cmd_fs(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     kputs("Filesystem Information:\n");
-    kputs("======================\n");
-    kputs("FAT12/16 driver active\n");
-    kputs("Test image mounted\n");
+    kputs("================================================\n");
     
-    /* Try to list files */
-    fat_file_t *file = fat_open("TEST.TXT");
-    if (file) {
-        kputs("TEST.TXT: Found and readable\n");
-        fat_close(file);
-    } else {
-        kputs("TEST.TXT: Not found\n");
+    DWORD fre_clust, fre_sect, tot_sect;
+    FATFS *fs;
+    FRESULT res;
+    
+    res = f_getfree("", &fre_clust, &fs);
+    if (res != FR_OK) {
+        kputs("Failed to get filesystem info (");
+        print_fat_error(res);
+        kputs(")\n");
+        return;
     }
+    
+    const char *fs_type = "Unknown";
+    if (fs->fs_type == FS_FAT12) fs_type = "FAT12";
+    else if (fs->fs_type == FS_FAT16) fs_type = "FAT16";
+    else if (fs->fs_type == FS_FAT32) fs_type = "FAT32";
+    else if (fs->fs_type == FS_EXFAT) fs_type = "exFAT";
+    
+    kputs("FAT Type     : "); kputs(fs_type); kputs("\n");
+    
+    tot_sect = (fs->n_fatent - 2) * fs->csize;
+    fre_sect = fre_clust * fs->csize;
+    
+    kputs("Total Space  : "); kput_uint(tot_sect / 2); kputs(" KB\n");
+    kputs("Free Space   : "); kput_uint(fre_sect / 2); kputs(" KB\n");
+    kputs("================================================\n");
 }
 
 void cmd_test(int argc, char *argv[])
@@ -305,6 +355,9 @@ void command_process(char *input)
 {
     char *argv[8];  /* Support up to 7 arguments + command */
     int argc;
+    
+    extern volatile int fs_abort_flag;
+    fs_abort_flag = 0;
     
     /* Validate input */
     if (!input) return;
@@ -519,8 +572,8 @@ void cmd_ls(int argc, char *argv[])
             kput_uint(fre_sect / 2); kputs(" KB ("); kput_uint((fre_sect / 2) / 1024); kputs(" MB) available.\n");
         }
     } else {
-        kputs("Failed to open directory (error ");
-        kput_uint(res);
+        kputs("Failed to open directory (");
+        print_fat_error(res);
         kputs(")\n");
     }
 }
@@ -531,10 +584,17 @@ void cmd_cd(int argc, char *argv[])
         kputs("Usage: cd <path>\n");
         return;
     }
-    FRESULT res = f_chdir(argv[1]);
+    FILINFO fno;
+    FRESULT res = f_stat(argv[1], &fno);
+    if (res == FR_OK && !(fno.fattrib & AM_DIR)) {
+        kputs("cd: '"); kputs(argv[1]); kputs("' is not a directory.\n");
+        return;
+    }
+    
+    res = f_chdir(argv[1]);
     if (res != FR_OK) {
-        kputs("Failed to change directory (error ");
-        kput_uint(res);
+        kputs("Failed to change directory (");
+        print_fat_error(res);
         kputs(")\n");
     }
 }
@@ -558,14 +618,28 @@ void cmd_touch(int argc, char *argv[])
         kputs("Usage: touch <filename>\n");
         return;
     }
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(argv[1], &fno);
+    if (stat_res == FR_OK) {
+        if (fno.fattrib & AM_DIR) {
+            kputs("touch: Cannot touch directory.\n");
+            return;
+        }
+        if (fno.fattrib & AM_RDO) {
+            kputs("touch: File is read-only.\n");
+            return;
+        }
+    }
+    
     FIL f;
     FRESULT res = f_open(&f, argv[1], FA_WRITE | FA_CREATE_ALWAYS);
     if (res == FR_OK) {
         f_close(&f);
         kputs("File created.\n");
     } else {
-        kputs("Failed to create file (error ");
-        kput_uint(res);
+        kputs("Failed to create file (");
+        print_fat_error(res);
         kputs(")\n");
     }
 }
@@ -576,12 +650,26 @@ void cmd_rm(int argc, char *argv[])
         kputs("Usage: rm <filename>\n");
         return;
     }
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(argv[1], &fno);
+    if (stat_res != FR_OK) {
+        kputs("rm: Cannot remove '"); kputs(argv[1]); kputs("': ");
+        print_fat_error(stat_res); kputs("\n");
+        return;
+    }
+    
+    if (fno.fattrib & AM_RDO) {
+        kputs("rm: Access denied, '"); kputs(argv[1]); kputs("' is read-only.\n");
+        return;
+    }
+    
     FRESULT res = f_unlink(argv[1]);
     if (res == FR_OK) {
         kputs("Removed.\n");
     } else {
-        kputs("Failed to remove (error ");
-        kput_uint(res);
+        kputs("Failed to remove (");
+        print_fat_error(res);
         kputs(")\n");
     }
 }
@@ -592,11 +680,19 @@ void cmd_cat(int argc, char *argv[])
         kputs("Usage: cat <filename>\n");
         return;
     }
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(argv[1], &fno);
+    if (stat_res == FR_OK && (fno.fattrib & AM_DIR)) {
+        kputs("cat: '"); kputs(argv[1]); kputs("' is a directory.\n");
+        return;
+    }
+    
     FIL f;
     FRESULT res = f_open(&f, argv[1], FA_READ);
     if (res != FR_OK) {
-        kputs("Failed to open file (error ");
-        kput_uint(res);
+        kputs("Failed to open file (");
+        print_fat_error(res);
         kputs(")\n");
         return;
     }
@@ -610,4 +706,146 @@ void cmd_cat(int argc, char *argv[])
     }
     kputs("\n");
     f_close(&f);
+}
+
+void cmd_mkdir(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: mkdir <dirname>\n");
+        return;
+    }
+    
+    FILINFO fno;
+    if (f_stat(argv[1], &fno) == FR_OK) {
+        kputs("mkdir: Cannot create directory '"); kputs(argv[1]); kputs("': File exists.\n");
+        return;
+    }
+    
+    FRESULT res = f_mkdir(argv[1]);
+    if (res == FR_OK) {
+        kputs("Directory created.\n");
+    } else {
+        kputs("Failed to create directory (");
+        print_fat_error(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_nano(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: nano <filename>\n");
+        return;
+    }
+    
+    char *filename = argv[1];
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(filename, &fno);
+    if (stat_res == FR_OK) {
+        if (fno.fattrib & AM_DIR) {
+            kputs("nano: Cannot edit directory.\n");
+            return;
+        }
+        if (fno.fattrib & AM_RDO) {
+            kputs("nano: File is read-only.\n");
+            return;
+        }
+    }
+    
+    kputs("Starting nano editor for: ");
+    kputs(filename);
+    kputs("\nPress ESC to save and quit.\n");
+    
+    FIL f;
+    FRESULT res = f_open(&f, filename, FA_READ | FA_WRITE | FA_OPEN_ALWAYS);
+    if (res != FR_OK) {
+        kputs("Failed to open file (");
+        print_fat_error(res);
+        kputs(")\n");
+        return;
+    }
+    
+    /* Allocate 8KB buffer */
+    char *buf = kmalloc(8192);
+    if (!buf) {
+        kputs("Failed to allocate memory for nano\n");
+        f_close(&f);
+        return;
+    }
+    
+    /* Read existing file */
+    UINT br;
+    res = f_read(&f, buf, 8192 - 1, &br);
+    if (res != FR_OK) {
+        kputs("Failed to read file\n");
+        kfree(buf);
+        f_close(&f);
+        return;
+    }
+    
+    int len = br;
+    buf[len] = '\0';
+    
+    /* Clear console and print current buffer */
+    gfx_clear();
+    gfx_puts("--- Nano Editor (Press ESC to save & quit) ---\n");
+    for (int i = 0; i < len; i++) {
+        kputc(buf[i]);
+    }
+    
+    /* Input loop */
+    while (1) {
+        char c = kgetc();
+        if (c == 0) {
+            for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
+            gfx_tick();
+            continue;
+        }
+        
+        if (c == '\x1b') { /* ESC to quit */
+            break;
+        }
+        
+        if (c == '\b' || c == 127) {
+            if (len > 0) {
+                len--;
+                buf[len] = '\0';
+                kputc('\b');
+            }
+        } else if (c == '\r' || c == '\n') {
+            if (len < 8191) {
+                buf[len++] = '\n';
+                buf[len] = '\0';
+                kputc('\n');
+            }
+        } else if (c >= 32 && c <= 126) {
+            if (len < 8191) {
+                buf[len++] = c;
+                buf[len] = '\0';
+                kputc(c);
+            }
+        }
+    }
+    
+    /* Save to file */
+    f_lseek(&f, 0);
+    f_truncate(&f);
+    
+    UINT bw;
+    res = f_write(&f, buf, len, &bw);
+    f_close(&f);
+    
+    kfree(buf);
+    
+    gfx_clear();
+    kputs("========================================\n");
+    kputs("  TIOS Kernel - back in shell\n");
+    kputs("========================================\n");
+    if (res == FR_OK && bw == (UINT)len) {
+        kputs("File saved successfully.\n");
+    } else {
+        kputs("Failed to save file completely.\n");
+    }
+    kputs("Type 'help' for available commands\n");
 }
