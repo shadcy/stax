@@ -127,13 +127,30 @@ void cmd_help(int argc, char *argv[])
     
     for (int i = 0; commands[i].name != NULL; i++) {
         kputs("  ");
+        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m");
         kputs(commands[i].name);
         
         int len = strlen(commands[i].name);
         for (int j = len; j < 10; j++) kputc(' ');
         
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
         kputs(" | ");
-        kputs(commands[i].desc);
+        
+        /* Highlight options in description if they start with -- */
+        const char *desc = commands[i].desc;
+        while (*desc) {
+            if (*desc == '-' && *(desc+1) == '-') {
+                gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m");
+                kputc(*desc++);
+                kputc(*desc++);
+                while (*desc && *desc != ',' && *desc != ' ' && *desc != ')') {
+                    kputc(*desc++);
+                }
+                gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
+            } else {
+                kputc(*desc++);
+            }
+        }
         kputc('\n');
     }
     kputs("================================================\n");
@@ -316,7 +333,10 @@ void cmd_read(int argc, char *argv[])
             return;
         } else if (strcmp(argv[1], "--img") == 0) {
             if (argc < 3) {
-                kputs("Usage: read --img <filename.bmp>\n");
+                kputs("Usage: ");
+                gfx_set_color(COLOR_YELLOW); kputs("\x1b[33mread ");
+                gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--img ");
+                gfx_set_color(COLOR_WHITE); kputs("\x1b[0m<filename.bmp>\n");
                 return;
             }
             char *new_argv[] = {"viewimg", argv[2], NULL};
