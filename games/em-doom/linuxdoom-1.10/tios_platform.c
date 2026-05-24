@@ -45,7 +45,8 @@ extern volatile unsigned int tick_count;  /* 10 Hz kernel timer */
 /* console.c */
 extern void  kputs(const char *s);
 extern void  kputc(char c);
-extern char  kgetc(void);
+/* keyboard.h exposes kb_getevent() for press/release events */
+extern int  kb_getevent(void);
 extern void  kput_uint(unsigned int n);
 
 /* ============================================================================
@@ -426,6 +427,10 @@ static uint16_t doom_palette[256];
 
 void I_InitGraphics(void)
 {
+    /* Take over the framebuffer now that DOOM is ready to render.
+     * Disable the gfx console here (not at engine startup) so all the
+     * WAD-loading / init kputs() messages are visible during loading. */
+    gfx_console_enable(0);
     fb_init();
     fb_clear(0x0000);   /* full screen — DOOM only draws the 320x200 window */
     /* Default greyscale palette until DOOM loads its own */
@@ -444,6 +449,28 @@ void I_StartFrame(void) {}
 
 void I_UpdateNoBlit(void) {}
 
+static void draw_overlay_glyph(int px, int py, unsigned char c, uint16_t color, uint16_t bg)
+{
+    const unsigned char *g = font8x16_data[c];
+    uint16_t *fbuf = fb_get_buffer();
+    for (int r = 0; r < 16; r++) {
+        unsigned char bits = g[r];
+        uint16_t *dst = fbuf + (py + r) * FB_WIDTH + px;
+        for (int b = 0; b < 8; b++) {
+            if (bits & (0x80u >> b)) dst[b] = color;
+            else dst[b] = bg;
+        }
+    }
+}
+
+static void draw_overlay_str(int px, int py, const char *s, uint16_t color, uint16_t bg)
+{
+    while (*s) {
+        draw_overlay_glyph(px, py, *s++, color, bg);
+        px += 8;
+    }
+}
+
 void I_FinishUpdate(void)
 {
     /* Blit DOOM's 8-bit framebuffer (screens[0]) centred in our 640×480 */
@@ -456,6 +483,24 @@ void I_FinishUpdate(void)
             row[x] = doom_palette[*src++];
         }
     }
+
+    /* Analytics Overlay */
+    static unsigned int last_fps_time = 0;
+    static int frames_this_second = 0;
+    static int current_fps = 0;
+
+    frames_this_second++;
+    if (tick_count - last_fps_time >= 100) { /* 100 ticks = 1 sec */
+        current_fps = frames_this_second;
+        frames_this_second = 0;
+        last_fps_time = tick_count;
+    }
+
+    char stat_buf[128];
+    tios_sprintf(stat_buf, "FPS: %d   |   RAM: %d KB / %d KB       ", 
+                 current_fps, doom_slab_pos / 1024, SLAB_SIZE / 1024);
+    
+    draw_overlay_str(10, 10, stat_buf, COLOR_CYAN, COLOR_BLACK);
 }
 
 void I_ReadScreen(byte *scr)
@@ -521,7 +566,7 @@ void I_InitNetwork(void)
 void I_NetCmd(void)      {}
 
 /* ============================================================================
- * Input — poll kgetc(), translate to DOOM key events
+ * Input — translate ASCII to DOOM key codes
  * ============================================================================ */
 static int translate_key(char c, int *doom_key)
 {
@@ -530,10 +575,19 @@ static int translate_key(char c, int *doom_key)
         case 's': case 'S': *doom_key = KEY_DOWNARROW;  return 1;
         case 'a': case 'A': *doom_key = KEY_LEFTARROW;  return 1;
         case 'd': case 'D': *doom_key = KEY_RIGHTARROW; return 1;
+        case 'f': case 'F': *doom_key = KEY_RCTRL;      return 1;  /* fire   */
+        case 'e': case 'E': *doom_key = KEY_RSHIFT;     return 1;  /* run    */
+        case 'z': case 'Z': *doom_key = ',';            return 1;  /* strafe L */
+        case 'x': case 'X': *doom_key = '.';            return 1;  /* strafe R */
         case '\r': case '\n': *doom_key = KEY_ENTER;    return 1;
         case '\033': *doom_key = KEY_ESCAPE;             return 1;
-        case ' ':   *doom_key = ' ';                     return 1;
+        case ' ':   *doom_key = ' ';                     return 1;  /* use    */
         case '\b':  *doom_key = KEY_BACKSPACE;           return 1;
+        case '8': *doom_key = KEY_UPARROW;      return 1;
+        case '2': *doom_key = KEY_DOWNARROW;    return 1;
+        case '4': *doom_key = KEY_LEFTARROW;    return 1;
+        case '6': *doom_key = KEY_RIGHTARROW;   return 1;
+        case '5': *doom_key = ' ';              return 1;
         default:
             if (c >= 'a' && c <= 'z') { *doom_key = c; return 1; }
             if (c >= '1' && c <= '9') { *doom_key = c; return 1; }
@@ -544,25 +598,48 @@ static int translate_key(char c, int *doom_key)
 
 void I_StartTic(void)
 {
-    char c = kgetc();
-    if (!c) return;
+    event_t ev;
+    int dk;
 
-    /* Check for quit */
-    if (c == 'q' || c == 'Q' || c == '\033') {
-        tios_doom_quit_requested = 1;
-        doom_running = 0;
-        return;
+    /* --- PS/2 keyboard: proper press AND release events (held keys work) --- */
+    int kev;
+    while ((kev = kb_getevent()) != 0) {
+        char c = (kev > 0) ? (char)kev : (char)(-kev);
+        int is_press = (kev > 0);
+
+        /* Quit on Q or Escape press only */
+        if (is_press && (c == 'q' || c == 'Q' || c == '\033')) {
+            tios_doom_quit_requested = 1;
+            doom_running = 0;
+            return;
+        }
+
+        if (translate_key(c, &dk)) {
+            ev.type  = is_press ? ev_keydown : ev_keyup;
+            ev.data1 = dk;
+            D_PostEvent(&ev);
+        }
     }
 
-    int dk;
-    if (translate_key(c, &dk)) {
-        event_t ev;
-        ev.type  = ev_keydown;
-        ev.data1 = dk;
-        D_PostEvent(&ev);
-        /* Immediate key-up so DOOM sees discrete presses */
-        ev.type = ev_keyup;
-        D_PostEvent(&ev);
+    /* --- UART fallback (serial / make qemu mode): discrete press+release --- */
+    {
+        /* Check UART directly */
+        #define UART0_BASE  0x101f1000UL
+        #define UART_DR_I   (*(volatile unsigned int *)(UART0_BASE + 0x000))
+        #define UART_FR_I   (*(volatile unsigned int *)(UART0_BASE + 0x018))
+        #define UART_FR_RXFE_I (1 << 4)
+        if (!(UART_FR_I & UART_FR_RXFE_I)) {
+            char c = (char)(UART_DR_I & 0xFF);
+            if (c == 'q' || c == 'Q' || c == '\033') {
+                tios_doom_quit_requested = 1;
+                doom_running = 0;
+                return;
+            }
+            if (translate_key(c, &dk)) {
+                ev.type = ev_keydown; ev.data1 = dk; D_PostEvent(&ev);
+                ev.type = ev_keyup;                  D_PostEvent(&ev);
+            }
+        }
     }
 }
 
@@ -688,25 +765,41 @@ static char  doom_wadpath[] = "DOOM.WAD";
 static char  doom_nomus[]   = "-nomusic";
 static char  doom_nosnd[]   = "-nosound";
 
-void doom_engine_run(void)
+/* Declare singletics so we can force it on for bare-metal (avoids the
+ * TryRunTics catch-up storm that freezes the game after level load). */
+extern boolean singletics;
+
+static void doom_engine_run_wad(const char* wadname)
 {
+    /* Keep the gfx console alive so all init/debug messages are visible
+     * while the WAD loads.  I_InitGraphics() will take over the FB when
+     * DOOM is actually ready to render (disabling the console there). */
+    kputs("\n");
+    kputs("========================================\n");
+    kputs("  DOOM Loading — please wait...\n");
+    kputs("========================================\n");
     kputs("[DOOM] Initializing em-doom engine\n");
 
-    /* Stop shell text from drawing over the DOOM framebuffer */
-    gfx_console_enable(0);
-    fb_init();
-    fb_clear(0x0000);
+    /* Force singletics: run exactly 1 game tic per rendered frame.
+     * Without this, TryRunTics catches up all tics missed during the slow
+     * level load (hundreds of tics), causing an apparent freeze. */
+    singletics = true;
 
     /* Reset slab allocator for a fresh run */
     doom_slab_pos = 0;
     tios_doom_quit_requested = 0;
 
-    /* Wipe fd table */
-    for (int i = 0; i < TIOS_MAX_FD; i++) fd_table[i].used = 0;
+    /* Wipe fd table & close leaked handles from previous run */
+    for (int i = 0; i < TIOS_MAX_FD; i++) {
+        if (fd_table[i].used) {
+            fat_close(fd_table[i].ff);
+            fd_table[i].used = 0;
+        }
+    }
 
     /* Build argv */
     doom_argv[0] = (char *)"tios-doom";
-    doom_argv[1] = (char *)doom_wadpath;
+    doom_argv[1] = (char *)wadname;
     doom_argv[2] = (char *)doom_nomus;
     doom_argv[3] = (char *)doom_nosnd;
 
@@ -717,7 +810,18 @@ void doom_engine_run(void)
 
     D_DoomMain();
 
+    /* Restore console after DOOM exits */
     kputs("[DOOM] Engine returned\n");
     fb_clear(0x0000);
     gfx_console_enable(1);
+}
+
+void doom_engine_run(void)
+{
+    doom_engine_run_wad("DOOM.WAD");
+}
+
+void doom2_engine_run(void)
+{
+    doom_engine_run_wad("DOOM2.WAD");
 }

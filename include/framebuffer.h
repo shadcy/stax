@@ -1,13 +1,18 @@
 /* ============================================================================
  * TIOS — framebuffer.h
+ at this point we only limited to 640 x 480 16 bit color depth
+i guess we can increase this to 1280x720 16 bit color depth but obviously find need to make sys optimized for
+all the nedded stuff.
  * ============================================================================ */
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
 #include <stdint.h>
-
+//just need to mess this values [tasks for shreyash]
 #define FB_WIDTH   640u
 #define FB_HEIGHT  480u
+//here
+
 
 /* Palette — RGB565 */
 #define FB_BG          0x0841u   /* dark navy      */

@@ -71,7 +71,8 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/framebuffer.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
-                $(BUILD_DIR)/command.o
+                $(BUILD_DIR)/command.o \
+                $(BUILD_DIR)/bmp.o
 
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
@@ -114,10 +115,12 @@ $(BUILD_DIR):
 $(OS_BIN): $(KERNEL_BIN)
 	@echo ""
 	@echo "Assembling FAT16 OS Image → $@"
-	@dd if=/dev/zero of=$@ bs=1M count=16 2>/dev/null
+	@dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null
 	@mkfs.vfat -F 16 $@
 	@mcopy -i $@ build/kernel.bin ::/KERNEL.BIN
 	@if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi
+	@if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi
+	@if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
