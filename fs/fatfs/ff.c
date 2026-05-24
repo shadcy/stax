@@ -1467,6 +1467,9 @@ static FRESULT remove_chain (	/* FR_OK(0):succeeded, !=0:error */
 
 	/* Remove the chain */
 	do {
+        extern volatile int fs_abort_flag;
+        if (fs_abort_flag) return FR_INT_ERR;
+
 		nxt = get_fat(obj, clst);			/* Get cluster status */
 		if (nxt == 0) break;				/* Empty cluster? */
 		if (nxt == 1) return FR_INT_ERR;	/* Internal error? */
