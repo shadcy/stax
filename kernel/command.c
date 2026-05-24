@@ -14,6 +14,7 @@
 #include "framebuffer.h"
 #include "bmp.h"
 #include "gfx_console.h"
+#include "string.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
@@ -28,41 +29,48 @@ static const command_t commands[] = {
     {"fs",      "Show filesystem information",          cmd_fs},
     {"test",    "Run system tests",                    cmd_test},
     {"read",    "Read system memory space info",        cmd_read},
-    {"snake",   "Play Graphical Snake (WASD, Q to quit)", cmd_snake},
-    {"doomgfx", "Play DOOM Graphics (WASD, Q to quit)", cmd_doomgfx},
-    {"doom2gfx","Play DOOM 2 Graphics (WASD, Q to quit)", cmd_doom2gfx},
+    {"g:",      "Show available games", cmd_games},
+    {"g:snake", "Play Graphical Snake", cmd_snake},
+    {"g:doom",  "Play DOOM Graphics", cmd_doomgfx},
+    {"g:doom2", "Play DOOM 2 Graphics", cmd_doom2gfx},
     {"viewimg", "View a BMP image", cmd_viewimg},
     {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
-    {"ls",      "List directory contents", cmd_ls},
-    {"cd",      "Change directory", cmd_cd},
-    {"pwd",     "Print working directory", cmd_pwd},
+    {"ls",      "List dir contents (use --size for showing size)", cmd_ls},
+    {"cd",      "Change dir", cmd_cd},
+    {"pwd",     "Print working dir", cmd_pwd},
     {"touch",   "Create empty file", cmd_touch},
-    {"rm",      "Remove file or directory", cmd_rm},
+    {"rm",      "Remove file or dir", cmd_rm},
     {"cat",     "Print file contents", cmd_cat},
-    {"mkdir",   "Create directory", cmd_mkdir},
+    {"mkdir",   "Create dir", cmd_mkdir},
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
-    {NULL, NULL, NULL}  /* End marker */
+    {NULL,      NULL,                                NULL}
 };
 
-/* Simple string comparison */
-static int strcmp(const char *s1, const char *s2)
+void cmd_games(int argc, char *argv[])
 {
-    while (*s1 && (*s1 == *s2)) {
-        s1++;
-        s2++;
+    (void)argc; (void)argv;
+    kputs("Available games:\n");
+    kputs("================================================\n");
+    kputs("  COMMAND    | DESCRIPTION\n");
+    kputs("------------------------------------------------\n");
+    for (int i = 0; commands[i].name != NULL; i++) {
+        if (commands[i].name[0] == 'g' && commands[i].name[1] == ':' && commands[i].name[2] != '\0') {
+            kputs("  ");
+            kputs(commands[i].name);
+            int len = strlen(commands[i].name);
+            for (int j = len; j < 10; j++) kputc(' ');
+            kputs(" | ");
+            kputs(commands[i].desc);
+            kputc('\n');
+        }
     }
-    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
+    kputs("================================================\n");
 }
 
-/* Simple string length */
-static size_t strlen(const char *s)
-{
-    size_t len = 0;
-    while (*s++) len++;
-    return len;
-}
+/* ------------------------------------------------------------------------
+ * Command Parsing and Execution
+ * ------------------------------------------------------------------------ */
 
-/* Parse command line into arguments */
 static int parse_args(char *input, char *argv[], int max_args)
 {
     int argc = 0;
@@ -122,6 +130,9 @@ void cmd_help(int argc, char *argv[])
     kputs("------------------------------------------------\n");
     
     for (int i = 0; commands[i].name != NULL; i++) {
+        if (commands[i].name[0] == 'g' && commands[i].name[1] == ':' && commands[i].name[2] != '\0') {
+            continue;
+        }
         kputs("  ");
         kputs(commands[i].name);
         
@@ -425,6 +436,24 @@ void cmd_snake(int argc, char *argv[])
 void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
+    FILINFO fno;
+    if (f_stat("DOOM.WAD", &fno) != FR_OK) {
+        if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
+            kputs("DOOM.WAD is in the root directory; my bad dawg i am lazy to build a root commands infra > ");
+            char ans = kgetc();
+            kputc(ans); kputc('\n');
+            if (ans == 'y' || ans == 'Y') {
+                f_chdir("/");
+            } else {
+                kputs("Aborted.\n");
+                return;
+            }
+        } else {
+            kputs("Error: DOOM.WAD not found.\n");
+            return;
+        }
+    }
+
     kputs("Starting DOOM (em-doom)...\n");
     doom_engine_run();
     
@@ -443,6 +472,24 @@ void cmd_doomgfx(int argc, char *argv[])
 void cmd_doom2gfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
+    FILINFO fno;
+    if (f_stat("DOOM2.WAD", &fno) != FR_OK) {
+        if (f_stat("/DOOM2.WAD", &fno) == FR_OK) {
+            kputs("DOOM2.WAD is in the root dir. Change dir my dawg!> ");
+            char ans = kgetc();
+            kputc(ans); kputc('\n');
+            if (ans == 'y' || ans == 'Y') {
+                f_chdir("/");
+            } else {
+                kputs("Aborted.\n");
+                return;
+            }
+        } else {
+            kputs("Error: DOOM2.WAD not found.\n");
+            return;
+        }
+    }
+
     kputs("Starting DOOM 2 (em-doom)...\n");
     doom2_engine_run();
     
@@ -529,47 +576,76 @@ void cmd_viewimg(int argc, char *argv[])
 
 void cmd_ls(int argc, char *argv[])
 {
-    (void)argc;
-    const char *path = (argc > 1) ? argv[1] : ".";
+    int show_size = 0;
+    const char *path = ".";
+    
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--size") == 0 || strcmp(argv[i], "-s") == 0) {
+            show_size = 1;
+        } else {
+            path = argv[i];
+        }
+    }
+
     DIR dir;
     FILINFO fno;
     FRESULT res;
 
     res = f_opendir(&dir, path);
     if (res == FR_OK) {
-        kputs("Directory listing for ");
-        kputs(path);
-        kputs("\n--------------------------------\n");
+        if (show_size) {
+            kputs("Directory listing for ");
+            kputs(path);
+            kputs("\n--------------------------------\n");
+        }
+        
         for (;;) {
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0) break;
             
-            if (fno.fattrib & AM_DIR) {
-                kputs("<DIR>    ");
+            if (show_size) {
+                if (fno.fattrib & AM_DIR) {
+                    kputs("<DIR>    ");
+                } else {
+                    kputs("         ");
+                }
+                kputs(fno.fname);
+                
+                if (!(fno.fattrib & AM_DIR)) {
+                    kputs(" (");
+                    kput_uint((unsigned int)fno.fsize);
+                    kputs(" B)");
+                }
+                kputs("\n");
             } else {
-                kputs("         ");
+                if (fno.fattrib & AM_DIR) {
+                    gfx_set_color(COLOR_CYAN);
+                    kputs("\x1b[36m");
+                    kputs(fno.fname);
+                    kputs("\x1b[0m");
+                    gfx_set_color(COLOR_WHITE);
+                } else {
+                    kputs(fno.fname);
+                }
+                kputs("  ");
             }
-            kputs(fno.fname);
-            
-            if (!(fno.fattrib & AM_DIR)) {
-                kputs(" (");
-                kput_uint((unsigned int)fno.fsize);
-                kputs(" B)");
-            }
-            kputs("\n");
         }
         f_closedir(&dir);
 
-        /* Show disk space */
-        DWORD fre_clust, fre_sect, tot_sect;
-        FATFS *fs;
-        res = f_getfree(path, &fre_clust, &fs);
-        if (res == FR_OK) {
-            tot_sect = (fs->n_fatent - 2) * fs->csize;
-            fre_sect = fre_clust * fs->csize;
-            kputs("--------------------------------\n");
-            kput_uint(tot_sect / 2); kputs(" KB ("); kput_uint((tot_sect / 2) / 1024); kputs(" MB) total drive space.\n");
-            kput_uint(fre_sect / 2); kputs(" KB ("); kput_uint((fre_sect / 2) / 1024); kputs(" MB) available.\n");
+        if (show_size) {
+            /* Show disk space */
+            DWORD fre_clust, fre_sect, tot_sect;
+            FATFS *fs;
+            res = f_getfree(path, &fre_clust, &fs);
+            if (res == FR_OK) {
+                tot_sect = (fs->n_fatent - 2) * fs->csize;
+                fre_sect = fre_clust * fs->csize;
+                kputs("--------------------------------\n");
+                kput_uint(tot_sect / 2); kputs(" KB ("); kput_uint((tot_sect / 2) / 1024); kputs(" MB) total drive space.\n");
+                kput_uint(fre_sect / 2); kputs(" KB ("); kput_uint((fre_sect / 2) / 1024); kputs(" MB) available.\n");
+            }
+        } else {
+            kputs("\n");
         }
     } else {
         kputs("Failed to open directory (");

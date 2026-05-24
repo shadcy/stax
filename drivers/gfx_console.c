@@ -145,12 +145,26 @@ static void advance_line(void)
 
 void gfx_putc(char c)
 {
-    if (!enabled) return;
+    static int in_escape = 0;
+
+    if (in_escape) {
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+            in_escape = 0;
+        }
+        return;
+    }
+
+    if (c == '\x1b') {
+        in_escape = 1;
+        return;
+    }
 
     if (view_offset > 0) {
         view_offset = 0; /* Auto-scroll to bottom on output */
         gfx_render_full();
     }
+
+    if (!enabled) return;
 
     if (c == '\n') {
         advance_line();

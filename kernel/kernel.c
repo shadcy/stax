@@ -87,7 +87,7 @@ void kernel_main(void)
     command_init();
     
     kputs("Type 'help' for available commands\n");
-    kputs("Type 'doomgfx' to play graphical DOOM\n");
+    kputs("Type 'g:doom' to play graphical DOOM\n");
     kputs("========================================\n");
 
     kputs("Loading boot screen...\n");
