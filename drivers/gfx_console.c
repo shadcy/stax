@@ -47,21 +47,46 @@ static void draw_glyph(int col, int row, unsigned char c, uint16_t color)
     }
 }
 
-static void scroll_up(void)
+/* ── scrollback buffer ─────────────────────────────────────────────────────── */
+#define MAX_LINES 256
+static char term_text[MAX_LINES][COLS];
+static uint16_t term_color[MAX_LINES][COLS];
+static int head_line = 0;      /* Current active line in the buffer (0 to MAX_LINES-1) */
+static int view_offset = 0;    /* How many lines we scrolled up from the bottom */
+
+static void gfx_render_full(void)
 {
-    uint32_t *dst = (uint32_t *)fb_get_buffer();
-    int line_words = (FONT8X16_HEIGHT * (int)FB_WIDTH) / 2;
-    int total_words = (ROWS - 1) * line_words;
-    
-    /* 32-bit transfer for 2x speedup and bus efficiency */
-    for (int i = 0; i < total_words; i++)
-        dst[i] = dst[i + line_words];
+    if (!enabled) return;
+    fb_clear(FB_BG);
+
+    int start_line;
+    if (head_line < ROWS) {
+        start_line = 0;
+    } else {
+        start_line = head_line - (ROWS - 1) - view_offset;
+        if (start_line < 0) start_line = 0;
+    }
+
+    for (int r = 0; r < ROWS; r++) {
+        int buf_line = start_line + r;
+        if (buf_line < 0 || buf_line > head_line) continue;
         
-    /* Clear last row using 32-bit write */
-    uint32_t clear_word = ((uint32_t)FB_BG << 16) | FB_BG;
-    uint32_t *last = dst + total_words;
-    for (int i = 0; i < line_words; i++)
-        last[i] = clear_word;
+        /* Render this line */
+        for (int c = 0; c < COLS; c++) {
+            char ch = term_text[buf_line % MAX_LINES][c];
+            if (ch >= 32) {
+                draw_glyph(c, r, ch, term_color[buf_line % MAX_LINES][c]);
+            }
+        }
+    }
+    
+    /* Draw cursor if at bottom */
+    if (view_offset == 0 && cur_on) {
+        int px = cur_x * FONT8X16_WIDTH;
+        int cursor_row = (head_line < ROWS) ? head_line : (ROWS - 1);
+        int py = cursor_row * FONT8X16_HEIGHT + FONT8X16_HEIGHT - 2;
+        fb_fillrect(px, py, FONT8X16_WIDTH, 2, COLOR_CYAN);
+    }
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */
@@ -69,50 +94,87 @@ static void scroll_up(void)
 int gfx_console_init(void)
 {
     if (fb_init() != 0) return -1;
-    cur_x = cur_y = 0;
+    cur_x = 0;
+    head_line = 0;
+    view_offset = 0;
     blink_n = 0; cur_on = 1;
     enabled = 1;
     fg = COLOR_WHITE;
-    cursor_paint(1);
+    
+    for (int i=0; i<MAX_LINES; i++) {
+        for (int j=0; j<COLS; j++) {
+            term_text[i][j] = 0;
+            term_color[i][j] = COLOR_WHITE;
+        }
+    }
+    gfx_render_full();
     return 0;
 }
 
 void gfx_set_color(uint16_t color) { fg = color; }
 
-/* Called from the main idle loop — drives cursor blink without interrupts */
 void gfx_tick(void)
 {
     if (!enabled) return;
     if (++blink_n >= BLINK_DIV) {
         blink_n = 0;
         cur_on  = !cur_on;
-        cursor_paint(cur_on);
+        if (view_offset == 0) {
+            int px = cur_x * FONT8X16_WIDTH;
+            int cursor_row = (head_line < ROWS) ? head_line : (ROWS - 1);
+            int py = cursor_row * FONT8X16_HEIGHT + FONT8X16_HEIGHT - 2;
+            fb_fillrect(px, py, FONT8X16_WIDTH, 2, cur_on ? COLOR_CYAN : FB_BG);
+        }
     }
+}
+
+static void advance_line(void)
+{
+    head_line++;
+    cur_x = 0;
+    /* Clear the new line */
+    for (int i=0; i<COLS; i++) {
+        term_text[head_line % MAX_LINES][i] = 0;
+        term_color[head_line % MAX_LINES][i] = fg;
+    }
+    if (view_offset > 0) view_offset++; /* Keep view stable if we are scrolled up */
+    if (view_offset >= head_line) view_offset = head_line; /* But don't scroll past top */
+    
+    if (view_offset == 0) gfx_render_full();
 }
 
 void gfx_putc(char c)
 {
     if (!enabled) return;
 
-    cursor_paint(0);   /* erase cursor before touching its cell */
+    if (view_offset > 0) {
+        view_offset = 0; /* Auto-scroll to bottom on output */
+        gfx_render_full();
+    }
 
     if (c == '\n') {
-        cur_x = 0; cur_y++;
-        if (cur_y >= ROWS) { scroll_up(); cur_y = ROWS - 1; }
+        advance_line();
     } else if (c == '\r') {
         cur_x = 0;
     } else if (c == '\b') {
-        if (cur_x > 0) { cur_x--; draw_glyph(cur_x, cur_y, ' ', fg); }
+        if (cur_x > 0) {
+            cur_x--;
+            term_text[head_line % MAX_LINES][cur_x] = 0;
+            int cursor_row = (head_line < ROWS) ? head_line : (ROWS - 1);
+            draw_glyph(cur_x, cursor_row, ' ', fg);
+        }
     } else if ((unsigned char)c >= 32) {
-        draw_glyph(cur_x, cur_y, c, fg);
+        term_text[head_line % MAX_LINES][cur_x] = c;
+        term_color[head_line % MAX_LINES][cur_x] = fg;
+        
+        int cursor_row = (head_line < ROWS) ? head_line : (ROWS - 1);
+        draw_glyph(cur_x, cursor_row, c, fg);
+        
         if (++cur_x >= COLS) {
-            cur_x = 0; cur_y++;
-            if (cur_y >= ROWS) { scroll_up(); cur_y = ROWS - 1; }
+            advance_line();
         }
     }
-
-    cur_on = 1; blink_n = 0;   /* reset blink so cursor stays visible */
-    cursor_paint(1);
+    cur_on = 1; blink_n = 0;
 }
 
 void gfx_puts(const char *s)
@@ -131,10 +193,29 @@ void gfx_puts_color(const char *s, uint16_t color)
 void gfx_clear(void)
 {
     if (!enabled) return;
-    cursor_paint(0);
-    fb_clear(FB_BG);
-    cur_x = cur_y = 0;
-    cursor_paint(1);
+    head_line = 0;
+    cur_x = 0;
+    view_offset = 0;
+    for (int i=0; i<MAX_LINES; i++) {
+        for (int j=0; j<COLS; j++) {
+            term_text[i][j] = 0;
+            term_color[i][j] = COLOR_WHITE;
+        }
+    }
+    gfx_render_full();
 }
 
 void gfx_console_enable(int e) { enabled = e; }
+
+void gfx_scroll(int lines)
+{
+    if (!enabled) return;
+    view_offset += lines;
+    if (view_offset < 0) view_offset = 0;
+    
+    int max_scroll = head_line;
+    if (max_scroll < 0) max_scroll = 0;
+    if (view_offset > max_scroll) view_offset = max_scroll;
+    
+    gfx_render_full();
+}
