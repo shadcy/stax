@@ -36,6 +36,18 @@ static void timer_isr(void)
 /* ---------------------------------------------------------------------------
  * kernel_main
  * --------------------------------------------------------------------------- */
+/* helper: print dynamic prompt */
+void print_prompt(void) {
+    char cwd[128];
+    if (f_getcwd(cwd, sizeof(cwd)) == FR_OK) {
+        kputs("tios:");
+        kputs(cwd);
+        kputs("> ");
+    } else {
+        kputs("tios> ");
+    }
+}
+
 void kernel_main(void)
 {
     /* ---- Initialize graphical console + keyboard ---- */
@@ -101,7 +113,7 @@ void kernel_main(void)
     /* helper: redraw current input line (overwrites previous content) */
 #define REDRAW_LINE() do {                          \
     kputc('\r');                                    \
-    kputs("tios> ");                               \
+    print_prompt();                                 \
     for (int _i = 0; _i < input_pos; _i++)         \
         kputc(input[_i]);                           \
     /* pad + retreat to erase any longer old line */\
@@ -111,7 +123,7 @@ void kernel_main(void)
     /* Main kernel loop - never return */
     while (1) {
         if (show_prompt) {
-            kputs("tios> ");
+            print_prompt();
             show_prompt = 0;
         }
 

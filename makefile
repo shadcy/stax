@@ -122,13 +122,17 @@ $(BUILD_DIR):
 
 $(OS_BIN): $(KERNEL_BIN)
 	@echo ""
-	@echo "Assembling FAT16 OS Image → $@"
-	@dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null
-	@mkfs.vfat -F 16 $@
-	@mcopy -i $@ build/kernel.bin ::/KERNEL.BIN
-	@if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi
-	@if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi
-	@if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi
+	@if [ ! -f $@ ]; then \
+		echo "Creating new FAT16 OS Image → $@"; \
+		dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null; \
+		mkfs.vfat -F 16 $@; \
+		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
+		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
+		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
+	else \
+		echo "Updating KERNEL.BIN in existing OS Image → $@"; \
+	fi
+	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -220,5 +224,9 @@ size: $(KERNEL_ELF)
 	$(SIZE) $<
 
 clean:
-	rm -rf $(BUILD_DIR) $(OS_BIN)
-	@echo "Cleaned."
+	rm -rf $(BUILD_DIR)
+	@echo "Cleaned build directory. (os.bin is preserved to protect your data)"
+
+clean-all: clean
+	rm -f $(OS_BIN)
+	@echo "Cleaned everything, including os.bin."
