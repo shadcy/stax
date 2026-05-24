@@ -36,15 +36,22 @@ static void timer_isr(void)
 /* ---------------------------------------------------------------------------
  * kernel_main
  * --------------------------------------------------------------------------- */
+#include "framebuffer.h"
+
 /* helper: print dynamic prompt */
 void print_prompt(void) {
     char cwd[128];
     if (f_getcwd(cwd, sizeof(cwd)) == FR_OK) {
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
         kputs("tios:");
+        gfx_set_color(COLOR_CYAN); kputs("\x1b[36m");
         kputs(cwd);
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
         kputs("> ");
     } else {
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
         kputs("tios> ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
     }
 }
 
@@ -87,7 +94,7 @@ void kernel_main(void)
     command_init();
     
     kputs("Type 'help' for available commands\n");
-    kputs("Type 'g:doom' to play graphical DOOM\n");
+    kputs("Type 'game --doom' to play graphical DOOM\n");
     kputs("========================================\n");
 
     kputs("Loading boot screen...\n");

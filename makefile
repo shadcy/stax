@@ -207,7 +207,7 @@ qemu: $(BOOT_BIN) $(OS_BIN)
 
 qemu-gfx: $(BOOT_BIN) $(OS_BIN)
 	@echo "Booting TIOS in QEMU with graphics (Ctrl-C to quit)..."
-	@echo "Use 'g:doom' command to run graphical DOOM"
+	@echo "Use 'game --doom' command to run graphical DOOM"
 	$(QEMU) $(QEMU_GFX_FLAGS)
 
 debug: $(BOOT_BIN) $(OS_BIN)

@@ -24,17 +24,8 @@ static const command_t commands[] = {
     {"help",    "Show available commands",           cmd_help},
     {"clear",   "Clear screen",                        cmd_clear},
     {"status",  "Show system status",                  cmd_status},
-    {"mem",     "Show memory information",              cmd_mem},
     {"tasks",   "Show task information",               cmd_tasks},
     {"fs",      "Show filesystem information",          cmd_fs},
-    {"test",    "Run system tests",                    cmd_test},
-    {"read",    "Read system memory space info",        cmd_read},
-    {"g:",      "Show available games", cmd_games},
-    {"g:snake", "Play Graphical Snake", cmd_snake},
-    {"g:doom",  "Play DOOM Graphics", cmd_doomgfx},
-    {"g:doom2", "Play DOOM 2 Graphics", cmd_doom2gfx},
-    {"viewimg", "View a BMP image", cmd_viewimg},
-    {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
     {"ls",      "List dir contents (use --size for showing size)", cmd_ls},
     {"cd",      "Change dir", cmd_cd},
     {"pwd",     "Print working dir", cmd_pwd},
@@ -43,28 +34,33 @@ static const command_t commands[] = {
     {"cat",     "Print file contents", cmd_cat},
     {"mkdir",   "Create dir", cmd_mkdir},
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
+    {"game",    "Play a game (use --doom, --doom2, --snake)", cmd_game},
+    {"read",    "Read info (use --mem, --img <img>)", cmd_read},
+    {"test",    "Run tests (use --fb)", cmd_test},
     {NULL,      NULL,                                NULL}
 };
 
-void cmd_games(int argc, char *argv[])
+void cmd_game(int argc, char *argv[])
 {
-    (void)argc; (void)argv;
-    kputs("Available games:\n");
-    kputs("================================================\n");
-    kputs("  COMMAND    | DESCRIPTION\n");
-    kputs("------------------------------------------------\n");
-    for (int i = 0; commands[i].name != NULL; i++) {
-        if (commands[i].name[0] == 'g' && commands[i].name[1] == ':' && commands[i].name[2] != '\0') {
-            kputs("  ");
-            kputs(commands[i].name);
-            int len = strlen(commands[i].name);
-            for (int j = len; j < 10; j++) kputc(' ');
-            kputs(" | ");
-            kputs(commands[i].desc);
-            kputc('\n');
-        }
+    if (argc < 2) {
+        kputs("Usage:\n");
+        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m  game ");
+        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom   ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM Graphics\n");
+        
+        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m  game ");
+        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom2  ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM 2 Graphics\n");
+        
+        gfx_set_color(COLOR_YELLOW); kputs("\x1b[33m  game ");
+        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Graphical Snake\n");
+        return;
     }
-    kputs("================================================\n");
+    if (strcmp(argv[1], "--doom") == 0) cmd_doomgfx(argc, argv);
+    else if (strcmp(argv[1], "--doom2") == 0) cmd_doom2gfx(argc, argv);
+    else if (strcmp(argv[1], "--snake") == 0) cmd_snake(argc, argv);
+    else kputs("Unknown game.\n");
 }
 
 /* ------------------------------------------------------------------------
@@ -130,9 +126,6 @@ void cmd_help(int argc, char *argv[])
     kputs("------------------------------------------------\n");
     
     for (int i = 0; commands[i].name != NULL; i++) {
-        if (commands[i].name[0] == 'g' && commands[i].name[1] == ':' && commands[i].name[2] != '\0') {
-            continue;
-        }
         kputs("  ");
         kputs(commands[i].name);
         
@@ -236,7 +229,15 @@ void cmd_fs(int argc, char *argv[])
 
 void cmd_test(int argc, char *argv[])
 {
-    (void)argc; (void)argv;
+    if (argc > 1) {
+        if (strcmp(argv[1], "--fb") == 0) {
+            cmd_fbtest(argc, argv);
+            return;
+        } else {
+            kputs("Unknown test option.\n");
+            return;
+        }
+    }
     kputs("Running system tests...\n");
     
     /* Test memory allocation */
@@ -309,7 +310,23 @@ static void print_size_optimal(unsigned int bytes) {
 
 void cmd_read(int argc, char *argv[])
 {
-    (void)argc; (void)argv;
+    if (argc > 1) {
+        if (strcmp(argv[1], "--mem") == 0) {
+            cmd_mem(argc, argv);
+            return;
+        } else if (strcmp(argv[1], "--img") == 0) {
+            if (argc < 3) {
+                kputs("Usage: read --img <filename.bmp>\n");
+                return;
+            }
+            char *new_argv[] = {"viewimg", argv[2], NULL};
+            cmd_viewimg(2, new_argv);
+            return;
+        } else {
+            kputs("Unknown read option.\n");
+            return;
+        }
+    }
     
     unsigned int total_ram = 4 * 1024 * 1024; /* 4 MB as defined in linker script */
     
