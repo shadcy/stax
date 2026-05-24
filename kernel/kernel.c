@@ -13,6 +13,7 @@
 #include "command.h"
 #include "gfx_console.h"
 #include "keyboard.h"
+#include "bmp.h"
 
 /* ---------------------------------------------------------------------------
  * Global state
@@ -75,6 +76,9 @@ void kernel_main(void)
     kputs("Type 'help' for available commands\n");
     kputs("Type 'doomgfx' to play graphical DOOM\n");
     kputs("========================================\n");
+
+    kputs("Loading boot screen...\n");
+    bmp_load_and_draw("KITTEN.BMP", 480, 30);
 
     kputs("tios> Interactive command interface ready\n");
 
