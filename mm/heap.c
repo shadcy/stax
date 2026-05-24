@@ -1,6 +1,16 @@
 /* ============================================================================
  * TIOS — heap.c
  * Simple bump allocator with free list implementation
+
+ @shadcy: just a simple mental model to understand;
+ we are basically reussing free chucks if possible;
+ otherwise if we need more space, we take it from the heap (grow linearly)
+ merge neighbouring free chunks;
+
+ kmalloc suballocate heap memory;
+ 
+ (need to verify this part!!) but there is a twist, we will use the space after the metadata to store the free list;
+ and  coalesce helps in reducing fragmentation
  * ============================================================================ */
 
 #include "heap.h"

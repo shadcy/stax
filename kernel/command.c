@@ -608,7 +608,7 @@ void cmd_viewimg(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Filesystem Commands (using FatFs)
+ * Filesystem Commands (using FatFs thanks again fatfs module to save my weeks)
  * ============================================================================ */
 
 void cmd_ls(int argc, char *argv[])
@@ -814,6 +814,7 @@ void cmd_cat(int argc, char *argv[])
     UINT br;
     while (f_read(&f, buf, sizeof(buf) - 1, &br) == FR_OK && br > 0) {
         for (UINT i = 0; i < br; i++) {
+            gfx_set_color(COLOR_GREEN);
             kputc(buf[i]);
         }
     }
