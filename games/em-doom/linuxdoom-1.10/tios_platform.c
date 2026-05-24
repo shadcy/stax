@@ -449,6 +449,28 @@ void I_StartFrame(void) {}
 
 void I_UpdateNoBlit(void) {}
 
+static void draw_overlay_glyph(int px, int py, unsigned char c, uint16_t color, uint16_t bg)
+{
+    const unsigned char *g = font8x16_data[c];
+    uint16_t *fbuf = fb_get_buffer();
+    for (int r = 0; r < 16; r++) {
+        unsigned char bits = g[r];
+        uint16_t *dst = fbuf + (py + r) * FB_WIDTH + px;
+        for (int b = 0; b < 8; b++) {
+            if (bits & (0x80u >> b)) dst[b] = color;
+            else dst[b] = bg;
+        }
+    }
+}
+
+static void draw_overlay_str(int px, int py, const char *s, uint16_t color, uint16_t bg)
+{
+    while (*s) {
+        draw_overlay_glyph(px, py, *s++, color, bg);
+        px += 8;
+    }
+}
+
 void I_FinishUpdate(void)
 {
     /* Blit DOOM's 8-bit framebuffer (screens[0]) centred in our 640×480 */
@@ -461,6 +483,24 @@ void I_FinishUpdate(void)
             row[x] = doom_palette[*src++];
         }
     }
+
+    /* Analytics Overlay */
+    static unsigned int last_fps_time = 0;
+    static int frames_this_second = 0;
+    static int current_fps = 0;
+
+    frames_this_second++;
+    if (tick_count - last_fps_time >= 100) { /* 100 ticks = 1 sec */
+        current_fps = frames_this_second;
+        frames_this_second = 0;
+        last_fps_time = tick_count;
+    }
+
+    char stat_buf[128];
+    tios_sprintf(stat_buf, "FPS: %d   |   RAM: %d KB / %d KB       ", 
+                 current_fps, doom_slab_pos / 1024, SLAB_SIZE / 1024);
+    
+    draw_overlay_str(10, 10, stat_buf, COLOR_CYAN, COLOR_BLACK);
 }
 
 void I_ReadScreen(byte *scr)

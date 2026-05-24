@@ -12,6 +12,7 @@
 #include "snake.h"
 #include "doom.h"
 #include "framebuffer.h"
+#include "bmp.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
@@ -29,6 +30,7 @@ static const command_t commands[] = {
     {"snake",   "Play Graphical Snake (WASD, Q to quit)", cmd_snake},
     {"doomgfx", "Play DOOM Graphics (WASD, Q to quit)", cmd_doomgfx},
     {"doom2gfx","Play DOOM 2 Graphics (WASD, Q to quit)", cmd_doom2gfx},
+    {"viewimg", "View a BMP image", cmd_viewimg},
     {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
     {NULL, NULL, NULL}  /* End marker */
 };
@@ -436,4 +438,28 @@ void cmd_fbtest(int argc, char *argv[])
     /* Clear screen */
     fb_clear(COLOR_BLACK);
     kputs("Framebuffer test complete.\n");
+}
+
+/* ============================================================================
+ * cmd_viewimg — launch the image viewer
+ * ============================================================================ */
+void cmd_viewimg(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: viewimg <filename.bmp>\n");
+        return;
+    }
+    kputs("Loading image: ");
+    kputs(argv[1]);
+    kputs("\n");
+    bmp_load_and_draw(argv[1], 0, 0);
+    kputs("Image loaded. Press any key to continue...\n");
+    while (kgetc() == 0);
+    
+    /* Re-initialize console to clear screen and restore the shell layout */
+    gfx_console_init();
+    kputs("========================================\n");
+    kputs("  TIOS Kernel - back in shell\n");
+    kputs("========================================\n");
+    kputs("Type 'help' for available commands\n");
 }

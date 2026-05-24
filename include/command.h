@@ -34,6 +34,7 @@ void cmd_snake(int argc, char *argv[]);
 void cmd_doom(int argc, char *argv[]);
 void cmd_doomgfx(int argc, char *argv[]);
 void cmd_doom2gfx(int argc, char *argv[]);
+void cmd_viewimg(int argc, char *argv[]);
 void cmd_fbtest(int argc, char *argv[]);
 
 #endif
