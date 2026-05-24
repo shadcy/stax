@@ -13,6 +13,8 @@
 #include "doom.h"
 #include "framebuffer.h"
 #include "bmp.h"
+#include "gfx_console.h"
+#include "string.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
@@ -22,38 +24,49 @@ static const command_t commands[] = {
     {"help",    "Show available commands",           cmd_help},
     {"clear",   "Clear screen",                        cmd_clear},
     {"status",  "Show system status",                  cmd_status},
-    {"mem",     "Show memory information",              cmd_mem},
     {"tasks",   "Show task information",               cmd_tasks},
     {"fs",      "Show filesystem information",          cmd_fs},
-    {"test",    "Run system tests",                    cmd_test},
-    {"read",    "Read system memory space info",        cmd_read},
-    {"snake",   "Play Graphical Snake (WASD, Q to quit)", cmd_snake},
-    {"doomgfx", "Play DOOM Graphics (WASD, Q to quit)", cmd_doomgfx},
-    {"doom2gfx","Play DOOM 2 Graphics (WASD, Q to quit)", cmd_doom2gfx},
-    {"viewimg", "View a BMP image", cmd_viewimg},
-    {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
-    {NULL, NULL, NULL}  /* End marker */
+    {"ls",      "List dir contents (use --size for showing size)", cmd_ls},
+    {"cd",      "Change dir", cmd_cd},
+    {"pwd",     "Print working dir", cmd_pwd},
+    {"touch",   "Create empty file", cmd_touch},
+    {"rm",      "Remove file or dir", cmd_rm},
+    {"cat",     "Print file contents", cmd_cat},
+    {"mkdir",   "Create dir", cmd_mkdir},
+    {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
+    {"game",    "Play a game (use --doom, --doom2, --snake)", cmd_game},
+    {"read",    "Read info (use --mem, --img <img>)", cmd_read},
+    {"test",    "Run tests (use --fb)", cmd_test},
+    {NULL,      NULL,                                NULL}
 };
 
-/* Simple string comparison */
-static int strcmp(const char *s1, const char *s2)
+void cmd_game(int argc, char *argv[])
 {
-    while (*s1 && (*s1 == *s2)) {
-        s1++;
-        s2++;
+    if (argc < 2) {
+        kputs("Usage:\n");
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
+        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom   ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM Graphics\n");
+        
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
+        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom2  ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM 2 Graphics\n");
+        
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
+        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Graphical Snake\n");
+        return;
     }
-    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
+    if (strcmp(argv[1], "--doom") == 0) cmd_doomgfx(argc, argv);
+    else if (strcmp(argv[1], "--doom2") == 0) cmd_doom2gfx(argc, argv);
+    else if (strcmp(argv[1], "--snake") == 0) cmd_snake(argc, argv);
+    else kputs("Unknown game.\n");
 }
 
-/* Simple string length */
-static size_t strlen(const char *s)
-{
-    size_t len = 0;
-    while (*s++) len++;
-    return len;
-}
+/* ------------------------------------------------------------------------
+ * Command Parsing and Execution
+ * ------------------------------------------------------------------------ */
 
-/* Parse command line into arguments */
 static int parse_args(char *input, char *argv[], int max_args)
 {
     int argc = 0;
@@ -80,19 +93,67 @@ static int parse_args(char *input, char *argv[], int max_args)
 }
 
 /* Command implementations */
+static void print_fat_error(FRESULT res) {
+    switch (res) {
+        case FR_OK: kputs("OK"); break;
+        case FR_DISK_ERR: kputs("Disk error (Hardware/Timeout)"); break;
+        case FR_INT_ERR: kputs("Internal assertion failed"); break;
+        case FR_NOT_READY: kputs("Disk not ready"); break;
+        case FR_NO_FILE: kputs("File not found"); break;
+        case FR_NO_PATH: kputs("Path not found"); break;
+        case FR_INVALID_NAME: kputs("Invalid name"); break;
+        case FR_DENIED: kputs("Access denied / Read-only / Dir not empty"); break;
+        case FR_EXIST: kputs("Already exists"); break;
+        case FR_INVALID_OBJECT: kputs("Invalid object"); break;
+        case FR_WRITE_PROTECTED: kputs("Write protected"); break;
+        case FR_INVALID_DRIVE: kputs("Invalid drive"); break;
+        case FR_NOT_ENABLED: kputs("Drive not mounted"); break;
+        case FR_NO_FILESYSTEM: kputs("No filesystem"); break;
+        case FR_LOCKED: kputs("File locked"); break;
+        case FR_NOT_ENOUGH_CORE: kputs("Not enough memory"); break;
+        case FR_TOO_MANY_OPEN_FILES: kputs("Too many open files"); break;
+        case FR_INVALID_PARAMETER: kputs("Invalid parameter"); break;
+        default: kputs("Unknown error"); break;
+    }
+}
+
 void cmd_help(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     kputs("Available commands:\n");
-    kputs("==================\n");
+    kputs("================================================\n");
+    kputs("  COMMAND    | DESCRIPTION\n");
+    kputs("------------------------------------------------\n");
     
     for (int i = 0; commands[i].name != NULL; i++) {
         kputs("  ");
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
         kputs(commands[i].name);
-        kputs(" - ");
-        kputs(commands[i].desc);
+        
+        int len = strlen(commands[i].name);
+        for (int j = len; j < 10; j++) kputc(' ');
+        
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
+        kputs(" | ");
+        
+        /* Highlight options in description if they start with -- */
+        const char *desc = commands[i].desc;
+        while (*desc) {
+            if (*desc == '-' && *(desc+1) == '-') {
+                gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m");
+                kputc(*desc++);
+                kputc(*desc++);
+                while (*desc && *desc != ',' && *desc != ' ' && *desc != ')') {
+                    kputc(*desc++);
+                }
+                gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
+            } else {
+                kputc(*desc++);
+            }
+        }
         kputc('\n');
     }
+    kputs("================================================\n");
 }
 
 void cmd_clear(int argc, char *argv[])
@@ -153,23 +214,47 @@ void cmd_fs(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     kputs("Filesystem Information:\n");
-    kputs("======================\n");
-    kputs("FAT12/16 driver active\n");
-    kputs("Test image mounted\n");
+    kputs("================================================\n");
     
-    /* Try to list files */
-    fat_file_t *file = fat_open("TEST.TXT");
-    if (file) {
-        kputs("TEST.TXT: Found and readable\n");
-        fat_close(file);
-    } else {
-        kputs("TEST.TXT: Not found\n");
+    DWORD fre_clust, fre_sect, tot_sect;
+    FATFS *fs;
+    FRESULT res;
+    
+    res = f_getfree("", &fre_clust, &fs);
+    if (res != FR_OK) {
+        kputs("Failed to get filesystem info (");
+        print_fat_error(res);
+        kputs(")\n");
+        return;
     }
+    
+    const char *fs_type = "Unknown";
+    if (fs->fs_type == FS_FAT12) fs_type = "FAT12";
+    else if (fs->fs_type == FS_FAT16) fs_type = "FAT16";
+    else if (fs->fs_type == FS_FAT32) fs_type = "FAT32";
+    else if (fs->fs_type == FS_EXFAT) fs_type = "exFAT";
+    
+    kputs("FAT Type     : "); kputs(fs_type); kputs("\n");
+    
+    tot_sect = (fs->n_fatent - 2) * fs->csize;
+    fre_sect = fre_clust * fs->csize;
+    
+    kputs("Total Space  : "); kput_uint(tot_sect / 2); kputs(" KB\n");
+    kputs("Free Space   : "); kput_uint(fre_sect / 2); kputs(" KB\n");
+    kputs("================================================\n");
 }
 
 void cmd_test(int argc, char *argv[])
 {
-    (void)argc; (void)argv;
+    if (argc > 1) {
+        if (strcmp(argv[1], "--fb") == 0) {
+            cmd_fbtest(argc, argv);
+            return;
+        } else {
+            kputs("Unknown test option.\n");
+            return;
+        }
+    }
     kputs("Running system tests...\n");
     
     /* Test memory allocation */
@@ -242,7 +327,26 @@ static void print_size_optimal(unsigned int bytes) {
 
 void cmd_read(int argc, char *argv[])
 {
-    (void)argc; (void)argv;
+    if (argc > 1) {
+        if (strcmp(argv[1], "--mem") == 0) {
+            cmd_mem(argc, argv);
+            return;
+        } else if (strcmp(argv[1], "--img") == 0) {
+            if (argc < 3) {
+                kputs("Usage: ");
+                gfx_set_color(COLOR_GREEN); kputs("\x1b[32mread ");
+                gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--img ");
+                gfx_set_color(COLOR_WHITE); kputs("\x1b[0m<filename.bmp>\n");
+                return;
+            }
+            char *new_argv[] = {"viewimg", argv[2], NULL};
+            cmd_viewimg(2, new_argv);
+            return;
+        } else {
+            kputs("Unknown read option.\n");
+            return;
+        }
+    }
     
     unsigned int total_ram = 4 * 1024 * 1024; /* 4 MB as defined in linker script */
     
@@ -299,6 +403,9 @@ void command_process(char *input)
 {
     char *argv[8];  /* Support up to 7 arguments + command */
     int argc;
+    
+    extern volatile int fs_abort_flag;
+    fs_abort_flag = 0;
     
     /* Validate input */
     if (!input) return;
@@ -366,6 +473,24 @@ void cmd_snake(int argc, char *argv[])
 void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
+    FILINFO fno;
+    if (f_stat("DOOM.WAD", &fno) != FR_OK) {
+        if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
+            kputs("DOOM.WAD is in the root directory; my bad dawg i am lazy to build a root commands infra > ");
+            char ans = kgetc();
+            kputc(ans); kputc('\n');
+            if (ans == 'y' || ans == 'Y') {
+                f_chdir("/");
+            } else {
+                kputs("Aborted.\n");
+                return;
+            }
+        } else {
+            kputs("Error: DOOM.WAD not found.\n");
+            return;
+        }
+    }
+
     kputs("Starting DOOM (em-doom)...\n");
     doom_engine_run();
     
@@ -384,6 +509,24 @@ void cmd_doomgfx(int argc, char *argv[])
 void cmd_doom2gfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
+    FILINFO fno;
+    if (f_stat("DOOM2.WAD", &fno) != FR_OK) {
+        if (f_stat("/DOOM2.WAD", &fno) == FR_OK) {
+            kputs("DOOM2.WAD is in the root dir. Change dir my dawg!> ");
+            char ans = kgetc();
+            kputc(ans); kputc('\n');
+            if (ans == 'y' || ans == 'Y') {
+                f_chdir("/");
+            } else {
+                kputs("Aborted.\n");
+                return;
+            }
+        } else {
+            kputs("Error: DOOM2.WAD not found.\n");
+            return;
+        }
+    }
+
     kputs("Starting DOOM 2 (em-doom)...\n");
     doom2_engine_run();
     
@@ -461,5 +604,362 @@ void cmd_viewimg(int argc, char *argv[])
     kputs("========================================\n");
     kputs("  TIOS Kernel - back in shell\n");
     kputs("========================================\n");
+    kputs("Type 'help' for available commands\n");
+}
+
+/* ============================================================================
+ * Filesystem Commands (using FatFs thanks again fatfs module to save my weeks)
+ * ============================================================================ */
+
+void cmd_ls(int argc, char *argv[])
+{
+    int show_size = 0;
+    const char *path = ".";
+    
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--size") == 0 || strcmp(argv[i], "-s") == 0) {
+            show_size = 1;
+        } else {
+            path = argv[i];
+        }
+    }
+
+    DIR dir;
+    FILINFO fno;
+    FRESULT res;
+
+    res = f_opendir(&dir, path);
+    if (res == FR_OK) {
+        if (show_size) {
+            kputs("Directory listing for ");
+            kputs(path);
+            kputs("\n--------------------------------\n");
+        }
+        
+        for (;;) {
+            res = f_readdir(&dir, &fno);
+            if (res != FR_OK || fno.fname[0] == 0) break;
+            
+            if (show_size) {
+                if (fno.fattrib & AM_DIR) {
+                    kputs("<DIR>    ");
+                } else {
+                    kputs("         ");
+                }
+                kputs(fno.fname);
+                
+                if (!(fno.fattrib & AM_DIR)) {
+                    kputs(" (");
+                    kput_uint((unsigned int)fno.fsize);
+                    kputs(" B)");
+                }
+                kputs("\n");
+            } else {
+                if (fno.fattrib & AM_DIR) {
+                    gfx_set_color(COLOR_CYAN);
+                    kputs("\x1b[36m");
+                    kputs(fno.fname);
+                    kputs("\x1b[0m");
+                    gfx_set_color(COLOR_WHITE);
+                } else {
+                    kputs(fno.fname);
+                }
+                kputs("  ");
+            }
+        }
+        f_closedir(&dir);
+
+        if (show_size) {
+            /* Show disk space */
+            DWORD fre_clust, fre_sect, tot_sect;
+            FATFS *fs;
+            res = f_getfree(path, &fre_clust, &fs);
+            if (res == FR_OK) {
+                tot_sect = (fs->n_fatent - 2) * fs->csize;
+                fre_sect = fre_clust * fs->csize;
+                kputs("--------------------------------\n");
+                kput_uint(tot_sect / 2); kputs(" KB ("); kput_uint((tot_sect / 2) / 1024); kputs(" MB) total drive space.\n");
+                kput_uint(fre_sect / 2); kputs(" KB ("); kput_uint((fre_sect / 2) / 1024); kputs(" MB) available.\n");
+            }
+        } else {
+            kputs("\n");
+        }
+    } else {
+        kputs("Failed to open directory (");
+        print_fat_error(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_cd(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: cd <path>\n");
+        return;
+    }
+    FILINFO fno;
+    FRESULT res = f_stat(argv[1], &fno);
+    if (res == FR_OK && !(fno.fattrib & AM_DIR)) {
+        kputs("cd: '"); kputs(argv[1]); kputs("' is not a directory.\n");
+        return;
+    }
+    
+    res = f_chdir(argv[1]);
+    if (res != FR_OK) {
+        kputs("Failed to change directory (");
+        print_fat_error(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_pwd(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    char path[256];
+    FRESULT res = f_getcwd(path, sizeof(path));
+    if (res == FR_OK) {
+        kputs(path);
+        kputs("\n");
+    } else {
+        kputs("Failed to get current directory\n");
+    }
+}
+
+void cmd_touch(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: touch <filename>\n");
+        return;
+    }
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(argv[1], &fno);
+    if (stat_res == FR_OK) {
+        if (fno.fattrib & AM_DIR) {
+            kputs("touch: Cannot touch directory.\n");
+            return;
+        }
+        if (fno.fattrib & AM_RDO) {
+            kputs("touch: File is read-only.\n");
+            return;
+        }
+    }
+    
+    FIL f;
+    FRESULT res = f_open(&f, argv[1], FA_WRITE | FA_CREATE_ALWAYS);
+    if (res == FR_OK) {
+        f_close(&f);
+        kputs("File created.\n");
+    } else {
+        kputs("Failed to create file (");
+        print_fat_error(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_rm(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: rm <filename>\n");
+        return;
+    }
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(argv[1], &fno);
+    if (stat_res != FR_OK) {
+        kputs("rm: Cannot remove '"); kputs(argv[1]); kputs("': ");
+        print_fat_error(stat_res); kputs("\n");
+        return;
+    }
+    
+    if (fno.fattrib & AM_RDO) {
+        kputs("rm: Access denied, '"); kputs(argv[1]); kputs("' is read-only.\n");
+        return;
+    }
+    
+    FRESULT res = f_unlink(argv[1]);
+    if (res == FR_OK) {
+        kputs("Removed.\n");
+    } else {
+        kputs("Failed to remove (");
+        print_fat_error(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_cat(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: cat <filename>\n");
+        return;
+    }
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(argv[1], &fno);
+    if (stat_res == FR_OK && (fno.fattrib & AM_DIR)) {
+        kputs("cat: '"); kputs(argv[1]); kputs("' is a directory.\n");
+        return;
+    }
+    
+    FIL f;
+    FRESULT res = f_open(&f, argv[1], FA_READ);
+    if (res != FR_OK) {
+        kputs("Failed to open file (");
+        print_fat_error(res);
+        kputs(")\n");
+        return;
+    }
+    
+    char buf[128];
+    UINT br;
+    while (f_read(&f, buf, sizeof(buf) - 1, &br) == FR_OK && br > 0) {
+        for (UINT i = 0; i < br; i++) {
+            gfx_set_color(COLOR_GREEN);
+            kputc(buf[i]);
+        }
+    }
+    kputs("\n");
+    f_close(&f);
+}
+
+void cmd_mkdir(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: mkdir <dirname>\n");
+        return;
+    }
+    
+    FILINFO fno;
+    if (f_stat(argv[1], &fno) == FR_OK) {
+        kputs("mkdir: Cannot create directory '"); kputs(argv[1]); kputs("': File exists.\n");
+        return;
+    }
+    
+    FRESULT res = f_mkdir(argv[1]);
+    if (res == FR_OK) {
+        kputs("Directory created.\n");
+    } else {
+        kputs("Failed to create directory (");
+        print_fat_error(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_nano(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: nano <filename>\n");
+        return;
+    }
+    
+    char *filename = argv[1];
+    
+    FILINFO fno;
+    FRESULT stat_res = f_stat(filename, &fno);
+    if (stat_res == FR_OK) {
+        if (fno.fattrib & AM_DIR) {
+            kputs("nano: Cannot edit directory.\n");
+            return;
+        }
+        if (fno.fattrib & AM_RDO) {
+            kputs("nano: File is read-only.\n");
+            return;
+        }
+    }
+    
+    kputs("Starting nano editor for: ");
+    kputs(filename);
+    kputs("\nPress ESC to save and quit.\n");
+    
+    FIL f;
+    FRESULT res = f_open(&f, filename, FA_READ | FA_WRITE | FA_OPEN_ALWAYS);
+    if (res != FR_OK) {
+        kputs("Failed to open file (");
+        print_fat_error(res);
+        kputs(")\n");
+        return;
+    }
+    
+    /* Allocate 8KB buffer */
+    char *buf = kmalloc(8192);
+    if (!buf) {
+        kputs("Failed to allocate memory for nano\n");
+        f_close(&f);
+        return;
+    }
+    
+    /* Read existing file */
+    UINT br;
+    res = f_read(&f, buf, 8192 - 1, &br);
+    if (res != FR_OK) {
+        kputs("Failed to read file\n");
+        kfree(buf);
+        f_close(&f);
+        return;
+    }
+    
+    int len = br;
+    buf[len] = '\0';
+    
+    /* Clear console and print current buffer */
+    gfx_clear();
+    gfx_puts("--- Nano Editor (Press ESC to save & quit) ---\n");
+    for (int i = 0; i < len; i++) {
+        kputc(buf[i]);
+    }
+    
+    /* Input loop */
+    while (1) {
+        char c = kgetc();
+        if (c == 0) {
+            for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
+            gfx_tick();
+            continue;
+        }
+        
+        if (c == '\x1b') { /* ESC to quit */
+            break;
+        }
+        
+        if (c == '\b' || c == 127) {
+            if (len > 0) {
+                len--;
+                buf[len] = '\0';
+                kputc('\b');
+            }
+        } else if (c == '\r' || c == '\n') {
+            if (len < 8191) {
+                buf[len++] = '\n';
+                buf[len] = '\0';
+                kputc('\n');
+            }
+        } else if (c >= 32 && c <= 126) {
+            if (len < 8191) {
+                buf[len++] = c;
+                buf[len] = '\0';
+                kputc(c);
+            }
+        }
+    }
+    
+    /* Save to file */
+    f_lseek(&f, 0);
+    f_truncate(&f);
+    
+    UINT bw;
+    res = f_write(&f, buf, len, &bw);
+    f_close(&f);
+    
+    kfree(buf);
+    
+    gfx_clear();
+    kputs("========================================\n");
+    kputs("  TIOS Kernel - back in shell\n");
+    kputs("========================================\n");
+    if (res == FR_OK && bw == (UINT)len) {
+        kputs("File saved successfully.\n");
+    } else {
+        kputs("Failed to save file completely.\n");
+    }
     kputs("Type 'help' for available commands\n");
 }
