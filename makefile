@@ -36,7 +36,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -Wextra             \
             -O1                 \
             -g                  \
-            -I$(INC_DIR)
+            -I$(INC_DIR)        \
+            -I$(FS_DIR)
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -59,6 +60,7 @@ BOOT_BIN     := $(BUILD_DIR)/bootloader.bin
 KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/vectors.o \
                 $(BUILD_DIR)/kernel.o \
+                $(BUILD_DIR)/string.o \
                 $(BUILD_DIR)/vic.o \
                 $(BUILD_DIR)/timer.o \
                 $(BUILD_DIR)/scheduler.o \
@@ -73,6 +75,12 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/gfx_console.o \
                 $(BUILD_DIR)/command.o \
                 $(BUILD_DIR)/bmp.o
+
+# FatFs objects
+KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
+                $(BUILD_DIR)/ff.o \
+                $(BUILD_DIR)/ffunicode.o \
+                $(BUILD_DIR)/ffsystem.o
 
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
@@ -157,6 +165,9 @@ $(BUILD_DIR)/%.o: $(DRIVERS_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(FS_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(FS_DIR)/fatfs/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)

@@ -36,5 +36,11 @@ void cmd_doomgfx(int argc, char *argv[]);
 void cmd_doom2gfx(int argc, char *argv[]);
 void cmd_viewimg(int argc, char *argv[]);
 void cmd_fbtest(int argc, char *argv[]);
+void cmd_ls(int argc, char *argv[]);
+void cmd_cd(int argc, char *argv[]);
+void cmd_pwd(int argc, char *argv[]);
+void cmd_touch(int argc, char *argv[]);
+void cmd_rm(int argc, char *argv[]);
+void cmd_cat(int argc, char *argv[]);
 
 #endif

@@ -32,6 +32,12 @@ static const command_t commands[] = {
     {"doom2gfx","Play DOOM 2 Graphics (WASD, Q to quit)", cmd_doom2gfx},
     {"viewimg", "View a BMP image", cmd_viewimg},
     {"fbtest",  "Test framebuffer (graphics mode)",     cmd_fbtest},
+    {"ls",      "List directory contents", cmd_ls},
+    {"cd",      "Change directory", cmd_cd},
+    {"pwd",     "Print working directory", cmd_pwd},
+    {"touch",   "Create empty file", cmd_touch},
+    {"rm",      "Remove file or directory", cmd_rm},
+    {"cat",     "Print file contents", cmd_cat},
     {NULL, NULL, NULL}  /* End marker */
 };
 
@@ -462,4 +468,146 @@ void cmd_viewimg(int argc, char *argv[])
     kputs("  TIOS Kernel - back in shell\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
+}
+
+/* ============================================================================
+ * Filesystem Commands (using FatFs)
+ * ============================================================================ */
+
+void cmd_ls(int argc, char *argv[])
+{
+    (void)argc;
+    const char *path = (argc > 1) ? argv[1] : ".";
+    DIR dir;
+    FILINFO fno;
+    FRESULT res;
+
+    res = f_opendir(&dir, path);
+    if (res == FR_OK) {
+        kputs("Directory listing for ");
+        kputs(path);
+        kputs("\n--------------------------------\n");
+        for (;;) {
+            res = f_readdir(&dir, &fno);
+            if (res != FR_OK || fno.fname[0] == 0) break;
+            
+            if (fno.fattrib & AM_DIR) {
+                kputs("<DIR>    ");
+            } else {
+                kputs("         ");
+            }
+            kputs(fno.fname);
+            
+            if (!(fno.fattrib & AM_DIR)) {
+                kputs(" (");
+                kput_uint((unsigned int)fno.fsize);
+                kputs(" B)");
+            }
+            kputs("\n");
+        }
+        f_closedir(&dir);
+
+        /* Show disk space */
+        DWORD fre_clust, fre_sect, tot_sect;
+        FATFS *fs;
+        res = f_getfree(path, &fre_clust, &fs);
+        if (res == FR_OK) {
+            tot_sect = (fs->n_fatent - 2) * fs->csize;
+            fre_sect = fre_clust * fs->csize;
+            kputs("--------------------------------\n");
+            kput_uint(tot_sect / 2); kputs(" KB ("); kput_uint((tot_sect / 2) / 1024); kputs(" MB) total drive space.\n");
+            kput_uint(fre_sect / 2); kputs(" KB ("); kput_uint((fre_sect / 2) / 1024); kputs(" MB) available.\n");
+        }
+    } else {
+        kputs("Failed to open directory (error ");
+        kput_uint(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_cd(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: cd <path>\n");
+        return;
+    }
+    FRESULT res = f_chdir(argv[1]);
+    if (res != FR_OK) {
+        kputs("Failed to change directory (error ");
+        kput_uint(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_pwd(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    char path[256];
+    FRESULT res = f_getcwd(path, sizeof(path));
+    if (res == FR_OK) {
+        kputs(path);
+        kputs("\n");
+    } else {
+        kputs("Failed to get current directory\n");
+    }
+}
+
+void cmd_touch(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: touch <filename>\n");
+        return;
+    }
+    FIL f;
+    FRESULT res = f_open(&f, argv[1], FA_WRITE | FA_CREATE_ALWAYS);
+    if (res == FR_OK) {
+        f_close(&f);
+        kputs("File created.\n");
+    } else {
+        kputs("Failed to create file (error ");
+        kput_uint(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_rm(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: rm <filename>\n");
+        return;
+    }
+    FRESULT res = f_unlink(argv[1]);
+    if (res == FR_OK) {
+        kputs("Removed.\n");
+    } else {
+        kputs("Failed to remove (error ");
+        kput_uint(res);
+        kputs(")\n");
+    }
+}
+
+void cmd_cat(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: cat <filename>\n");
+        return;
+    }
+    FIL f;
+    FRESULT res = f_open(&f, argv[1], FA_READ);
+    if (res != FR_OK) {
+        kputs("Failed to open file (error ");
+        kput_uint(res);
+        kputs(")\n");
+        return;
+    }
+    
+    char buf[128];
+    UINT br;
+    while (f_read(&f, buf, sizeof(buf) - 1, &br) == FR_OK && br > 0) {
+        for (UINT i = 0; i < br; i++) {
+            kputc(buf[i]);
+        }
+    }
+    kputs("\n");
+    f_close(&f);
 }

@@ -31,12 +31,12 @@ int fb_init(void)
     /*
      * Proven register values for QEMU VersatilePB 640×480:
      *   TIM0 = 0x3F1F3F9C
-     *   TIM1 = 0x090B616F
+     *   TIM1 = 0x090B61DF  <-- 0x1DF = 479 (480 lines)
      *   TIM2 = 0x067F1800
      * Source: multiple bare-metal QEMU VersatilePB references (OSDev, QEMU tests)
      */
     CLCD_TIM0   = 0x3F1F3F9Cu;
-    CLCD_TIM1   = 0x090B616Fu;
+    CLCD_TIM1   = 0x090B61DFu;
     CLCD_TIM2   = 0x067F1800u;
     CLCD_TIM3   = 0x00000000u;
     CLCD_UPBASE = FB_BASE;
