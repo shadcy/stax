@@ -16,10 +16,11 @@
 // 8-bit DOOM-style Palette Indices
 #define C_WALL    2    /* Dark gray */
 #define C_ACID    35   /* Magenta */
-#define C_SLIME   20   /* Green */
+#define C_SLIME   253  /* Custom Green */
 #define C_PORTAL  50   /* Cyan */
 #define C_BG      0    /* Black */
 #define C_HUD     85   /* Yellow */
+#define C_RED     254  /* Custom Red */
 
 static const char *level_map[] = {
     "####################",
@@ -267,7 +268,7 @@ static void slime_draw(void) {
     }
     
     if (game_state == STATE_GAMEOVER) {
-        draw_text(130, 80, "MELTED", 70); // Red
+        draw_text(130, 80, "MELTED", C_RED); // Custom Red
         draw_text(115, 100, "[ PRESS R ]", 255);
     } else if (game_state == STATE_WIN) {
         draw_text(130, 80, "CLEARED", C_PORTAL);
