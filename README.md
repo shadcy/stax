@@ -1,6 +1,19 @@
+![T-OS Banner](readme-assets/tos-banner.png)
+
 # TIOS
 
 TIOS is a custom operating system built from scratch for learning low level systems, graphics, memory management and networking by actually building them instead of reading about them. the project focuses on keeping things simple, readable and hackable while still being capable of running graphical applications like DOOM inside QEMU.
+
+## Screenshots
+
+### Boot Screen & CLI
+![Boot Screen](readme-assets/ss-boot-screen.png)
+![Command Line Interface](readme-assets/ss-help-cli.png)
+
+### Games (DOOM & Slime Escape)
+![DOOM Gameplay](readme-assets/ss-doom1.png)
+![DOOM Gameplay 2](readme-assets/ss-doom2.png)
+![Slime Escape](readme-assets/slime-ss.png)
 
 ## Features
 
