@@ -5,6 +5,7 @@
 
 #include "framebuffer.h"
 #include "console.h"
+#include "string.h"
 
 /* ── PL110 register map (VersatilePB @ 0x10120000) ──────────────────────── */
 #define CLCD_BASE    0x10120000u
@@ -19,11 +20,15 @@
 
 /* Framebuffer at 2 MB mark — past kernel code/stack/heap */
 #define FB_BASE     0x00200000u
+#define FB_BACK_BASE 0x00300000u
 
 /* LCD enable | 16bpp (mode 4 = 5:6:5) | TFT | power on */
 #define CTRL_VAL    ((1u<<11)|(1u<<5)|(4u<<1)|(1u<<0))
 
-static uint16_t * const fb = (uint16_t *)FB_BASE;
+static uint16_t * const fb_front = (uint16_t *)FB_BASE;
+static uint16_t * const fb_back  = (uint16_t *)FB_BACK_BASE;
+static uint16_t * fb = (uint16_t *)FB_BASE; /* Active buffer */
+static int double_buffered = 0;
 
 /* ── init ────────────────────────────────────────────────────────────────── */
 int fb_init(void)
@@ -95,3 +100,58 @@ void fb_drawline(int x0, int y0, int x1, int y1, uint16_t col)
 }
 
 uint16_t *fb_get_buffer(void) { return fb; }
+
+void fb_set_double_buffering(int enable)
+{
+    double_buffered = enable;
+    if (enable) {
+        fb = fb_back;
+    } else {
+        fb = fb_front;
+    }
+}
+
+void fb_swap(void)
+{
+    if (double_buffered) {
+        /* Swap backbuffer to frontbuffer */
+        memcpy(fb_front, fb_back, FB_WIDTH * FB_HEIGHT * 2);
+    }
+}
+
+void fb_draw_sprite(int x, int y, int w, int h, const uint16_t *data)
+{
+    if (w <= 0 || h <= 0 || !data) return;
+    
+    for (int r = 0; r < h; r++) {
+        int screen_y = y + r;
+        if (screen_y < 0 || screen_y >= (int)FB_HEIGHT) continue;
+        
+        for (int c = 0; c < w; c++) {
+            int screen_x = x + c;
+            if (screen_x < 0 || screen_x >= (int)FB_WIDTH) continue;
+            
+            fb[screen_y * FB_WIDTH + screen_x] = data[r * w + c];
+        }
+    }
+}
+
+void fb_draw_sprite_colorkey(int x, int y, int w, int h, const uint16_t *data, uint16_t colorkey)
+{
+    if (w <= 0 || h <= 0 || !data) return;
+    
+    for (int r = 0; r < h; r++) {
+        int screen_y = y + r;
+        if (screen_y < 0 || screen_y >= (int)FB_HEIGHT) continue;
+        
+        for (int c = 0; c < w; c++) {
+            int screen_x = x + c;
+            if (screen_x < 0 || screen_x >= (int)FB_WIDTH) continue;
+            
+            uint16_t pixel = data[r * w + c];
+            if (pixel != colorkey) {
+                fb[screen_y * FB_WIDTH + screen_x] = pixel;
+            }
+        }
+    }
+}

@@ -40,7 +40,7 @@
 /* ============================================================================
  * External T-OS symbols
  * ============================================================================ */
-extern volatile unsigned int tick_count;  /* 10 Hz kernel timer */
+extern volatile unsigned int tick_count;  /* 1000 Hz kernel timer */
 
 /* console.c */
 extern void  kputs(const char *s);
@@ -366,8 +366,8 @@ byte *I_ZoneBase(int *size)
 /* DOOM runs at 35 tics/sec; our timer runs at 100 Hz */
 int I_GetTime(void)
 {
-    /* tick_count * 35/100 = tick_count * 7/20 */
-    return (int)(tick_count * 7 / 20);
+    /* tick_count * 35/1000 = tick_count * 7/200 */
+    return (int)(tick_count * 7 / 200);
 }
 
 void I_Init(void)
@@ -490,7 +490,7 @@ void I_FinishUpdate(void)
     static int current_fps = 0;
 
     frames_this_second++;
-    if (tick_count - last_fps_time >= 100) { /* 100 ticks = 1 sec */
+    if (tick_count - last_fps_time >= 1000) { /* 1000 ticks = 1 sec */
         current_fps = frames_this_second;
         frames_this_second = 0;
         last_fps_time = tick_count;

@@ -182,6 +182,7 @@ void snake_run(void)
     full_redraw();
 
     last_tick = tick_count;
+    /* 100ms per frame for snake (10 FPS) */
 
     while (g_alive) {
         /* Input handling */
@@ -194,13 +195,14 @@ void snake_run(void)
             if (c == 'q' || c == 'Q') { g_alive = 0; break; }
         }
 
-        /* Speed control — 100 Hz timer: 8 ticks × 10ms = 80ms/step (normal)
-         *                               4 ticks × 10ms = 40ms/step (fast) */
+        /* Speed control — 1000 Hz timer: 80 ticks = 80ms/step (normal)
+         *                                40 ticks = 40ms/step (fast) */
         unsigned int current = tick_count;
-        unsigned int ticks_needed = 8;
-        if (g_score >= 150) ticks_needed = 4;
+        unsigned int ticks_needed = 80;
+        if (g_score >= 150) ticks_needed = 40;
         
         if (current - last_tick < ticks_needed) {
+            asm volatile ("mcr p15, 0, %0, c7, c0, 4" : : "r" (0));
             continue;
         }
         last_tick = current;
