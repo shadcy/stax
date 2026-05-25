@@ -8,11 +8,11 @@
 
 /* Physics Constants (Time integrated: values are per ms)
  * Halved from 640x480 scale to match 320x200 scale */
-#define GRAVITY     1              /* ~0.004 px/ms^2 */
-#define MAX_FALL    (TO_FIX(1)/2)  /* 0.5 px/ms */
-#define JUMP_VEL    (-TO_FIX(1)/2) /* -0.5 px/ms */
-#define MOVE_SPEED  (TO_FIX(1)/4)  /* 0.25 px/ms */
-#define STICKY_FALL (TO_FIX(1)/16) /* 0.0625 px/ms */
+#define GRAVITY     2              /* Higher gravity */
+#define MAX_FALL    (TO_FIX(1))    /* 1.0 px/ms = 1000 px/sec */
+#define JUMP_VEL    (-TO_FIX(1))   /* -1.0 px/ms = 4-tile jump height at GRAVITY=2 */
+#define MOVE_SPEED  (TO_FIX(1)/2)  /* 0.5 px/ms = 500 px/sec */
+#define STICKY_FALL (TO_FIX(1)/8)  /* 0.125 px/ms */
 
 // 8-bit DOOM-style Palette Indices
 #define C_WALL    2    /* Dark gray */
@@ -119,6 +119,8 @@ static int is_portal(int px, int py) {
 
 static void slime_update(int dt_ms) {
     gfx_profiler_update();
+    
+    if (dt_ms > 40) dt_ms = 40; /* Cap dt to prevent physics tunneling on emulator lag spikes */
     
     if (player.dead || player.won) {
         if (kb_is_pressed('r') || kb_is_pressed('R')) reset_player();
