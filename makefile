@@ -74,7 +74,8 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
                 $(BUILD_DIR)/command.o \
-                $(BUILD_DIR)/bmp.o
+                $(BUILD_DIR)/bmp.o \
+                $(BUILD_DIR)/engine2d.o
 
 # FatFs objects
 KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
