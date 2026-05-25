@@ -24,6 +24,7 @@ FS_DIR      := fs
 MM_DIR      := mm
 GAMES_DIR   := games
 ENGINE_DIR  := engine
+GFX_DIR     := gfx
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
@@ -87,6 +88,15 @@ KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
 
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
+
+# Software rendering subsystem
+KERNEL_OBJS  += $(BUILD_DIR)/math_fixed.o \
+                $(BUILD_DIR)/palette.o \
+                $(BUILD_DIR)/backbuffer.o \
+                $(BUILD_DIR)/renderer.o \
+                $(BUILD_DIR)/sprite.o \
+                $(BUILD_DIR)/texture.o \
+                $(BUILD_DIR)/profiler.o
 
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
@@ -187,6 +197,9 @@ $(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
 
 $(BUILD_DIR)/%.o: $(ENGINE_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(GFX_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -O2 -ffast-math -c $< -o $@
 
 # DOOM files need special flags and the tios_compat.h included
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)
