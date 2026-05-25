@@ -1,8 +1,8 @@
 ![T-OS Banner](readme-assets/tos-banner.png)
 
-# TIOS
+# TOS
 
-TIOS is a custom operating system built from scratch for learning low level systems, graphics, memory management and networking by actually building them instead of reading about them. the project focuses on keeping things simple, readable and hackable while still being capable of running graphical applications like DOOM inside QEMU.
+TOS is a custom operating system built from scratch for learning low level systems, graphics, memory management and networking by actually building them instead of reading about them. the project focuses on keeping things simple, readable and hackable while still being capable of running graphical applications like DOOM inside QEMU.
 
 ## Screenshots
 
@@ -51,7 +51,7 @@ make qemu-gfx
 
 ## Why
 
-TIOS exists because the best way to understand computers is to build the layers yourself.
+TOS exists because the best way to understand computers is to build the layers yourself.
 
 ```txt
 boot → kernel → graphics → shell → doom
@@ -69,4 +69,4 @@ mail: shreyash@offday.space
 
 ## Repository
 
-https://github.com/shadcy/tios
+https://github.com/shadcy/TOS
