@@ -192,10 +192,10 @@ void cmd_status(int argc, char *argv[])
     kputs("CPU: ARM926EJ-S\n");
     kputs("Board: VersatilePB\n");
     kputs("Uptime: ");
-    kput_uint(tick_count / 10);  /* Convert ticks to seconds */
+    kput_uint(tick_count / 1000);  /* Convert ticks to seconds */
     kputs(" seconds\n");
     kputs("IRQs: Enabled\n");
-    kputs("Timer: 10 Hz (100ms ticks)\n");
+    kputs("Timer: 1000 Hz (1 ms ticks)\n");
 }
 
 void cmd_mem(int argc, char *argv[])

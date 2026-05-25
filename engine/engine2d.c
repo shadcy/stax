@@ -2,7 +2,7 @@
 #include "framebuffer.h"
 #include "keyboard.h"
 
-extern volatile unsigned int tick_count; // From kernel.c (1 tick = 10ms)
+extern volatile unsigned int tick_count; // From kernel.c (1 tick = 1ms)
 
 void engine2d_run(EngineApp *app)
 {
@@ -16,10 +16,8 @@ void engine2d_run(EngineApp *app)
     
     unsigned int last_tick = tick_count;
     
-    /* Target FPS: ~60 -> ~16.6ms per frame -> let's say 2 ticks (20ms) since our timer is 10ms.
-     * We'll run at 50 FPS for simplicity, waiting until tick_count advances by 2.
-     * Or better yet, wait until tick_count advances by at least 1, giving up to 100 FPS
-     * but we don't have v-sync so we just limit it. */
+    /* Target FPS: ~50 -> 20ms per frame.
+     * We wait until tick_count advances by 20. */
      
     while (1) {
         /* Check for exit */
@@ -28,15 +26,15 @@ void engine2d_run(EngineApp *app)
         }
         
         unsigned int current_tick = tick_count;
-        int dt_ticks = current_tick - last_tick;
+        int dt_ms = current_tick - last_tick;
         
-        /* Cap framerate (approx 50 FPS = 20ms = 2 ticks) */
-        if (dt_ticks < 2) {
+        /* Cap framerate (50 FPS = 20ms) */
+        if (dt_ms < 20) {
+            asm volatile ("mcr p15, 0, %0, c7, c0, 4" : : "r" (0)); /* Yield to emulator */
             continue; /* Wait for next frame */
         }
         
         last_tick = current_tick;
-        int dt_ms = dt_ticks * 10;
         
         /* Update game logic */
         if (app->update) app->update(dt_ms);
