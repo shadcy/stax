@@ -128,13 +128,9 @@ QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),i
 # =============================================================================
 # Rules
 # =============================================================================
-.PHONY: all clean qemu qemu-gfx debug gdb dump size assets
+.PHONY: all clean qemu qemu-gfx debug gdb dump size
 
-all: assets $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
-
-assets:
-	@echo "Checking/Building Game Assets..."
-	@python3 scripts/build_assets.py || echo "Warning: Asset build failed (Pillow missing?)"
+all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
