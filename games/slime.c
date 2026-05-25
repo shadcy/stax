@@ -4,15 +4,18 @@
 #include "console.h"
 #include "font8x16.h"
 
-#define TILE_SIZE 16
+#define FIX_SHIFT 16
+#define TO_FIX(x) ((x) << FIX_SHIFT)
+#define FROM_FIX(x) ((x) >> FIX_SHIFT)
 
-/* Physics Constants (Time integrated: values are per ms)
- * Halved from 640x480 scale to match 320x200 scale */
-#define GRAVITY     2              /* Higher gravity */
-#define MAX_FALL    (TO_FIX(1))    /* 1.0 px/ms = 1000 px/sec */
-#define JUMP_VEL    (-TO_FIX(1))   /* -1.0 px/ms = 4-tile jump height at GRAVITY=2 */
-#define MOVE_SPEED  (TO_FIX(1)/2)  /* 0.5 px/ms = 500 px/sec */
-#define STICKY_FALL (TO_FIX(1)/8)  /* 0.125 px/ms */
+/* Physics Constants (16.16 Fixed Point, Pixels per Second) */
+#define GRAVITY     TO_FIX(800)     /* 800 px/sec^2 */
+#define MAX_FALL    TO_FIX(300)     /* 300 px/sec */
+#define JUMP_VEL    (-TO_FIX(250))  /* -250 px/sec */
+#define MOVE_SPEED  TO_FIX(120)     /* 120 px/sec */
+#define STICKY_FALL TO_FIX(30)      /* 30 px/sec */
+
+#define TILE_SIZE 16
 
 // 8-bit DOOM-style Palette Indices
 #define C_WALL    2    /* Dark gray */
@@ -103,6 +106,13 @@ static int is_solid(int px, int py) {
     return (level_map[ty][tx] == '#');
 }
 
+static int check_collision(int px, int py, int size) {
+    return is_solid(px, py) || 
+           is_solid(px + size - 1, py) ||
+           is_solid(px, py + size - 1) ||
+           is_solid(px + size - 1, py + size - 1);
+}
+
 static int is_acid(int px, int py) {
     int tx = px / TILE_SIZE;
     int ty = py / TILE_SIZE;
@@ -134,7 +144,8 @@ static void slime_update(int dt_ms) {
     player.vx = input_x * MOVE_SPEED;
     
     /* Exact time integration for gravity */
-    player.vy += GRAVITY * dt_ms;
+    player.vy += (GRAVITY * dt_ms) / 1000;
+    
     if (player.on_wall != 0 && player.vy > STICKY_FALL) {
         player.vy = STICKY_FALL;
     } else if (player.vy > MAX_FALL) {
@@ -150,52 +161,43 @@ static void slime_update(int dt_ms) {
         player.on_wall = 0;
     }
     
-    /* X axis exact time integration */
-    player.x += player.vx * dt_ms;
     int p_size = 8;
     
+    /* X axis integration and collision */
+    player.x += (player.vx * dt_ms) / 1000;
     int ix = FROM_FIX(player.x);
     int iy = FROM_FIX(player.y);
     
-    if (player.vx > 0) {
-        if (is_solid(ix + p_size, iy) || is_solid(ix + p_size, iy + p_size - 1)) {
-            ix = ((ix + p_size) / TILE_SIZE) * TILE_SIZE - p_size - 1;
-            player.x = TO_FIX(ix);
+    if (check_collision(ix, iy, p_size)) {
+        if (player.vx > 0) {
+            ix = ((ix + p_size - 1) / TILE_SIZE) * TILE_SIZE - p_size;
             player.on_wall = 1;
-        } else {
-            player.on_wall = 0;
-        }
-    } else if (player.vx < 0) {
-        if (is_solid(ix, iy) || is_solid(ix, iy + p_size - 1)) {
+        } else if (player.vx < 0) {
             ix = (ix / TILE_SIZE + 1) * TILE_SIZE;
-            player.x = TO_FIX(ix);
             player.on_wall = -1;
-        } else {
-            player.on_wall = 0;
         }
+        player.x = TO_FIX(ix);
+        player.vx = 0;
     } else {
         player.on_wall = 0;
     }
     
-    /* Y axis exact time integration */
-    player.y += player.vy * dt_ms;
+    /* Y axis integration and collision */
+    player.y += (player.vy * dt_ms) / 1000;
+    ix = FROM_FIX(player.x);
     iy = FROM_FIX(player.y);
     player.on_ground = 0;
     
-    if (player.vy > 0) {
-        if (is_solid(ix, iy + p_size) || is_solid(ix + p_size - 1, iy + p_size)) {
-            iy = ((iy + p_size) / TILE_SIZE) * TILE_SIZE - p_size;
-            player.y = TO_FIX(iy);
-            player.vy = 0;
+    if (check_collision(ix, iy, p_size)) {
+        if (player.vy > 0) {
+            iy = ((iy + p_size - 1) / TILE_SIZE) * TILE_SIZE - p_size;
             player.on_ground = 1;
             player.on_wall = 0;
-        }
-    } else if (player.vy < 0) {
-        if (is_solid(ix, iy) || is_solid(ix + p_size - 1, iy)) {
+        } else if (player.vy < 0) {
             iy = (iy / TILE_SIZE + 1) * TILE_SIZE;
-            player.y = TO_FIX(iy);
-            player.vy = 0;
         }
+        player.y = TO_FIX(iy);
+        player.vy = 0;
     }
     
     int cx = ix + p_size / 2;
