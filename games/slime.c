@@ -5,11 +5,11 @@
 #include "font8x16.h"
 
 /* Physics Constants (16.16 Fixed Point, Pixels per Second) */
-#define GRAVITY     TO_FIX(800)     /* 800 px/sec^2 */
-#define MAX_FALL    TO_FIX(300)     /* 300 px/sec */
-#define JUMP_VEL    (-TO_FIX(250))  /* -250 px/sec */
-#define MOVE_SPEED  TO_FIX(120)     /* 120 px/sec */
-#define STICKY_FALL TO_FIX(30)      /* 30 px/sec */
+#define GRAVITY     TO_FIX(2000)    /* Extremely snappy gravity */
+#define MAX_FALL    TO_FIX(600)     
+#define JUMP_VEL    (-TO_FIX(500))  /* Fast jump */
+#define MOVE_SPEED  TO_FIX(300)     /* Fast run */
+#define STICKY_FALL TO_FIX(80)      
 
 #define TILE_SIZE 16
 
@@ -39,15 +39,21 @@ static const char *level_map[] = {
 #define MAP_W 20
 
 typedef struct {
-    int x, y;    /* Fixed-point positions */
-    int vx, vy;  /* Fixed-point velocities */
+    int x, y;    
+    int vx, vy;  
     int on_ground;
     int on_wall; 
-    int dead;
-    int won;
 } Slime;
 
+typedef enum {
+    STATE_TITLE,
+    STATE_PLAY,
+    STATE_GAMEOVER,
+    STATE_WIN
+} GameState;
+
 static Slime player;
+static GameState game_state = STATE_TITLE;
 static int debug_mode = 0;
 
 static void draw_text(int x_pos, int y_pos, const char *str, uint8_t color) {
@@ -86,8 +92,6 @@ static void reset_player(void) {
     player.vy = 0;
     player.on_ground = 0;
     player.on_wall = 0;
-    player.dead = 0;
-    player.won = 0;
 }
 
 static void slime_init(void) {
@@ -124,14 +128,25 @@ static int is_portal(int px, int py) {
 }
 
 static void slime_update(int dt_ms) {
+    if (game_state == STATE_TITLE) {
+        if (kb_is_pressed(' ') || kb_is_pressed('\n')) {
+            reset_player();
+            game_state = STATE_PLAY;
+        }
+        return;
+    }
+    
+    if (game_state == STATE_GAMEOVER || game_state == STATE_WIN) {
+        if (kb_is_pressed('r') || kb_is_pressed('R') || kb_is_pressed(' ') || kb_is_pressed('\n')) {
+            reset_player();
+            game_state = STATE_PLAY;
+        }
+        return;
+    }
+
     gfx_profiler_update();
     
     if (dt_ms > 40) dt_ms = 40; /* Cap dt to prevent physics tunneling on emulator lag spikes */
-    
-    if (player.dead || player.won) {
-        if (kb_is_pressed('r') || kb_is_pressed('R')) reset_player();
-        return;
-    }
 
     int input_x = 0;
     if (kb_is_pressed(KB_LEFT) || kb_is_pressed('a') || kb_is_pressed('A')) input_x = -1;
@@ -199,15 +214,23 @@ static void slime_update(int dt_ms) {
     int cx = ix + p_size / 2;
     int cy = iy + p_size / 2;
     if (is_acid(cx, cy)) {
-        player.dead = 1;
+        game_state = STATE_GAMEOVER;
     }
     if (is_portal(cx, cy)) {
-        player.won = 1;
+        game_state = STATE_WIN;
     }
 }
 
 static void slime_draw(void) {
     gfx8_clear(C_BG);
+    
+    if (game_state == STATE_TITLE) {
+        draw_text(110, 80, "SLIME", C_SLIME);
+        draw_text(110, 96, "ESCAPE", C_HUD);
+        draw_text(100, 130, "[ SPACE ]", 255);
+        gfx_present();
+        return;
+    }
     
     for (int y = 0; y < MAP_H; y++) {
         for (int x = 0; x < MAP_W; x++) {
@@ -234,7 +257,7 @@ static void slime_draw(void) {
     int p_size = 8;
     int px = FROM_FIX(player.x);
     int py = FROM_FIX(player.y);
-    if (!player.dead) {
+    if (game_state == STATE_PLAY) {
         gfx8_fillrect(px, py, p_size, p_size, C_SLIME);
         gfx8_fillrect(px + 2, py + 2, 4, 4, 255); // White eye
     } else {
@@ -243,14 +266,12 @@ static void slime_draw(void) {
         gfx8_fillrect(px + 2, py + 3, 2, 2, C_SLIME);
     }
     
-    draw_text(10, 10, "SLIME ESCAPE", C_HUD);
-    
-    if (player.dead) {
-        draw_text(80, 80, "SLIME MELTED", 70); // Red
-        draw_text(85, 100, "R to Restart", 255);
-    } else if (player.won) {
-        draw_text(80, 80, "SECTOR CLEARED", C_PORTAL);
-        draw_text(85, 100, "R to Restart", 255);
+    if (game_state == STATE_GAMEOVER) {
+        draw_text(130, 80, "MELTED", 70); // Red
+        draw_text(115, 100, "[ PRESS R ]", 255);
+    } else if (game_state == STATE_WIN) {
+        draw_text(130, 80, "CLEARED", C_PORTAL);
+        draw_text(115, 100, "[ PRESS R ]", 255);
     }
     
     if (debug_mode) {
@@ -272,9 +293,8 @@ static void slime_draw(void) {
         v_str[i] = '\0';
         
         draw_text(10, 180, v_str, C_HUD);
+        gfx_profiler_draw();
     }
-    
-    gfx_profiler_draw();
     
     /* Blit 8-bit 320x200 backbuffer scaled 2x to VRAM */
     gfx_present();
