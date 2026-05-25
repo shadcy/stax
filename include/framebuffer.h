@@ -58,4 +58,12 @@ void      fb_fillrect(int x, int y, int w, int h, uint16_t col);
 void      fb_drawline(int x0, int y0, int x1, int y1, uint16_t col);
 uint16_t *fb_get_buffer(void);
 
+/* Double buffering API */
+void      fb_set_double_buffering(int enable);
+void      fb_swap(void);
+
+/* Sprite rendering API */
+void      fb_draw_sprite(int x, int y, int w, int h, const uint16_t *data);
+void      fb_draw_sprite_colorkey(int x, int y, int w, int h, const uint16_t *data, uint16_t colorkey);
+
 #endif
