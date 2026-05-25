@@ -4,10 +4,6 @@
 #include "console.h"
 #include "font8x16.h"
 
-#define FIX_SHIFT 16
-#define TO_FIX(x) ((x) << FIX_SHIFT)
-#define FROM_FIX(x) ((x) >> FIX_SHIFT)
-
 /* Physics Constants (16.16 Fixed Point, Pixels per Second) */
 #define GRAVITY     TO_FIX(800)     /* 800 px/sec^2 */
 #define MAX_FALL    TO_FIX(300)     /* 300 px/sec */
