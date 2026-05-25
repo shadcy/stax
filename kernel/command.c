@@ -37,6 +37,7 @@ static const command_t commands[] = {
     {"game",    "Play a game (use --doom, --doom2, --snake)", cmd_game},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
     {"test",    "Run tests (use --fb)", cmd_test},
+    {"testgame", "Run the 2D Engine Test game", cmd_test_game},
     {NULL,      NULL,                                NULL}
 };
 
