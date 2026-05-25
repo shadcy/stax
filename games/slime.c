@@ -141,19 +141,10 @@ static int is_portal(int px, int py) {
 static void slime_update(int dt_ms) {
     if (game_state == STATE_SPLASH) {
         splash_timer += dt_ms;
-        if (splash_timer < 1000) {
-            fade_level = (splash_timer * 255) / 1000;
-        } else if (splash_timer < 3000) {
-            fade_level = 255;
-        } else if (splash_timer < 4000) {
-            fade_level = 255 - ((splash_timer - 3000) * 255) / 1000;
-        } else {
-            fade_level = 255; // Restore
+        gfx_set_fade(255); // No fade, full brightness
+        if (splash_timer >= 6500) {
             game_state = STATE_TITLE;
         }
-        if (fade_level < 0) fade_level = 0;
-        if (fade_level > 255) fade_level = 255;
-        gfx_set_fade(fade_level);
         return;
     }
 

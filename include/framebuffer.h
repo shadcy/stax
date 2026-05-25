@@ -34,13 +34,13 @@ all the nedded stuff.
 
 /* optional accent colors */
 #define COLOR_ACCENT   0xCE79u   /* silver */
-#define COLOR_SUCCESS  0x07E0u   /* green */
+#define COLOR_SUCCESS  0x7FE4u   /* #23fe7c */
 #define COLOR_WARNING  0xAD55u
-#define COLOR_ERROR    0xFFFFu
+#define COLOR_ERROR    0x49DDu   /* #ee3b48 */
 
-#define COLOR_GREEN    0x07E0u   /* pure green for commands */
+#define COLOR_GREEN    0x7FE4u   /* #23fe7c */
 #define COLOR_YELLOW   0x07FFu   /* keeping old definitions for games */
-#define COLOR_RED      0x001Fu
+#define COLOR_RED      0x49DDu   /* #ee3b48 */
 #define COLOR_BLUE     0xF800u
 #define COLOR_CYAN     0xCE79u
 #define COLOR_MAGENTA  0x07FFu
