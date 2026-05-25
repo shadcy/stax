@@ -5,6 +5,7 @@
 #include "lwip/timeouts.h"
 #include "lwip/ip4_addr.h"
 #include "netif/ethernet.h"
+#include "lwip/etharp.h"
 #include "../include/gfx_console.h"
 #include "../include/console.h"
 
@@ -43,11 +44,36 @@ static void net_ensure_dns(void) {
     dns_setserver(0, &fallback);
 }
 
-void net_poll(void) {
+int net_poll(void) {
     smc_netif_poll(&smc_netif);
     sys_check_timeouts();
-    if (!ip4_addr_isany(netif_ip4_addr(&smc_netif)))
+    
+    int ret = 0;
+    if (!ip4_addr_isany(netif_ip4_addr(&smc_netif))) {
+        static int ip_printed = 0;
+        if (!ip_printed) {
+            kprintf("\n[NET] DHCP Success! IP: %s\n", ip4addr_ntoa(netif_ip4_addr(&smc_netif)));
+            ip_printed = 1;
+            ret = 1;
+        }
+
         net_ensure_dns();
+        
+        static int static_arp_done = 0;
+        if (!static_arp_done) {
+            ip4_addr_t gw_ip, dns_ip;
+            IP4_ADDR(&gw_ip, 10, 0, 2, 2);
+            struct eth_addr gw_mac = {{0x52, 0x55, 0x0a, 0x00, 0x02, 0x02}};
+            etharp_add_static_entry(&gw_ip, &gw_mac);
+            
+            IP4_ADDR(&dns_ip, 10, 0, 2, 3);
+            struct eth_addr dns_mac = {{0x52, 0x55, 0x0a, 0x00, 0x02, 0x03}};
+            etharp_add_static_entry(&dns_ip, &dns_mac);
+            
+            static_arp_done = 1;
+        }
+    }
+    return ret;
 }
 
 void cmd_ifconfig(int argc, char *argv[]) {

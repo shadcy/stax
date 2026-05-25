@@ -39,7 +39,14 @@
 
 /* Logging (can map to T-OS printk if desired) */
 #define LWIP_DEBUG 0
+#define CHECKSUM_CHECK_IP 0
+#define CHECKSUM_CHECK_UDP 0
+#define CHECKSUM_CHECK_TCP 0
+
 #define LWIP_PLATFORM_DIAG(x) do { extern void kprintf(const char *, ...); kprintf x; } while(0)
 #define LWIP_PLATFORM_ASSERT(x) do { extern void kprintf(const char *, ...); kprintf("Assertion \"%s\" failed at line %d in %s\n", x, __LINE__, __FILE__); } while(0)
+
+/* Enable static ARP entries */
+#define ETHARP_SUPPORT_STATIC_ENTRIES 1
 
 #endif /* LWIP_LWIPOPTS_H */

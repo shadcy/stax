@@ -57,3 +57,7 @@ int isalpha(int c) { return islower(c) || isupper(c); }
 
 /* In case of _ctype_ array references from gcc builtins */
 const unsigned char _ctype_[256] = {0};
+
+const char *lwip_strerr(int err) {
+    return "lwip_err";
+}

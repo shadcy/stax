@@ -12,8 +12,12 @@
 #define PING_ID    0xAFAF
 #define PING_SIZE  (sizeof(struct icmp_echo_hdr) + 32)
 
+extern volatile unsigned int tick_count;
+extern int net_poll(void);
+
 static struct raw_pcb *ping_pcb;
 static u16_t ping_seq_num = 0;
+static volatile int ping_reply_received = 0;
 
 static u8_t ping_recv(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr) {
     struct icmp_echo_hdr *iecho;
@@ -21,15 +25,30 @@ static u8_t ping_recv(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_a
     (void)pcb;
     (void)addr;
 
-    if (p->tot_len < PBUF_IP_HLEN + sizeof(struct icmp_echo_hdr))
+    kprintf("[ping_recv] Packet received! tot_len = %u\n", p->tot_len);
+
+    if (p->tot_len < PBUF_IP_HLEN + sizeof(struct icmp_echo_hdr)) {
+        kprintf("[ping_recv] Packet too short: %u < %d\n", p->tot_len, PBUF_IP_HLEN + sizeof(struct icmp_echo_hdr));
         return 0;
-    if (pbuf_remove_header(p, PBUF_IP_HLEN) != 0)
+    }
+    
+    /* Let's examine the raw IP payload before removing header */
+    uint8_t *raw_payload = (uint8_t *)p->payload;
+    kprintf("[ping_recv] IP header info: version/IHL = 0x%02x, proto = %u\n", raw_payload[0], raw_payload[9]);
+
+    if (pbuf_remove_header(p, PBUF_IP_HLEN) != 0) {
+        kprintf("[ping_recv] Failed to remove IP header\n");
         return 0;
+    }
 
     iecho = (struct icmp_echo_hdr *)p->payload;
+    kprintf("[ping_recv] ICMP: type = %u, code = %u, id = 0x%04x, seq = %u (expected id = 0x%04x, seq = %u)\n",
+            ICMPH_TYPE(iecho), ICMPH_CODE(iecho), iecho->id, lwip_ntohs(iecho->seqno), PING_ID, ping_seq_num);
+
     if (iecho->id == PING_ID && iecho->seqno == lwip_htons(ping_seq_num) &&
         ICMPH_TYPE(iecho) == ICMP_ER) {
         kputs("Ping reply received!\n");
+        ping_reply_received = 1;
         pbuf_free(p);
         return 1;
     }
@@ -64,20 +83,42 @@ static void do_ping(const ip_addr_t *target_ip) {
 
     iecho->chksum = inet_chksum(iecho, PING_SIZE);
 
-    kputs("Pinging target IP...\n");
+    kprintf("Pinging target IP... (seq=%u)\n", ping_seq_num);
+    ping_reply_received = 0;
     raw_sendto(ping_pcb, p, target_ip);
     pbuf_free(p);
+
+    /* Synchronous wait loop with timeout (3 seconds) */
+    unsigned int start = tick_count;
+    kprintf("Start tick: %u\n", start);
+    int last_print = 0;
+    while (!ping_reply_received && (tick_count - start < 300)) {
+        net_poll();
+        if (tick_count != last_print) {
+            kprintf("Tick: %u\n", tick_count);
+            last_print = tick_count;
+        }
+        for (volatile int i = 0; i < 15000; i++) __asm__ volatile ("nop");
+    }
+
+    if (!ping_reply_received) {
+        kputs("Ping timed out.\n");
+    }
 }
+
+static volatile int dns_resolved = 0;
+static volatile int dns_failed = 0;
+static ip_addr_t dns_resolved_ip;
 
 static void ping_dns_found_cb(const char *name, const ip_addr_t *ipaddr, void *callback_arg) {
     (void)name;
     (void)callback_arg;
     if (ipaddr == NULL) {
-        kputs("DNS resolution failed.\n");
-        return;
+        dns_failed = 1;
+    } else {
+        dns_resolved_ip = *ipaddr;
+        dns_resolved = 1;
     }
-    kputs("Resolved hostname.\n");
-    do_ping(ipaddr);
 }
 
 void cmd_ping(int argc, char *argv[]) {
@@ -100,13 +141,28 @@ void cmd_ping(int argc, char *argv[]) {
         return;
     }
 
+    dns_resolved = 0;
+    dns_failed = 0;
     err_t err = dns_gethostbyname(host, &target_ip, ping_dns_found_cb, NULL);
-    if (err == ERR_OK)
+    if (err == ERR_OK) {
         do_ping(&target_ip);
-    else if (err == ERR_INPROGRESS)
+    } else if (err == ERR_INPROGRESS) {
         kputs("Resolving host...\n");
-    else
-        kputs("DNS request failed.\n");
+        unsigned int start = tick_count;
+        /* 5-second timeout for DNS */
+        while (!dns_resolved && !dns_failed && (tick_count - start < 500)) {
+            net_poll();
+            for (volatile int i = 0; i < 15000; i++) __asm__ volatile ("nop");
+        }
+
+        if (dns_resolved) {
+            do_ping(&dns_resolved_ip);
+        } else {
+            kputs("DNS resolution failed or timed out.\n");
+        }
+    } else {
+        kputs("DNS request failed immediately.\n");
+    }
 }
 
 void ping_init(void) {

@@ -137,7 +137,7 @@ void kernel_main(void)
     kputs("        \b\b\b\b\b\b\b\b");             \
 } while (0)
 
-    extern void net_poll(void);
+    extern int net_poll(void);
 
     /* Main kernel loop - never return */
     while (1) {
@@ -150,11 +150,11 @@ void kernel_main(void)
         if (c == 0) {
             for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
             gfx_tick();
-            net_poll();
+            if (net_poll()) REDRAW_LINE();
             continue;
         }
 
-        net_poll();
+        if (net_poll()) REDRAW_LINE();
 
         /* ---- UART arrow-key escape sequence decoder ---- */
         if (esc_state == 0 && c == '\x1b') { esc_state = 1; continue; }

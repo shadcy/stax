@@ -25,6 +25,7 @@
 #define SMC_MMU_CMD  SMC_REG8(0x00)
 #define SMC_PKT_NUM  SMC_REG8(0x02)
 #define SMC_ARR      SMC_REG8(0x03)
+#define SMC_TXFIFO   SMC_REG8(0x04)
 #define SMC_RXFIFO   SMC_REG8(0x05)
 #define SMC_PTR      SMC_REG16(0x06)
 #define SMC_DATA     SMC_REG16(0x08)
@@ -34,8 +35,11 @@
 
 #define MMU_CMD_ALLOC_TX 0x20
 #define MMU_CMD_RESET    0x40
+#define MMU_CMD_REMOVE   0x60
 #define MMU_CMD_RELEASE  0x80
+#define MMU_CMD_FREEPKT  0xA0
 #define MMU_CMD_ENQUEUE  0xC0
+#define MMU_CMD_RESET_TX 0xE0
 
 #define PTR_RCV       0x8000
 #define PTR_AUTO_INC  0x4000
@@ -50,5 +54,6 @@
 void smc91c111_init(void);
 int smc91c111_tx(const uint8_t *data, size_t len);
 size_t smc91c111_rx(uint8_t *buf, size_t max_len);
+void smc_free_tx_packets(void);
 
 #endif

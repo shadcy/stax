@@ -7,9 +7,15 @@
 static err_t smc_link_output(struct netif *netif, struct pbuf *p) {
     (void)netif;
     
-    // In NO_SYS mode,    // Copy to contiguous buffer if chained
+    // Copy to contiguous buffer if chained
     uint8_t buffer[1536] __attribute__((aligned(4)));
     size_t len = pbuf_copy_partial(p, buffer, p->tot_len, 0);
+    
+    /* Pad packet to minimum Ethernet frame size (60 bytes) to prevent runt frame drops */
+    if (len < 60) {
+        memset(buffer + len, 0, 60 - len);
+        len = 60;
+    }
     
     if (smc91c111_tx(buffer, len) == 0) {
         return ERR_OK;
@@ -45,8 +51,12 @@ void smc_netif_poll(struct netif *netif) {
     uint8_t rx_buf[1536];
     size_t len;
     while ((len = smc91c111_rx(rx_buf, sizeof(rx_buf))) > 0) {
-        struct pbuf *p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
+        /* Allocate len + 2 to allow shifting the payload for 4-byte IP header alignment */
+        struct pbuf *p = pbuf_alloc(PBUF_RAW, len + 2, PBUF_POOL);
         if (p) {
+            /* Shift payload forward by 2 bytes. Since PBUF_RAW payload is 4-byte aligned,
+               payload + 2 + 14 (eth header) = 16 (4-byte aligned IP header) */
+            pbuf_remove_header(p, 2);
             pbuf_take(p, rx_buf, len);
             if (netif->input(p, netif) != ERR_OK) {
                 pbuf_free(p);
