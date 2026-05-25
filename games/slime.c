@@ -55,7 +55,7 @@ typedef enum {
 } GameState;
 
 static Slime player;
-static GameState game_state = STATE_SPLASH;
+static GameState game_state = STATE_PLAY;
 static int debug_mode = 0;
 static int splash_timer = 0;
 static int fade_level = 0;
@@ -104,9 +104,9 @@ static void reset_player(void) {
 
 static void slime_init(void) {
     gfx_init(); // Init palette
-    gfx_set_fade(0); // Start fade at black
+    gfx_set_fade(255); // No fade, full brightness
     splash_timer = 0;
-    game_state = STATE_SPLASH;
+    game_state = STATE_PLAY;
     reset_player();
 }
 
