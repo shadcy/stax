@@ -73,6 +73,9 @@ static volatile unsigned char kb_buf[KB_BUF_SIZE];
 static volatile unsigned int  kb_head = 0;
 static volatile unsigned int  kb_tail = 0;
 
+/* ── Continuous Key State ── */
+volatile int kb_state[256] = {0};
+
 /* ── internal: decode scancode; *release set to 1 if this is a break code ─ */
 static char kb_decode_sc(unsigned char sc, int is_break)
 {
@@ -141,6 +144,8 @@ void kb_poll(void)
         char c = kb_decode_sc(sc, is_break);
         if (c == 0) continue;
 
+        kb_state[(unsigned char)c] = is_break ? 0 : 1;
+
         /* Encode: press = c, release = c | 0x80 */
         unsigned char entry = (unsigned char)c;
         if (is_break) entry |= 0x80u;
@@ -185,4 +190,9 @@ int kb_getevent(void)
     if (ev & 0x80u)
         return -(int)(ev & 0x7Fu);   /* release */
     return (int)ev;                  /* press   */
+}
+
+int kb_is_pressed(char key)
+{
+    return kb_state[(unsigned char)key];
 }

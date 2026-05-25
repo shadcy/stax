@@ -10,6 +10,9 @@ void kb_init(void);
 /* Drain PL050 FIFO into ring buffer — call from timer ISR each tick */
 void kb_poll(void);
 
+/* Check if a specific character key is currently physically pressed down */
+int kb_is_pressed(char key);
+
 /* Read next press from ring buffer (skips releases); returns 0 if empty */
 char kb_getc(void);
 
