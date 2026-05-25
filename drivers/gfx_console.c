@@ -19,7 +19,7 @@ static uint16_t fg       = COLOR_WHITE;
 /* blink state — toggled by gfx_tick() */
 static int      cur_on   = 1;
 static int      blink_n  = 0;
-#define BLINK_DIV  5   /* gfx_tick calls per toggle */
+#define BLINK_DIV  50  /* gfx_tick calls per toggle (50 * 10ms = 500ms) */
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
