@@ -73,6 +73,9 @@ static volatile unsigned char kb_buf[KB_BUF_SIZE];
 static volatile unsigned int  kb_head = 0;
 static volatile unsigned int  kb_tail = 0;
 
+/* ── Continuous Key State ── */
+volatile int kb_state[256] = {0};
+
 /* ── internal: decode scancode; *release set to 1 if this is a break code ─ */
 static char kb_decode_sc(unsigned char sc, int is_break)
 {
@@ -125,21 +128,25 @@ void kb_poll(void)
         /* Handle extended codes (E0-prefixed: arrow keys etc.) */
         if (extended) {
             extended = 0;
-            if (!is_break) {   /* only emit on key press, not release */
-                unsigned char entry = 0;
-                if      (sc == 0x75) entry = 0x11u;  /* Up arrow    */
-                else if (sc == 0x72) entry = 0x12u;  /* Down arrow  */
-                /* left (0x6B) / right (0x74) ignored for now */
-                if (entry) {
-                    unsigned int next = (kb_head + 1u) % KB_BUF_SIZE;
-                    if (next != kb_tail) { kb_buf[kb_head] = entry; kb_head = next; }
-                }
+            unsigned char entry = 0;
+            if      (sc == 0x75) entry = KB_UP;
+            else if (sc == 0x72) entry = KB_DOWN;
+            else if (sc == 0x6B) entry = KB_LEFT;
+            else if (sc == 0x74) entry = KB_RIGHT;
+            
+            if (entry) {
+                kb_state[entry] = is_break ? 0 : 1;
+                unsigned char buf_entry = entry | (is_break ? 0x80u : 0);
+                unsigned int next = (kb_head + 1u) % KB_BUF_SIZE;
+                if (next != kb_tail) { kb_buf[kb_head] = buf_entry; kb_head = next; }
             }
             continue;
         }
 
         char c = kb_decode_sc(sc, is_break);
         if (c == 0) continue;
+
+        kb_state[(unsigned char)c] = is_break ? 0 : 1;
 
         /* Encode: press = c, release = c | 0x80 */
         unsigned char entry = (unsigned char)c;
@@ -185,4 +192,9 @@ int kb_getevent(void)
     if (ev & 0x80u)
         return -(int)(ev & 0x7Fu);   /* release */
     return (int)ev;                  /* press   */
+}
+
+int kb_is_pressed(char key)
+{
+    return kb_state[(unsigned char)key];
 }

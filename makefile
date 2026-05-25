@@ -23,6 +23,8 @@ DRIVERS_DIR := drivers
 FS_DIR      := fs
 MM_DIR      := mm
 GAMES_DIR   := games
+ENGINE_DIR  := engine
+GFX_DIR     := gfx
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
@@ -37,7 +39,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -O1                 \
             -g                  \
             -I$(INC_DIR)        \
-            -I$(FS_DIR)
+            -I$(FS_DIR)         \
+            -I$(ENGINE_DIR)
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -74,7 +77,8 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
                 $(BUILD_DIR)/command.o \
-                $(BUILD_DIR)/bmp.o
+                $(BUILD_DIR)/bmp.o \
+                $(BUILD_DIR)/engine2d.o
 
 # FatFs objects
 KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
@@ -85,9 +89,20 @@ KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 
+# Software rendering subsystem
+KERNEL_OBJS  += $(BUILD_DIR)/math_fixed.o \
+                $(BUILD_DIR)/palette.o \
+                $(BUILD_DIR)/backbuffer.o \
+                $(BUILD_DIR)/renderer.o \
+                $(BUILD_DIR)/sprite.o \
+                $(BUILD_DIR)/texture.o \
+                $(BUILD_DIR)/profiler.o
+
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
+KERNEL_OBJS  += $(BUILD_DIR)/test_game.o
+KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 
 # em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
@@ -113,9 +128,13 @@ QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),i
 # =============================================================================
 # Rules
 # =============================================================================
-.PHONY: all clean qemu qemu-gfx debug gdb dump size
+.PHONY: all clean qemu qemu-gfx debug gdb dump size assets
 
-all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
+all: assets $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
+
+assets:
+	@echo "Checking/Building Game Assets..."
+	@python3 scripts/build_assets.py || echo "Warning: Asset build failed (Pillow missing?)"
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -133,6 +152,12 @@ $(OS_BIN): $(KERNEL_BIN)
 		echo "Updating KERNEL.BIN in existing OS Image → $@"; \
 	fi
 	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
+	# =========================================================================
+	# [USER CUSTOMIZATION]: IMPORT IMAGES HERE
+	# To add custom BMP images to the OS disk, uncomment and modify the line below:
+	# @mcopy -o -i $@ MYIMAGE.BMP ::/MYIMAGE.BMP
+	# Note: Image must be a valid .BMP file
+	# =========================================================================
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -179,6 +204,12 @@ $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(ENGINE_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(GFX_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -O2 -ffast-math -c $< -o $@
 
 # DOOM files need special flags and the tios_compat.h included
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)

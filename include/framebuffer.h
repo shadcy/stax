@@ -34,13 +34,13 @@ all the nedded stuff.
 
 /* optional accent colors */
 #define COLOR_ACCENT   0xCE79u   /* silver */
-#define COLOR_SUCCESS  0x07E0u   /* green */
+#define COLOR_SUCCESS  0x7FE4u   /* #23fe7c */
 #define COLOR_WARNING  0xAD55u
-#define COLOR_ERROR    0xFFFFu
+#define COLOR_ERROR    0x49DDu   /* #ee3b48 */
 
-#define COLOR_GREEN    0x07E0u   /* pure green for commands */
+#define COLOR_GREEN    0x7FE4u   /* #23fe7c */
 #define COLOR_YELLOW   0x07FFu   /* keeping old definitions for games */
-#define COLOR_RED      0x001Fu
+#define COLOR_RED      0x49DDu   /* #ee3b48 */
 #define COLOR_BLUE     0xF800u
 #define COLOR_CYAN     0xCE79u
 #define COLOR_MAGENTA  0x07FFu
@@ -57,5 +57,13 @@ void      fb_putpixel(int x, int y, uint16_t col);
 void      fb_fillrect(int x, int y, int w, int h, uint16_t col);
 void      fb_drawline(int x0, int y0, int x1, int y1, uint16_t col);
 uint16_t *fb_get_buffer(void);
+
+/* Double buffering API */
+void      fb_set_double_buffering(int enable);
+void      fb_swap(void);
+
+/* Sprite rendering API */
+void      fb_draw_sprite(int x, int y, int w, int h, const uint16_t *data);
+void      fb_draw_sprite_colorkey(int x, int y, int w, int h, const uint16_t *data, uint16_t colorkey);
 
 #endif
