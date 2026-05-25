@@ -1,6 +1,8 @@
 #include "smc91c111.h"
 #include "console.h"
 
+#define SMC_PACKET_DEBUG 0
+
 static inline void smc_set_bank(uint16_t bank) {
     SMC_BSR = bank;
 }
@@ -15,10 +17,10 @@ static inline void smc_mmu_wait(void) {
 
 void smc_free_tx_packets(void) {
     smc_set_bank(2);
-    while (1) {
-        /* Read 16-bit FIFO port to correctly pop TX FIFO in QEMU */
-        uint16_t fifos = SMC_REG16(0x04);
-        uint8_t tx_pkt = fifos & 0xFF;
+    int iters = 0;
+    while (iters++ < 10) {
+        /* Read 8-bit FIFO port to strictly pop TX FIFO without touching RX FIFO */
+        uint8_t tx_pkt = SMC_REG8(0x04);
         if (tx_pkt & 0x80)
             break;
         
@@ -46,19 +48,44 @@ int smc91c111_tx(const uint8_t *data, size_t len) {
         return -1;
 
     /* Reclaim memory of previously completed packets first */
-    // smc_free_tx_packets();
+    smc_free_tx_packets();
 
+#if SMC_PACKET_DEBUG
     /* Print ethernet frame details */
     if (len >= 14) {
         uint16_t eth_type = (data[12] << 8) | data[13];
-        kprintf("[TX] Len: %d | DST: %02x:%02x:%02x:%02x:%02x:%02x | SRC: %02x:%02x:%02x:%02x:%02x:%02x | Type: 0x%04x\n",
-                (int)len,
-                data[0], data[1], data[2], data[3], data[4], data[5],
-                data[6], data[7], data[8], data[9], data[10], data[11],
-                eth_type);
+        if (eth_type == 0x0800 && len >= 14 + 20) {
+            uint8_t *ip = (uint8_t *)data + 14;
+            uint8_t proto = ip[9];
+            uint8_t ihl = (ip[0] & 0x0f) * 4;
+            uint8_t *src = ip + 12;
+            uint8_t *dst = ip + 16;
+            if (proto == 17 && len >= 14 + ihl + 8) {
+                uint8_t *udp = ip + ihl;
+                uint16_t sport = (udp[0] << 8) | udp[1];
+                uint16_t dport = (udp[2] << 8) | udp[3];
+                kprintf("[TX] IP UDP %d.%d.%d.%d:%u -> %d.%d.%d.%d:%u (eth dst %02x:%02x:%02x:%02x:%02x:%02x)\n",
+                        src[0], src[1], src[2], src[3], sport,
+                        dst[0], dst[1], dst[2], dst[3], dport,
+                        data[0], data[1], data[2], data[3], data[4], data[5]);
+            } else {
+                kprintf("[TX] IP proto:%u %d.%d.%d.%d -> %d.%d.%d.%d (eth dst %02x:%02x:%02x:%02x:%02x:%02x)\n",
+                        proto,
+                        src[0], src[1], src[2], src[3],
+                        dst[0], dst[1], dst[2], dst[3],
+                        data[0], data[1], data[2], data[3], data[4], data[5]);
+            }
+        } else {
+            kprintf("[TX] Len:%d DST:%02x:%02x:%02x:%02x:%02x:%02x SRC:%02x:%02x:%02x:%02x:%02x:%02x Type:0x%04x\n",
+                    (int)len,
+                    data[0], data[1], data[2], data[3], data[4], data[5],
+                    data[6], data[7], data[8], data[9], data[10], data[11],
+                    eth_type);
+        }
     } else {
         kprintf("[TX] Tiny frame len: %d\n", (int)len);
     }
+#endif
 
     int packet_length = (int)len + 6;
     int pages = (packet_length + 255) / 256;
@@ -129,17 +156,42 @@ size_t smc91c111_rx(uint8_t *buf, size_t max_len) {
     SMC_MMU_CMD = MMU_CMD_RELEASE; /* Pop and Release (0x80) */
     smc_mmu_wait();
 
+#if SMC_PACKET_DEBUG
     /* Print ethernet frame details */
     if (payload_len >= 14) {
         uint16_t eth_type = (buf[12] << 8) | buf[13];
-        kprintf("[RX] Len: %d | DST: %02x:%02x:%02x:%02x:%02x:%02x | SRC: %02x:%02x:%02x:%02x:%02x:%02x | Type: 0x%04x\n",
-                (int)payload_len,
-                buf[0], buf[1], buf[2], buf[3], buf[4], buf[5],
-                buf[6], buf[7], buf[8], buf[9], buf[10], buf[11],
-                eth_type);
+        if (eth_type == 0x0800 && payload_len >= 14 + 20) {
+            uint8_t *ip = buf + 14;
+            uint8_t proto = ip[9];
+            uint8_t ihl = (ip[0] & 0x0f) * 4;
+            uint8_t *src = ip + 12;
+            uint8_t *dst = ip + 16;
+            if (proto == 17 && payload_len >= 14 + ihl + 8) {
+                uint8_t *udp = ip + ihl;
+                uint16_t sport = (udp[0] << 8) | udp[1];
+                uint16_t dport = (udp[2] << 8) | udp[3];
+                kprintf("[RX] IP UDP %d.%d.%d.%d:%u -> %d.%d.%d.%d:%u (eth src %02x:%02x:%02x:%02x:%02x:%02x)\n",
+                        src[0], src[1], src[2], src[3], sport,
+                        dst[0], dst[1], dst[2], dst[3], dport,
+                        buf[6], buf[7], buf[8], buf[9], buf[10], buf[11]);
+            } else {
+                kprintf("[RX] IP proto:%u %d.%d.%d.%d -> %d.%d.%d.%d (eth src %02x:%02x:%02x:%02x:%02x:%02x)\n",
+                        proto,
+                        src[0], src[1], src[2], src[3],
+                        dst[0], dst[1], dst[2], dst[3],
+                        buf[6], buf[7], buf[8], buf[9], buf[10], buf[11]);
+            }
+        } else {
+            kprintf("[RX] Len:%d DST:%02x:%02x:%02x:%02x:%02x:%02x SRC:%02x:%02x:%02x:%02x:%02x:%02x Type:0x%04x\n",
+                    (int)payload_len,
+                    buf[0], buf[1], buf[2], buf[3], buf[4], buf[5],
+                    buf[6], buf[7], buf[8], buf[9], buf[10], buf[11],
+                    eth_type);
+        }
     } else {
         kprintf("[RX] Tiny frame len: %d\n", (int)payload_len);
     }
+#endif
 
     (void)status;
     return payload_len;

@@ -98,9 +98,11 @@ void kernel_main(void)
     /* Initialize apps */
     extern void ping_init(void);
     extern void fetch_init(void);
+    extern void ftp_init(void);
     extern void ifconfig_init(void);
     ping_init();
     fetch_init();
+    ftp_init();
     ifconfig_init();
     
     kputs("Type 'help' for available commands\n");

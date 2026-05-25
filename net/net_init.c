@@ -6,6 +6,7 @@
 #include "lwip/ip4_addr.h"
 #include "netif/ethernet.h"
 #include "lwip/etharp.h"
+#include "lwip/prot/ethernet.h"
 #include "../include/gfx_console.h"
 #include "../include/console.h"
 
@@ -62,14 +63,16 @@ int net_poll(void) {
         static int static_arp_done = 0;
         if (!static_arp_done) {
             ip4_addr_t gw_ip, dns_ip;
+            struct eth_addr qemu_gateway_mac = ETH_ADDR(0x52, 0x55, 0x0a, 0x00, 0x02, 0x02);
+
             IP4_ADDR(&gw_ip, 10, 0, 2, 2);
-            struct eth_addr gw_mac = {{0x52, 0x55, 0x0a, 0x00, 0x02, 0x02}};
-            etharp_add_static_entry(&gw_ip, &gw_mac);
-            
+            /* Request ARP resolution for gateway so the correct MAC is learned */
+            etharp_request(&smc_netif, &gw_ip);
+
             IP4_ADDR(&dns_ip, 10, 0, 2, 3);
-            struct eth_addr dns_mac = {{0x52, 0x55, 0x0a, 0x00, 0x02, 0x03}};
-            etharp_add_static_entry(&dns_ip, &dns_mac);
-            
+            /* QEMU slirp answers DNS at 10.0.2.3, but replies come from the gateway MAC. */
+            etharp_add_static_entry(&dns_ip, &qemu_gateway_mac);
+
             static_arp_done = 1;
         }
     }

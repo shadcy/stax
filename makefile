@@ -97,7 +97,8 @@ KERNEL_OBJS  += $(BUILD_DIR)/smc91c111.o \
                 $(BUILD_DIR)/net_init.o \
                 $(BUILD_DIR)/netif_smc.o \
                 $(BUILD_DIR)/ping.o \
-                $(BUILD_DIR)/fetch.o
+                $(BUILD_DIR)/fetch.o \
+                $(BUILD_DIR)/ftp.o
 
 LWIP_DIR := third_party/lwip/src
 LWIP_SRCS := $(wildcard $(LWIP_DIR)/core/*.c) \
@@ -124,7 +125,7 @@ OS_BIN       := os.bin
 # ---------------------------------------------------------------------------
 QEMU         := qemu-system-arm
 QEMU_MACHINE := versatilepb
-QEMU_NET     := -nic user,model=smc91c111
+QEMU_NET     := -nic user,model=smc91c111,hostfwd=tcp::2121-:2121
 QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -nographic -serial mon:stdio
 QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -serial stdio
 

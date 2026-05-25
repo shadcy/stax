@@ -90,16 +90,25 @@ static void do_ping(const ip_addr_t *target_ip) {
 
     /* Synchronous wait loop with timeout (3 seconds) */
     unsigned int start = tick_count;
-    kprintf("Start tick: %u\n", start);
-    int last_print = 0;
+    unsigned int last_print = start;
+    const char spinner[] = {'/', '-', '\\', '|'};
+    int spin_idx = 0;
+    kputs("  "); /* Space for spinner */
     while (!ping_reply_received && (tick_count - start < 300)) {
         net_poll();
-        if (tick_count != last_print) {
-            kprintf("Tick: %u\n", tick_count);
+        if (tick_count - last_print >= 25) {
+            kputc('\b');
+            kputc(spinner[spin_idx]);
+            spin_idx = (spin_idx + 1) % 4;
             last_print = tick_count;
+        }
+        if (kgetc() == '\x1b') {
+            kputs("\n[ping] Canceled by user.\n");
+            break;
         }
         for (volatile int i = 0; i < 15000; i++) __asm__ volatile ("nop");
     }
+    kputs("\n");
 
     if (!ping_reply_received) {
         kputs("Ping timed out.\n");
@@ -147,13 +156,28 @@ void cmd_ping(int argc, char *argv[]) {
     if (err == ERR_OK) {
         do_ping(&target_ip);
     } else if (err == ERR_INPROGRESS) {
-        kputs("Resolving host...\n");
+        kputs("Resolving host...  ");
         unsigned int start = tick_count;
+        unsigned int last_print = start;
+        const char spinner[] = {'/', '-', '\\', '|'};
+        int spin_idx = 0;
         /* 5-second timeout for DNS */
         while (!dns_resolved && !dns_failed && (tick_count - start < 500)) {
             net_poll();
+            if (tick_count - last_print >= 25) {
+                kputc('\b');
+                kputc(spinner[spin_idx]);
+                spin_idx = (spin_idx + 1) % 4;
+                last_print = tick_count;
+            }
+            if (kgetc() == '\x1b') {
+                kputs("\n[dns] Canceled by user.\n");
+                dns_failed = 1;
+                break;
+            }
             for (volatile int i = 0; i < 15000; i++) __asm__ volatile ("nop");
         }
+        kputs("\n");
 
         if (dns_resolved) {
             do_ping(&dns_resolved_ip);
