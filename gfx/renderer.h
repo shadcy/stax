@@ -7,5 +7,5 @@ void gfx8_clear(uint8_t color);
 void gfx8_putpixel(int x, int y, uint8_t color);
 void gfx8_fillrect(int x, int y, int w, int h, uint8_t color);
 void gfx8_drawline(int x0, int y0, int x1, int y1, uint8_t color);
-
+void gfx8_draw_sprite(int x, int y, int w, int h, const uint8_t *data);
 #endif

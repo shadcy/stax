@@ -3,7 +3,7 @@
 #include "keyboard.h"
 #include "console.h"
 #include "font8x16.h"
-
+#include "assets.h"
 /* Physics Constants (16.16 Fixed Point, Pixels per Second) */
 #define GRAVITY     TO_FIX(2000)    /* Extremely snappy gravity */
 #define MAX_FALL    TO_FIX(600)     
@@ -47,6 +47,7 @@ typedef struct {
 } Slime;
 
 typedef enum {
+    STATE_SPLASH,
     STATE_TITLE,
     STATE_PLAY,
     STATE_GAMEOVER,
@@ -54,8 +55,14 @@ typedef enum {
 } GameState;
 
 static Slime player;
-static GameState game_state = STATE_TITLE;
+static GameState game_state = STATE_SPLASH;
 static int debug_mode = 0;
+static int splash_timer = 0;
+static int fade_level = 0;
+static int menu_selection = 0; // 0=Play, 1=Debug, 2=Exit
+static int up_pressed = 0;
+static int down_pressed = 0;
+static int select_pressed = 0;
 
 static void draw_text(int x_pos, int y_pos, const char *str, uint8_t color) {
     while (*str) {
@@ -97,6 +104,9 @@ static void reset_player(void) {
 
 static void slime_init(void) {
     gfx_init(); // Init palette
+    gfx_set_fade(0); // Start fade at black
+    splash_timer = 0;
+    game_state = STATE_SPLASH;
     reset_player();
 }
 
@@ -129,11 +139,50 @@ static int is_portal(int px, int py) {
 }
 
 static void slime_update(int dt_ms) {
-    if (game_state == STATE_TITLE) {
-        if (kb_is_pressed(' ') || kb_is_pressed('\n')) {
-            reset_player();
-            game_state = STATE_PLAY;
+    if (game_state == STATE_SPLASH) {
+        splash_timer += dt_ms;
+        if (splash_timer < 1000) {
+            fade_level = (splash_timer * 255) / 1000;
+        } else if (splash_timer < 3000) {
+            fade_level = 255;
+        } else if (splash_timer < 4000) {
+            fade_level = 255 - ((splash_timer - 3000) * 255) / 1000;
+        } else {
+            fade_level = 255; // Restore
+            game_state = STATE_TITLE;
         }
+        if (fade_level < 0) fade_level = 0;
+        if (fade_level > 255) fade_level = 255;
+        gfx_set_fade(fade_level);
+        return;
+    }
+
+    if (game_state == STATE_TITLE) {
+        int current_up = kb_is_pressed('w') || kb_is_pressed('W') || kb_is_pressed(0x48);
+        int current_down = kb_is_pressed('s') || kb_is_pressed('S') || kb_is_pressed(0x50);
+        int current_select = kb_is_pressed(' ') || kb_is_pressed('\n');
+        
+        if (current_up && !up_pressed) {
+            menu_selection--;
+            if (menu_selection < 0) menu_selection = 1; /* only Play and Debug for now */
+        }
+        if (current_down && !down_pressed) {
+            menu_selection++;
+            if (menu_selection > 1) menu_selection = 0;
+        }
+        
+        if (current_select && !select_pressed) {
+            if (menu_selection == 0) {
+                reset_player();
+                game_state = STATE_PLAY;
+            } else if (menu_selection == 1) {
+                debug_mode = !debug_mode;
+            }
+        }
+        
+        up_pressed = current_up;
+        down_pressed = current_down;
+        select_pressed = current_select;
         return;
     }
     
@@ -225,10 +274,22 @@ static void slime_update(int dt_ms) {
 static void slime_draw(void) {
     gfx8_clear(C_BG);
     
+    if (game_state == STATE_SPLASH) {
+        int x = (320 - spr_tos_engine_width) / 2;
+        int y = (200 - spr_tos_engine_height) / 2;
+        gfx8_draw_sprite(x, y, spr_tos_engine_width, spr_tos_engine_height, spr_tos_engine_data);
+        gfx_present();
+        return;
+    }
+    
     if (game_state == STATE_TITLE) {
-        draw_text(110, 80, "SLIME", C_SLIME);
-        draw_text(110, 96, "ESCAPE", C_HUD);
-        draw_text(100, 130, "[ SPACE ]", 255);
+        draw_text(110, 60, "SLIME", C_SLIME);
+        draw_text(110, 76, "ESCAPE", C_HUD);
+        
+        draw_text(120, 110, "PLAY GAME", menu_selection == 0 ? C_HUD : C_WALL);
+        draw_text(120, 130, debug_mode ? "DEBUG: ON" : "DEBUG: OFF", menu_selection == 1 ? C_HUD : C_WALL);
+        
+        draw_text(105, 110 + (menu_selection * 20), ">", C_HUD);
         gfx_present();
         return;
     }
@@ -259,8 +320,7 @@ static void slime_draw(void) {
     int px = FROM_FIX(player.x);
     int py = FROM_FIX(player.y);
     if (game_state == STATE_PLAY) {
-        gfx8_fillrect(px, py, p_size, p_size, C_SLIME);
-        gfx8_fillrect(px + 2, py + 2, 4, 4, 255); // White eye
+        gfx8_draw_sprite(px - 4, py - 4, spr_slime_width, spr_slime_height, spr_slime_data);
     } else {
         gfx8_fillrect(px, py + 5, 2, 2, C_SLIME);
         gfx8_fillrect(px + 5, py + 6, 2, 2, C_SLIME);

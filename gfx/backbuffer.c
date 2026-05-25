@@ -19,10 +19,10 @@ void gfx_present(void) {
     
     for (int y = 0; y < GFX_HEIGHT; y++) {
         for (int x = 0; x < GFX_WIDTH; x += 4) {
-            uint16_t c1 = gfx_palette[*src++];
-            uint16_t c2 = gfx_palette[*src++];
-            uint16_t c3 = gfx_palette[*src++];
-            uint16_t c4 = gfx_palette[*src++];
+            uint16_t c1 = gfx_faded_palette[*src++];
+            uint16_t c2 = gfx_faded_palette[*src++];
+            uint16_t c3 = gfx_faded_palette[*src++];
+            uint16_t c4 = gfx_faded_palette[*src++];
             
             uint32_t p1 = ((uint32_t)c1 << 16) | c1;
             uint32_t p2 = ((uint32_t)c2 << 16) | c2;
