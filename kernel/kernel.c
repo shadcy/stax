@@ -28,9 +28,11 @@ static void timer_isr(void)
 {
     tick_count++;
     timer_ack();
-    kb_poll();   /* drain PL050 FIFO into ring buffer every 10 ms */
-    /* Trigger round-robin scheduler on every timer tick */
-    need_schedule = 1;
+    if ((tick_count % 10) == 0) {
+        kb_poll();   /* drain PL050 FIFO into ring buffer every 10 ms */
+        /* Trigger round-robin scheduler on every 10ms tick */
+        need_schedule = 1;
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -75,7 +77,7 @@ void kernel_main(void)
 
     /* ---- Phase 6b: Timer ---- */
     irq_register(VIC_TIMER0_INT, timer_isr);
-    timer_init(10000);        /* 10 ms = 100 Hz */
+    timer_init(1000);        /* 1 ms = 1000 Hz */
 
     irq_enable();
 
@@ -84,7 +86,7 @@ void kernel_main(void)
     kputs("========================================\n");
     kputs("Status : running\n");
     kputs("IRQs   : enabled\n");
-    kputs("Timer  : SP804 Timer0, 100 Hz (10 ms ticks)\n");
+    kputs("Timer  : SP804 Timer0, 1000 Hz (1 ms ticks)\n");
     kputs("Heap   : 64 KB bump allocator with free list\n");
     kputs("FS     : FAT12/16 driver (test image)\n");
     kputs("Display: 640x480 framebuffer (80x60 text)\n");
