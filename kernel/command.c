@@ -36,8 +36,7 @@ static const command_t commands[] = {
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
     {"game",    "Play a game (use --doom, --doom2, --snake)", cmd_game},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
-    {"test",    "Run tests (use --fb)", cmd_test},
-    {"testgame", "Run the 2D Engine Test game", cmd_test_game},
+    {"test",    "Run tests (use --fb, --game)", cmd_test},
     {NULL,      NULL,                                NULL}
 };
 
@@ -250,6 +249,9 @@ void cmd_test(int argc, char *argv[])
     if (argc > 1) {
         if (strcmp(argv[1], "--fb") == 0) {
             cmd_fbtest(argc, argv);
+            return;
+        } else if (strcmp(argv[1], "--game") == 0) {
+            cmd_test_game(argc, argv);
             return;
         } else {
             kputs("Unknown test option.\n");
