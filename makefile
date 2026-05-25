@@ -128,9 +128,13 @@ QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),i
 # =============================================================================
 # Rules
 # =============================================================================
-.PHONY: all clean qemu qemu-gfx debug gdb dump size
+.PHONY: all clean qemu qemu-gfx debug gdb dump size assets
 
-all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
+all: assets $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
+
+assets:
+	@echo "Checking/Building Game Assets..."
+	@python3 scripts/build_assets.py || echo "Warning: Asset build failed (Pillow missing?)"
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -148,6 +152,12 @@ $(OS_BIN): $(KERNEL_BIN)
 		echo "Updating KERNEL.BIN in existing OS Image → $@"; \
 	fi
 	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
+	# =========================================================================
+	# [USER CUSTOMIZATION]: IMPORT IMAGES HERE
+	# To add custom BMP images to the OS disk, uncomment and modify the line below:
+	# @mcopy -o -i $@ MYIMAGE.BMP ::/MYIMAGE.BMP
+	# Note: Image must be a valid .BMP file
+	# =========================================================================
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"

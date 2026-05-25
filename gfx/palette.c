@@ -1,6 +1,7 @@
 #include "palette.h"
 
 uint16_t gfx_palette[256];
+uint16_t gfx_faded_palette[256];
 
 static inline uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
     return (uint16_t)(((b & 0xF8u) << 8) | ((g & 0xFCu) << 3) | (r >> 3));
@@ -53,4 +54,29 @@ void gfx_palette_init(void) {
     
     /* Pure White */
     gfx_palette[255] = rgb565(255, 255, 255);
+    
+    gfx_set_fade(255);
+}
+
+void gfx_set_fade(uint8_t level) {
+    if (level == 255) {
+        for (int i = 0; i < 256; i++) {
+            gfx_faded_palette[i] = gfx_palette[i];
+        }
+        return;
+    }
+    
+    for (int i = 0; i < 256; i++) {
+        uint16_t c = gfx_palette[i];
+        /* Extract 5-6-5 BGR components */
+        uint8_t b = (c >> 11) & 0x1F;
+        uint8_t g = (c >> 5) & 0x3F;
+        uint8_t r = c & 0x1F;
+        
+        b = (b * level) / 255;
+        g = (g * level) / 255;
+        r = (r * level) / 255;
+        
+        gfx_faded_palette[i] = (b << 11) | (g << 5) | r;
+    }
 }
