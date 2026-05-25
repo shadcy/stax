@@ -34,7 +34,8 @@ static const command_t commands[] = {
     {"cat",     "Print file contents", cmd_cat},
     {"mkdir",   "Create dir", cmd_mkdir},
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
-    {"game",    "Play a game (use --doom, --doom2, --snake)", cmd_game},
+    {"game",    "Play a game (use --doom, --doom2, --snake, --slime)", cmd_game},
+    {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
     {"test",    "Run tests (use --fb, --game)", cmd_test},
     {NULL,      NULL,                                NULL}
@@ -55,11 +56,16 @@ void cmd_game(int argc, char *argv[])
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Graphical Snake\n");
+        
+        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
+        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--slime  ");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Slime Escape\n");
         return;
     }
     if (strcmp(argv[1], "--doom") == 0) cmd_doomgfx(argc, argv);
     else if (strcmp(argv[1], "--doom2") == 0) cmd_doom2gfx(argc, argv);
     else if (strcmp(argv[1], "--snake") == 0) cmd_snake(argc, argv);
+    else if (strcmp(argv[1], "--slime") == 0) cmd_slime(argc, argv);
     else kputs("Unknown game.\n");
 }
 

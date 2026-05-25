@@ -128,15 +128,17 @@ void kb_poll(void)
         /* Handle extended codes (E0-prefixed: arrow keys etc.) */
         if (extended) {
             extended = 0;
-            if (!is_break) {   /* only emit on key press, not release */
-                unsigned char entry = 0;
-                if      (sc == 0x75) entry = 0x11u;  /* Up arrow    */
-                else if (sc == 0x72) entry = 0x12u;  /* Down arrow  */
-                /* left (0x6B) / right (0x74) ignored for now */
-                if (entry) {
-                    unsigned int next = (kb_head + 1u) % KB_BUF_SIZE;
-                    if (next != kb_tail) { kb_buf[kb_head] = entry; kb_head = next; }
-                }
+            unsigned char entry = 0;
+            if      (sc == 0x75) entry = KB_UP;
+            else if (sc == 0x72) entry = KB_DOWN;
+            else if (sc == 0x6B) entry = KB_LEFT;
+            else if (sc == 0x74) entry = KB_RIGHT;
+            
+            if (entry) {
+                kb_state[entry] = is_break ? 0 : 1;
+                unsigned char buf_entry = entry | (is_break ? 0x80u : 0);
+                unsigned int next = (kb_head + 1u) % KB_BUF_SIZE;
+                if (next != kb_tail) { kb_buf[kb_head] = buf_entry; kb_head = next; }
             }
             continue;
         }
