@@ -23,6 +23,7 @@ DRIVERS_DIR := drivers
 FS_DIR      := fs
 MM_DIR      := mm
 GAMES_DIR   := games
+ENGINE_DIR  := engine
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
@@ -37,7 +38,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -O1                 \
             -g                  \
             -I$(INC_DIR)        \
-            -I$(FS_DIR)
+            -I$(FS_DIR)         \
+            -I$(ENGINE_DIR)
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -179,6 +181,9 @@ $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(ENGINE_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # DOOM files need special flags and the tios_compat.h included
