@@ -46,5 +46,6 @@ void cmd_mkdir(int argc, char *argv[]);
 void cmd_nano(int argc, char *argv[]);
 void cmd_game(int argc, char *argv[]);
 void cmd_test_game(int argc, char *argv[]);
+void cmd_slime(int argc, char *argv[]);
 
 #endif
