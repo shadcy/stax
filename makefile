@@ -88,8 +88,7 @@ KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 
 # Games
-KERNEL_OBJS  += $(BUILD_DIR)/snake.o
-KERNEL_OBJS  += $(BUILD_DIR)/doom.o
+
 
 # Networking
 KERNEL_OBJS  += $(BUILD_DIR)/smc91c111.o \
@@ -108,11 +107,7 @@ LWIP_OBJS := $(patsubst $(LWIP_DIR)/%.c, $(BUILD_DIR)/lwip/%.o, $(LWIP_SRCS))
 KERNEL_OBJS  += $(LWIP_OBJS)
 
 # em-doom objects
-DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
-# Filter out the original platform files, we use tios_platform.c instead
-DOOM_SRCS := $(filter-out %/i_main.c %/i_system.c %/i_sound.c %/i_video.c %/i_net.c, $(DOOM_SRCS))
-DOOM_OBJS := $(patsubst $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c, $(BUILD_DIR)/%.o, $(DOOM_SRCS))
-KERNEL_OBJS  += $(DOOM_OBJS)
+
 KERNEL_LD_IN := linker.ld.in
 KERNEL_LD    := $(BUILD_DIR)/linker.ld
 KERNEL_ELF   := $(BUILD_DIR)/kernel.elf
@@ -145,8 +140,6 @@ $(OS_BIN): $(KERNEL_BIN)
 		echo "Creating new FAT16 OS Image → $@"; \
 		dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null; \
 		mkfs.vfat -F 16 $@; \
-		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
-		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
 		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
 	else \
 		echo "Updating KERNEL.BIN in existing OS Image → $@"; \
@@ -196,8 +189,6 @@ $(BUILD_DIR)/%.o: $(FS_DIR)/fatfs/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: drivers/net/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -212,9 +203,6 @@ $(BUILD_DIR)/lwip/%.o: $(LWIP_DIR)/%.c | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# DOOM files need special flags and the tios_compat.h included
-$(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -w -O2 -include $(GAMES_DIR)/em-doom/linuxdoom-1.10/tios_compat.h -c $< -o $@
 
 # ---------------------------------------------------------------------------
 # Kernel Linking
@@ -239,7 +227,6 @@ qemu: $(BOOT_BIN) $(OS_BIN)
 
 qemu-gfx: $(BOOT_BIN) $(OS_BIN)
 	@echo "Booting TIOS in QEMU with graphics (Ctrl-C to quit)..."
-	@echo "Use 'game --doom' command to run graphical DOOM"
 	$(QEMU) $(QEMU_GFX_FLAGS)
 
 debug: $(BOOT_BIN) $(OS_BIN)

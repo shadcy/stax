@@ -9,8 +9,6 @@
 #include "fat.h"
 #include "scheduler.h"
 #include "timer.h"
-#include "snake.h"
-#include "doom.h"
 #include "framebuffer.h"
 #include "bmp.h"
 #include "gfx_console.h"
@@ -42,28 +40,7 @@ int command_register(const char *name, const char *desc, cmd_func_t func) {
     return 0;
 }
 
-void cmd_game(int argc, char *argv[])
-{
-    if (argc < 2) {
-        kputs("Usage:\n");
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
-        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom   ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM Graphics\n");
-        
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
-        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom2  ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM 2 Graphics\n");
-        
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
-        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Graphical Snake\n");
-        return;
-    }
-    if (strcmp(argv[1], "--doom") == 0) cmd_doomgfx(argc, argv);
-    else if (strcmp(argv[1], "--doom2") == 0) cmd_doom2gfx(argc, argv);
-    else if (strcmp(argv[1], "--snake") == 0) cmd_snake(argc, argv);
-    else kputs("Unknown game.\n");
-}
+
 
 /* ------------------------------------------------------------------------
  * Command Parsing and Execution
@@ -462,101 +439,13 @@ void command_init(void)
     command_register("cat",     "Print file contents", cmd_cat);
     command_register("mkdir",   "Create dir", cmd_mkdir);
     command_register("nano",    "Edit text file (ESC to save & quit)", cmd_nano);
-    command_register("game",    "Play a game (use --doom, --doom2, --snake)", cmd_game);
     command_register("read",    "Read info (use --mem, --img <img>)", cmd_read);
     command_register("test",    "Run tests (use --fb)", cmd_test);
     
     kputs("Command system initialized\n");
 }
 
-/* ============================================================================
- * cmd_snake — launch the Snake game
- * ============================================================================ */
-void cmd_snake(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    kputs("Starting Snake...\n");
-    snake_run();
-    
-    gfx_console_init();
-    
-    kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
-    kputs("========================================\n");
-    kputs("Type 'help' for available commands\n");
-}
 
-/* ============================================================================
- * cmd_doomgfx — launch the graphical DOOM game
- * ============================================================================ */
-void cmd_doomgfx(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    FILINFO fno;
-    if (f_stat("DOOM.WAD", &fno) != FR_OK) {
-        if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
-            kputs("DOOM.WAD is in the root directory; my bad dawg i am lazy to build a root commands infra > ");
-            char ans = kgetc();
-            kputc(ans); kputc('\n');
-            if (ans == 'y' || ans == 'Y') {
-                f_chdir("/");
-            } else {
-                kputs("Aborted.\n");
-                return;
-            }
-        } else {
-            kputs("Error: DOOM.WAD not found.\n");
-            return;
-        }
-    }
-
-    kputs("Starting DOOM (em-doom)...\n");
-    doom_engine_run();
-    
-    /* Re-initialize console to clear screen and restore the shell layout */
-    gfx_console_init();
-    
-    kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
-    kputs("========================================\n");
-    kputs("Type 'help' for available commands\n");
-}
-
-/* ============================================================================
- * cmd_doom2gfx — launch the graphical DOOM 2 game
- * ============================================================================ */
-void cmd_doom2gfx(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    FILINFO fno;
-    if (f_stat("DOOM2.WAD", &fno) != FR_OK) {
-        if (f_stat("/DOOM2.WAD", &fno) == FR_OK) {
-            kputs("DOOM2.WAD is in the root dir. Change dir my dawg!> ");
-            char ans = kgetc();
-            kputc(ans); kputc('\n');
-            if (ans == 'y' || ans == 'Y') {
-                f_chdir("/");
-            } else {
-                kputs("Aborted.\n");
-                return;
-            }
-        } else {
-            kputs("Error: DOOM2.WAD not found.\n");
-            return;
-        }
-    }
-
-    kputs("Starting DOOM 2 (em-doom)...\n");
-    doom2_engine_run();
-    
-    /* Re-initialize console to clear screen and restore the shell layout */
-    gfx_console_init();
-    
-    kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
-    kputs("========================================\n");
-    kputs("Type 'help' for available commands\n");
-}
 
 /* ============================================================================
  * cmd_fbtest — test framebuffer

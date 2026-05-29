@@ -49,15 +49,31 @@ void kput_uint(unsigned int n) {
 }
 
 #include <stdarg.h>
-extern int tios_vsprintf(char *str, const char *format, va_list ap);
-
 void kprintf(const char *format, ...) {
-    char buf[256];
     va_list args;
     va_start(args, format);
-    tios_vsprintf(buf, format, args);
+    
+    while (*format) {
+        if (*format == '%') {
+            format++;
+            if (*format == 's') {
+                char *s = va_arg(args, char *);
+                if (s) kputs(s);
+            } else if (*format == 'd' || *format == 'u' || *format == 'x') {
+                unsigned int n = va_arg(args, unsigned int);
+                kput_uint(n);
+            } else if (*format == 'c') {
+                char c = (char)va_arg(args, int);
+                kputc(c);
+            } else if (*format == '%') {
+                kputc('%');
+            }
+        } else {
+            kputc(*format);
+        }
+        format++;
+    }
     va_end(args);
-    kputs(buf);
 }
 
 char kgetc(void)
