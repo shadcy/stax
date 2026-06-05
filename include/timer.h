@@ -34,8 +34,9 @@
 #define TIMER_CTRL_ENABLE      (1U << 7)
 #define TIMER_CTRL_PERIODIC    (1U << 6)
 #define TIMER_CTRL_INTEN       (1U << 5)
-#define TIMER_CTRL_32BIT       (1U << 2)
 #define TIMER_CTRL_PRESCALE_1  (0U << 2)  /* actually bit 3:2, 00 = /1, 01 = /16, 10 = /256 */
+#define TIMER_CTRL_32BIT       (1U << 1)
+#define TIMER_CTRL_ONESHOT     (1U << 0)
 
 /* Reference clock frequency (Hz) */
 #define TIMER_CLK_HZ  1000000UL

@@ -152,6 +152,13 @@ void kernel_main(void)
         if (c == 0) {
             for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
             gfx_tick();
+            
+            static int loop_cnt = 0;
+            if (++loop_cnt % 100 == 0) {
+                extern volatile unsigned int tick_count;
+                kprintf("[LOOP] tick_count = %u\n", tick_count);
+            }
+            
             if (net_poll()) REDRAW_LINE();
             continue;
         }

@@ -9,7 +9,6 @@ static inline void smc_set_bank(uint16_t bank) {
 
 static inline void smc_mmu_wait(void) {
     smc_set_bank(2);
-    /* Poll bit 0 (BUSY) of SMC_MMU_CMD until it becomes 0 (idle) */
     while (SMC_MMU_CMD & 0x01) {
         __asm__ volatile ("nop");
     }
@@ -17,16 +16,15 @@ static inline void smc_mmu_wait(void) {
 
 void smc_free_tx_packets(void) {
     smc_set_bank(2);
-    int iters = 0;
-    while (iters++ < 10) {
-        /* Read 8-bit FIFO port to strictly pop TX FIFO without touching RX FIFO */
-        uint8_t tx_pkt = SMC_REG8(0x04);
+    /* Drain the TX-done FIFO. MMU_CMD_REMOVE (0x60) pops the top entry
+     * from the TX completion FIFO AND frees the associated memory page.
+     * QEMU executes it synchronously so no smc_mmu_wait() is needed. */
+    for (int i = 0; i < 8; i++) {
+        uint8_t tx_pkt = SMC_REG8(0x04);  /* peek TX-done FIFO */
         if (tx_pkt & 0x80)
-            break;
-        
-        SMC_PKT_NUM = tx_pkt;
-        SMC_MMU_CMD = MMU_CMD_FREEPKT; /* Release specific packet (0xA0) */
-        smc_mmu_wait();
+            break;                         /* FIFO empty */
+        (void)tx_pkt;
+        SMC_MMU_CMD = MMU_CMD_REMOVE;      /* pop + free top of TX done FIFO */
     }
 }
 
@@ -47,7 +45,7 @@ int smc91c111_tx(const uint8_t *data, size_t len) {
     if (len > 1536 || len == 0)
         return -1;
 
-    /* Reclaim memory of previously completed packets first */
+    /* Aggressively reclaim all completed TX packets before attempting alloc */
     smc_free_tx_packets();
 
 #if SMC_PACKET_DEBUG
@@ -90,14 +88,17 @@ int smc91c111_tx(const uint8_t *data, size_t len) {
     int packet_length = (int)len + 6;
     int pages = (packet_length + 255) / 256;
 
+    /* Attempt a single allocation. smc_free_tx_packets() (called above)   *
+     * already drained all completed TX buffers using MMU_CMD_REMOVE, so   *
+     * if this still fails, we return immediately and rely on lwIP's own    *
+     * retransmission timer to retry — no blocking spin here.              */
     smc_set_bank(2);
     SMC_MMU_CMD = (uint8_t)(MMU_CMD_ALLOC_TX | pages);
     smc_mmu_wait();
 
     uint8_t pkt_num = SMC_ARR;
     if (pkt_num & SMC_ARR_FAILED) {
-        kputs("[TX] MMU Allocation failed!\n");
-        return -1;
+        return -1;  /* silent: lwIP will retransmit via its timer */
     }
 
     SMC_PKT_NUM = pkt_num;
@@ -136,13 +137,13 @@ size_t smc91c111_rx(uint8_t *buf, size_t max_len) {
     uint16_t status = SMC_DATA;
     uint16_t len = SMC_DATA & 0x7FF;
 
-    if (len < 6) {
+    if (len == 0) {
         SMC_MMU_CMD = MMU_CMD_RELEASE; /* Pop and Release (0x80) */
         smc_mmu_wait();
         return 0;
     }
 
-    size_t payload_len = (size_t)len - 6;
+    size_t payload_len = (size_t)len;
     if (payload_len > max_len)
         payload_len = max_len;
 

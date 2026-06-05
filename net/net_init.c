@@ -19,9 +19,9 @@ void net_init(void) {
     lwip_init();
 
     ip4_addr_t ipaddr, netmask, gw;
-    IP4_ADDR(&ipaddr, 0, 0, 0, 0);
-    IP4_ADDR(&netmask, 0, 0, 0, 0);
-    IP4_ADDR(&gw, 0, 0, 0, 0);
+    IP4_ADDR(&ipaddr, 10, 0, 2, 15);
+    IP4_ADDR(&netmask, 255, 255, 255, 0);
+    IP4_ADDR(&gw, 10, 0, 2, 2);
 
     if (netif_add(&smc_netif, &ipaddr, &netmask, &gw, NULL, smc_netif_init, ethernet_input) == NULL) {
         kputs("net: failed to add smc0 interface\n");
@@ -30,10 +30,6 @@ void net_init(void) {
     netif_set_default(&smc_netif);
     netif_set_link_up(&smc_netif);
     netif_set_up(&smc_netif);
-
-    if (dhcp_start(&smc_netif) != ERR_OK) {
-        kputs("net: DHCP start failed\n");
-    }
 }
 
 static void net_ensure_dns(void) {
@@ -49,11 +45,18 @@ int net_poll(void) {
     smc_netif_poll(&smc_netif);
     sys_check_timeouts();
     
+    static u32_t last_print = 0;
+    u32_t now = sys_now();
+    if (now - last_print >= 1000) {
+        last_print = now;
+        kprintf("[NET] sys_now = %u\n", now);
+    }
+    
     int ret = 0;
     if (!ip4_addr_isany(netif_ip4_addr(&smc_netif))) {
         static int ip_printed = 0;
         if (!ip_printed) {
-            kprintf("\n[NET] DHCP Success! IP: %s\n", ip4addr_ntoa(netif_ip4_addr(&smc_netif)));
+            kprintf("\n[NET] Network Ready! IP: %s\n", ip4addr_ntoa(netif_ip4_addr(&smc_netif)));
             ip_printed = 1;
             ret = 1;
         }

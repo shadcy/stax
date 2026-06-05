@@ -57,7 +57,7 @@ SECTIONS
     /* ---- Heap (grows upward from end of BSS) ---- */
     . = ALIGN(4);
     __heap_start = .;
-    . += 65536;               /* 64 KB heap — must match HEAP_SIZE in heap.h */
+    . += 1048576;               /* 1 MB heap — must match HEAP_SIZE in heap.h */
     __heap_end = .;
 
     /* ---- Stack (allocated ABOVE heap, grows downward) ---- */

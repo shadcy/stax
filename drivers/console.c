@@ -13,6 +13,16 @@
 #define UART_FR_TXFF (1 << 5)
 #define UART_FR_RXFE (1 << 4)
 
+#define UART_CR     (*(volatile unsigned int *)(UART0_BASE + 0x030))
+#define UART_CR_UARTEN (1 << 0)
+#define UART_CR_TXE    (1 << 8)
+#define UART_CR_RXE    (1 << 9)
+
+void console_init(void) {
+    /* Enable UART, TX, and RX */
+    UART_CR |= (UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE);
+}
+
 void kputc(char c)
 {
     /* Output to UART */
@@ -48,6 +58,18 @@ void kput_uint(unsigned int n) {
     }
 }
 
+void kput_hex(unsigned int n, int width) {
+    char buf[16];
+    int i = 0;
+    do {
+        int rem = n % 16;
+        buf[i++] = (rem < 10) ? (rem + '0') : (rem - 10 + 'a');
+        n /= 16;
+    } while (n > 0);
+    while (i < width) buf[i++] = '0';
+    while (i > 0) kputc(buf[--i]);
+}
+
 #include <stdarg.h>
 void kprintf(const char *format, ...) {
     va_list args;
@@ -56,17 +78,32 @@ void kprintf(const char *format, ...) {
     while (*format) {
         if (*format == '%') {
             format++;
+            int width = 0;
+            if (*format == '0') {
+                format++;
+                while (*format >= '0' && *format <= '9') {
+                    width = width * 10 + (*format - '0');
+                    format++;
+                }
+            }
             if (*format == 's') {
                 char *s = va_arg(args, char *);
                 if (s) kputs(s);
-            } else if (*format == 'd' || *format == 'u' || *format == 'x') {
+            } else if (*format == 'd' || *format == 'u') {
                 unsigned int n = va_arg(args, unsigned int);
                 kput_uint(n);
+            } else if (*format == 'x' || *format == 'X') {
+                unsigned int n = va_arg(args, unsigned int);
+                kput_hex(n, width);
             } else if (*format == 'c') {
                 char c = (char)va_arg(args, int);
                 kputc(c);
             } else if (*format == '%') {
                 kputc('%');
+            } else {
+                kputc('%');
+                if (width) kputc('0');
+                kputc(*format);
             }
         } else {
             kputc(*format);
@@ -78,11 +115,12 @@ void kprintf(const char *format, ...) {
 
 char kgetc(void)
 {
-    /* 1. Check UART RX first (works for: make qemu / serial terminal) */
-    if (!(UART_FR & UART_FR_RXFE))
-        return (char)UART_DR;
-
-    /* 2. Fall back to PL050 PS/2 keyboard (works for: make qemu-gfx window) */
+    // UART input
+    if (!(UART_FR & UART_FR_RXFE)) {
+        char c = (char)UART_DR;
+        if (c != 0) return c;
+    }
+    // PS/2 keyboard fallback
     return kb_getc();
 }
 
@@ -90,26 +128,22 @@ void kgets(char *buf, int max_len)
 {
     int i = 0;
     char c;
-    volatile int timeout;
-    
+
     /* Validate input parameters */
     if (!buf || max_len <= 0) return;
-    
+
     while (i < max_len - 1) {
-        /* Wait for character with timeout */
-        timeout = 1000000;  /* Large timeout value */
-        while (timeout-- && (UART_FR & UART_FR_RXFE)) {
-            __asm__ volatile ("nop");
-        }
-        
-        if (timeout <= 0) {
-            /* Timeout - just continue loop */
+        /* Poll keyboard + UART; also keep network stack alive */
+        extern int net_poll(void);
+        net_poll();
+
+        c = kgetc();
+        if (c == 0) {
+            /* No character yet — spin briefly and retry */
+            for (volatile int k = 0; k < 50000; k++) __asm__ volatile ("nop");
             continue;
         }
-        
-        c = kgetc();
-        if (c == 0) continue;  /* No valid character */
-        
+
         /* Handle backspace */
         if (c == '\b' || c == 127) {
             if (i > 0) {
@@ -120,21 +154,21 @@ void kgets(char *buf, int max_len)
             }
             continue;
         }
-        
+
         /* Handle enter/return */
         if (c == '\r' || c == '\n') {
             buf[i] = '\0';
             kputc('\n');
             return;
         }
-        
+
         /* Only store printable characters */
         if (c >= 32 && c <= 126) {
             kputc(c);
             buf[i++] = c;
         }
     }
-    
+
     buf[max_len - 1] = '\0';
     kputc('\n');
 }

@@ -39,6 +39,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -I$(INC_DIR)        \
             -I$(FS_DIR)         \
             -Ithird_party/lwip/src/include \
+            -Ithird_party/bearssl/inc \
+            -Ithird_party/bearssl/src \
             -Inet
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
@@ -106,6 +108,12 @@ LWIP_SRCS := $(wildcard $(LWIP_DIR)/core/*.c) \
 LWIP_OBJS := $(patsubst $(LWIP_DIR)/%.c, $(BUILD_DIR)/lwip/%.o, $(LWIP_SRCS))
 KERNEL_OBJS  += $(LWIP_OBJS)
 
+BEARSSL_DIR := third_party/bearssl/src
+BEARSSL_SRCS := $(wildcard $(BEARSSL_DIR)/*/*.c) $(wildcard $(BEARSSL_DIR)/*.c)
+BEARSSL_OBJS := $(patsubst $(BEARSSL_DIR)/%.c, $(BUILD_DIR)/bearssl/%.o, $(BEARSSL_SRCS))
+KERNEL_OBJS  += $(BEARSSL_OBJS)
+
+
 # em-doom objects
 
 KERNEL_LD_IN := linker.ld.in
@@ -120,9 +128,9 @@ OS_BIN       := os.bin
 # ---------------------------------------------------------------------------
 QEMU         := qemu-system-arm
 QEMU_MACHINE := versatilepb
-QEMU_NET     := -nic user,model=smc91c111,hostfwd=tcp::2121-:2121
+QEMU_NET     := -nic user,model=smc91c111,hostfwd=tcp::2122-:2121
 QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -nographic -serial mon:stdio
-QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -serial stdio
+QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -serial stdio -monitor telnet:127.0.0.1:1234,server,nowait
 
 # =============================================================================
 # Rules
@@ -200,6 +208,10 @@ $(BUILD_DIR)/%.o: apps/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/lwip/%.o: $(LWIP_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/bearssl/%.o: $(BEARSSL_DIR)/%.c | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

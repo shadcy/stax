@@ -48,9 +48,12 @@ err_t smc_netif_init(struct netif *netif) {
 }
 
 void smc_netif_poll(struct netif *netif) {
-    uint8_t rx_buf[1536];
+    uint8_t rx_buf[1536] __attribute__((aligned(4)));
     size_t len;
-    while ((len = smc91c111_rx(rx_buf, sizeof(rx_buf))) > 0) {
+    /* Process at most 4 packets per poll to avoid starving the main loop */
+    for (int pkt = 0; pkt < 4; pkt++) {
+        len = smc91c111_rx(rx_buf, sizeof(rx_buf));
+        if (len == 0) break;
         /* Allocate len + 2 to allow shifting the payload for 4-byte IP header alignment */
         struct pbuf *p = pbuf_alloc(PBUF_RAW, len + 2, PBUF_POOL);
         if (p) {

@@ -34,7 +34,7 @@ SECTIONS
     } > RAM
     . = ALIGN(4);
     __heap_start = .;
-    . += 65536;
+    . += 1048576;
     __heap_end = .;
     . = ALIGN(8);
     . += 8192;

@@ -80,3 +80,21 @@ char *strchr(const char *s, int c)
     }
     return NULL;
 }
+
+char *strrchr(const char *s, int c) {
+    char *ret = NULL;
+    do {
+        if (*s == (char)c)
+            ret = (char *)s;
+    } while (*s++);
+    return ret;
+}
+
+char *strcat(char *dest, const char *src) {
+    char *d = dest;
+    while (*d) d++;
+    while ((*d++ = *src++));
+    return dest;
+}
+
+

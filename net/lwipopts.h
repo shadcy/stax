@@ -38,15 +38,50 @@
 #define SYS_LIGHTWEIGHT_PROT 0
 
 #include "lwip/arch.h"
-/* Logging (can map to T-OS printk if desired) */
-#define LWIP_DEBUG 1
-#define DNS_DEBUG LWIP_DBG_OFF
+/* Logging - disable verbose debug spam to keep UART usable */
+#define LWIP_DEBUG 0
 #define CHECKSUM_CHECK_IP 0
 #define CHECKSUM_CHECK_UDP 0
 #define CHECKSUM_CHECK_TCP 0
 
+/* Per-module debug: all OFF */
+#define ETHARP_DEBUG      LWIP_DBG_OFF
+#define NETIF_DEBUG       LWIP_DBG_OFF
+#define PBUF_DEBUG        LWIP_DBG_OFF
+#define API_LIB_DEBUG     LWIP_DBG_OFF
+#define API_MSG_DEBUG     LWIP_DBG_OFF
+#define SOCKETS_DEBUG     LWIP_DBG_OFF
+#define ICMP_DEBUG        LWIP_DBG_OFF
+#define IGMP_DEBUG        LWIP_DBG_OFF
+#define INET_DEBUG        LWIP_DBG_OFF
+#define IP_DEBUG          LWIP_DBG_OFF
+#define IP_REASS_DEBUG    LWIP_DBG_OFF
+#define RAW_DEBUG         LWIP_DBG_OFF
+#define MEM_DEBUG         LWIP_DBG_OFF
+#define MEMP_DEBUG        LWIP_DBG_OFF
+#define SYS_DEBUG         LWIP_DBG_OFF
+#define TIMERS_DEBUG      LWIP_DBG_OFF
+#define TCP_DEBUG         LWIP_DBG_OFF
+#define TCP_INPUT_DEBUG   LWIP_DBG_OFF
+#define TCP_FR_DEBUG      LWIP_DBG_OFF
+#define TCP_RTO_DEBUG     LWIP_DBG_OFF
+#define TCP_CWND_DEBUG    LWIP_DBG_OFF
+#define TCP_WND_DEBUG     LWIP_DBG_OFF
+#define TCP_OUTPUT_DEBUG  LWIP_DBG_OFF
+#define TCP_RST_DEBUG     LWIP_DBG_OFF
+#define TCP_QLEN_DEBUG    LWIP_DBG_OFF
+#define UDP_DEBUG         LWIP_DBG_OFF
+#define TCPIP_DEBUG       LWIP_DBG_OFF
+#define SLIP_DEBUG        LWIP_DBG_OFF
+#define DHCP_DEBUG        LWIP_DBG_OFF
+#define AUTOIP_DEBUG      LWIP_DBG_OFF
+#define DNS_DEBUG         LWIP_DBG_OFF
+#define IP6_DEBUG         LWIP_DBG_OFF
+
+#undef LWIP_PLATFORM_DIAG
 #define LWIP_PLATFORM_DIAG(x) do { extern void kprintf(const char *, ...); kprintf x; } while(0)
-#define LWIP_PLATFORM_ASSERT(x) do { extern void kprintf(const char *, ...); kprintf("Assertion \"%s\" failed at line %d in %s\n", x, __LINE__, __FILE__); } while(0)
+#undef LWIP_PLATFORM_ASSERT
+#define LWIP_PLATFORM_ASSERT(x) do { extern void kprintf(const char *, ...); kprintf("ASSERT: \"%s\" at %s:%d\n", x, __FILE__, __LINE__); } while(0)
 
 /* Enable static ARP entries */
 #define ETHARP_SUPPORT_STATIC_ENTRIES 1

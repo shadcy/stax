@@ -17,8 +17,8 @@
 #define CLCD_CTRL   (*(volatile uint32_t *)(CLCD_BASE + 0x018))
 #define CLCD_IMSC   (*(volatile uint32_t *)(CLCD_BASE + 0x01C))
 
-/* Framebuffer at 2 MB mark — past kernel code/stack/heap */
-#define FB_BASE     0x00200000u
+/* Framebuffer at 4 MB mark — past kernel code/stack/heap */
+#define FB_BASE     0x00400000u
 
 /* LCD enable | 16bpp (mode 4 = 5:6:5) | TFT | power on */
 #define CTRL_VAL    ((1u<<11)|(1u<<5)|(4u<<1)|(1u<<0))
