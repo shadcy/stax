@@ -41,15 +41,18 @@ void irq_dispatch(void)
 void irq_system_init(void)
 {
     extern uint32_t vector_table[];
-    volatile uint32_t *vt = (volatile uint32_t *)0x00000000;
-    int i;
-
-    for (i = 0; i < 8; i++) {
-        vt[i] = 0xe59ff018;
-    }
-    for (i = 0; i < 8; i++) {
-        vt[8 + i] = vector_table[8 + i];
-    }
+    
+    /* Copy the vector table (first 8 instructions + 8 literal pool entries = 64 bytes)
+       to 0x00000000 using inline assembly to avoid GCC's null-pointer UB optimization. */
+    asm volatile (
+        "mov r0, #0\n"
+        "mov r1, %0\n"
+        "ldm r1!, {r2-r9}\n"
+        "stm r0!, {r2-r9}\n"
+        "ldm r1!, {r2-r9}\n"
+        "stm r0!, {r2-r9}\n"
+        : : "r"(vector_table) : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "memory"
+    );
 
     vic_init();
 }

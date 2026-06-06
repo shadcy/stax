@@ -59,10 +59,29 @@ int fb_init(void)
 /* ── primitives ──────────────────────────────────────────────────────────── */
 void fb_clear(uint16_t col)
 {
-    /* Write 2 pixels per 32-bit store for speed */
+    /* Write 2 pixels per 32-bit store, optimized via STMIA assembly */
     uint32_t w = ((uint32_t)col << 16) | col;
-    uint32_t *p = (uint32_t *)fb;
-    for (int i = 0; i < (FB_WIDTH * FB_HEIGHT / 2); i++) p[i] = w;
+    uint32_t *dst = (uint32_t *)fb;
+    int chunks = (FB_WIDTH * FB_HEIGHT * 2) / 32; /* 19200 chunks of 32 bytes */
+    
+    asm volatile (
+        "mov r3, %1\n"
+        "mov r4, %1\n"
+        "mov r5, %1\n"
+        "mov r6, %1\n"
+        "mov r7, %1\n"
+        "mov r8, %1\n"
+        "mov r9, %1\n"
+        "mov r10, %1\n"
+        "mov r2, %2\n"
+        "1:\n"
+        "stmia %0!, {r3-r10}\n"
+        "subs r2, r2, #1\n"
+        "bne 1b\n"
+        : "+r"(dst)
+        : "r"(w), "r"(chunks)
+        : "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "memory"
+    );
 }
 
 void fb_putpixel(int x, int y, uint16_t col)
@@ -114,13 +133,25 @@ void fb_set_double_buffering(int enable)
 void fb_swap(void)
 {
     if (double_buffered) {
-        /* Swap backbuffer to frontbuffer using fast 32-bit words */
+        /* Swap backbuffer to frontbuffer using fast burst transfers */
         uint32_t *dst = (uint32_t *)fb_front;
         uint32_t *src = (uint32_t *)fb_back;
-        int words = (FB_WIDTH * FB_HEIGHT * 2) / 4;
-        for (int i = 0; i < words; i++) {
-            dst[i] = src[i];
-        }
+        
+        /* 640 * 480 * 2 bytes = 153600 words */
+        /* 153600 / 8 = 19200 chunks */
+        int chunks = (FB_WIDTH * FB_HEIGHT * 2) / 32;
+        
+        asm volatile (
+            "mov r2, %2\n"
+            "1:\n"
+            "ldmia %0!, {r3-r10}\n"
+            "stmia %1!, {r3-r10}\n"
+            "subs r2, r2, #1\n"
+            "bne 1b\n"
+            : "+r"(src), "+r"(dst)
+            : "r"(chunks)
+            : "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "memory"
+        );
     }
 }
 
