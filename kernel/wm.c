@@ -385,7 +385,7 @@ void wm_update(void) {
         }
 
         /* Taskbar hit test (simplified) */
-        if (my >= FB_HEIGHT - TASKBAR_HEIGHT) {
+        if (my >= (int)(FB_HEIGHT - TASKBAR_HEIGHT)) {
             /* Check if clicking a taskbar item to restore */
             if (pressed) {
                 if (mx >= 0 && mx < 60) {
@@ -565,8 +565,8 @@ void wm_update(void) {
                     ctx_menu.active = 1;
                     ctx_menu.x = mx;
                     ctx_menu.y = my;
-                    if (ctx_menu.x + 150 > FB_WIDTH) ctx_menu.x = FB_WIDTH - 150;
-                    if (ctx_menu.y + 150 > FB_HEIGHT - TASKBAR_HEIGHT) ctx_menu.y = FB_HEIGHT - TASKBAR_HEIGHT - 150;
+                    if (ctx_menu.x + 150 > (int)FB_WIDTH) ctx_menu.x = FB_WIDTH - 150;
+                    if (ctx_menu.y + 150 > (int)(FB_HEIGHT - TASKBAR_HEIGHT)) ctx_menu.y = FB_HEIGHT - TASKBAR_HEIGHT - 150;
                 } else if (pressed) {
                     /* Desktop Icons hit test */
                     for (int i = 0; i < NUM_APPS; i++) {
@@ -844,7 +844,7 @@ void wm_render(void) {
     for (int i = count - 1; i >= 0; i--) {
         if (arr[i]->state != WM_STATE_HIDDEN) {
             int bx = 60 + tb_idx * 100;
-            if (bx + 100 > FB_WIDTH - 170) break;
+            if (bx + 100 > (int)(FB_WIDTH - 170)) break;
             uint16_t bcol = (arr[i]->state == WM_STATE_ACTIVE) ? rgb565(220, 220, 220) : rgb565(160, 160, 160);
             fb_fillrect(bx, ty + 4, 95, 20, bcol);
             char short_title[10];
