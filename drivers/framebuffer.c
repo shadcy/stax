@@ -114,8 +114,13 @@ void fb_set_double_buffering(int enable)
 void fb_swap(void)
 {
     if (double_buffered) {
-        /* Swap backbuffer to frontbuffer */
-        memcpy(fb_front, fb_back, FB_WIDTH * FB_HEIGHT * 2);
+        /* Swap backbuffer to frontbuffer using fast 32-bit words */
+        uint32_t *dst = (uint32_t *)fb_front;
+        uint32_t *src = (uint32_t *)fb_back;
+        int words = (FB_WIDTH * FB_HEIGHT * 2) / 4;
+        for (int i = 0; i < words; i++) {
+            dst[i] = src[i];
+        }
     }
 }
 

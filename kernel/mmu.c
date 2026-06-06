@@ -19,11 +19,15 @@ void mmu_init(void) {
         page_table[i] = 0;
     }
     
-    /* 2. Identity Map RAM: 0x00000000 to 0x02000000 (32MB) 
-       Set as Cacheable and Bufferable */
+    /* 2. Identity Map RAM: 0x00000000 to 0x02000000 (32MB) */
     for (i = 0x000; i < 0x020; i++) {
+        uint32_t attrs = MMU_DESC_CACHEABLE | MMU_DESC_BUFFERABLE;
+        /* Frontbuffer is at 2MB mark (0x00200000). Make it Non-Cacheable so the
+           PL110 controller reads live pixels from RAM instead of hitting stale cache. */
+        if (i == 2) attrs = MMU_DESC_BUFFERABLE;
+        
         page_table[i] = (i << 20) | MMU_DESC_AP_RW | MMU_DESC_DOMAIN(0) | 
-                        MMU_DESC_CACHEABLE | MMU_DESC_BUFFERABLE | MMU_DESC_TYPE_SECTION;
+                        attrs | MMU_DESC_TYPE_SECTION;
     }
     
     /* 3. Identity Map Peripherals: 0x10000000 to 0x101FFFFF (2MB for VersatilePB PL110, PL011, etc)
