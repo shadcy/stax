@@ -10,20 +10,7 @@
 
 extern window_t *window_list;
 
-static void draw_text(int x, int y, const char *s, uint16_t color) {
-    while (*s) {
-        unsigned char c = *s++;
-        for (int r = 0; r < 16; r++) {
-            unsigned char bits = font8x16_data[c][r];
-            for (int b = 0; b < 8; b++) {
-                if (bits & (0x80 >> b)) {
-                    fb_putpixel(x + b, y + r, color);
-                }
-            }
-        }
-        x += 8;
-    }
-}
+
 
 void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     (void)win;
