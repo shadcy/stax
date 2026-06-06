@@ -17,4 +17,7 @@ void gfx_console_enable(int enable);
 /* Call from the main idle loop to drive the cursor blink */
 void gfx_tick(void);
 
+struct window;
+void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+
 #endif

@@ -155,3 +155,37 @@ void fb_draw_sprite_colorkey(int x, int y, int w, int h, const uint16_t *data, u
         }
     }
 }
+
+void fb_save_rect(int x, int y, int w, int h, uint16_t *buffer)
+{
+    if (w <= 0 || h <= 0 || !buffer) return;
+    
+    for (int r = 0; r < h; r++) {
+        int screen_y = y + r;
+        for (int c = 0; c < w; c++) {
+            int screen_x = x + c;
+            if (screen_y >= 0 && screen_y < (int)FB_HEIGHT && screen_x >= 0 && screen_x < (int)FB_WIDTH) {
+                buffer[r * w + c] = fb[screen_y * FB_WIDTH + screen_x];
+            } else {
+                buffer[r * w + c] = 0;
+            }
+        }
+    }
+}
+
+void fb_restore_rect(int x, int y, int w, int h, const uint16_t *buffer)
+{
+    if (w <= 0 || h <= 0 || !buffer) return;
+    
+    for (int r = 0; r < h; r++) {
+        int screen_y = y + r;
+        if (screen_y < 0 || screen_y >= (int)FB_HEIGHT) continue;
+        
+        for (int c = 0; c < w; c++) {
+            int screen_x = x + c;
+            if (screen_x < 0 || screen_x >= (int)FB_WIDTH) continue;
+            
+            fb[screen_y * FB_WIDTH + screen_x] = buffer[r * w + c];
+        }
+    }
+}
