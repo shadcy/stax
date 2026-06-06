@@ -18,15 +18,37 @@ typedef struct window {
     char title[32];
     int state;
     
+    int is_maximized;
+    int saved_x, saved_y;
+    int saved_width, saved_height;
+    
+    char path[64]; /* Custom path or data string for the app */
+    void *app_data; /* Custom state pointer for the app */
+    
     /* Callback to render the client area. x, y are absolute screen coordinates */
     void (*draw_client)(struct window *win, int client_x, int client_y, int client_w, int client_h);
     
+    /* Callback to update per-frame logic (optional) */
+    void (*update_client)(struct window *win, int dt_ms);
+    
+    /* Callback for keyboard input to the focused window (optional) */
+    void (*key_event)(struct window *win, char c);
+    
+    /* Callback for mouse click inside the client area (optional). mx/my are relative to client_x/client_y */
+    void (*mouse_click)(struct window *win, int mx, int my, int button);
+    
     struct window *next;
 } window_t;
+
+typedef struct {
+    int active;
+    int x, y;
+} context_menu_t;
 
 void wm_init(void);
 window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*draw_cb)(window_t*, int, int, int, int));
 void wm_render(void);
 void wm_update(void); /* handles input */
+void draw_text(int x, int y, const char *s, uint16_t color);
 
 #endif
