@@ -36,7 +36,7 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -nostartfiles       \
             -Wall               \
             -Wextra             \
-            -O1                 \
+            -O2                 \
             -g                  \
             -I$(INC_DIR)        \
             -I$(FS_DIR)         \

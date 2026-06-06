@@ -22,9 +22,14 @@ void mmu_init(void) {
     /* 2. Identity Map RAM: 0x00000000 to 0x02000000 (32MB) */
     for (i = 0x000; i < 0x020; i++) {
         uint32_t attrs = MMU_DESC_CACHEABLE | MMU_DESC_BUFFERABLE;
-        /* Frontbuffer is at 2MB mark (0x00200000). Make it Non-Cacheable so the
-           PL110 controller reads live pixels from RAM instead of hitting stale cache. */
-        if (i == 2) attrs = MMU_DESC_BUFFERABLE;
+        /* Framebuffers: front (2MB, section 2) and back (3MB, section 3).
+           Both MUST be Non-Cacheable+Bufferable:
+            - Front: PL110 DMA reads must see live pixels, not stale cache.
+            - Back:  At 614KB the backbuffer vastly exceeds the 16KB L1 D-cache.
+                     Cacheable mapping causes massive cache thrashing during fb_swap:
+                     every read misses → evicts a dirty line → 3 bus transactions
+                     per cache line instead of 2, adding ~50% overhead vs uncached. */
+        if (i == 2 || i == 3) attrs = MMU_DESC_BUFFERABLE;
         
         page_table[i] = (i << 20) | MMU_DESC_AP_RW | MMU_DESC_DOMAIN(0) | 
                         attrs | MMU_DESC_TYPE_SECTION;
@@ -53,11 +58,12 @@ void mmu_init(void) {
         "ldr r1, =0x00000001\n"
         "mcr p15, 0, r1, c3, c0, 0\n"
         
-        /* Enable MMU (M bit 0) and Caches (C bit 2, I bit 12) */
+        /* Enable MMU (M bit 0) and Caches (C bit 2, I bit 12), and clear V bit (bit 13) for low vectors */
         "mrc p15, 0, r1, c1, c0, 0\n"
         "orr r1, r1, #0x0001\n" /* MMU enable */
         "orr r1, r1, #0x0004\n" /* D-Cache enable */
         "orr r1, r1, #0x1000\n" /* I-Cache enable */
+        "bic r1, r1, #0x2000\n" /* Clear V bit (Low vectors at 0x00000000) */
         "mcr p15, 0, r1, c1, c0, 0\n"
         : : "r"(ttbr) : "r1", "memory"
     );

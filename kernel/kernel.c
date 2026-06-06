@@ -157,13 +157,22 @@ void kernel_main(void)
 
         char c = kgetc();
         
-        /* Always update and render GUI */
-        for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
-        gfx_tick();
-        wm_update();
-        wm_render();
+        /* Always update and render GUI at 60 FPS */
+        static unsigned int last_frame_tick = 0;
+        unsigned int current_tick = tick_count;
+        if (current_tick - last_frame_tick >= 16) {
+            last_frame_tick = current_tick;
+            gfx_tick();
+            wm_update();
+            wm_render();
+        }
 
         if (c == 0) {
+            /* Yield until next timer tick to prevent CPU spinning and bus saturation */
+            unsigned int start_tick = tick_count;
+            while (tick_count == start_tick) {
+                __asm__ volatile ("nop");
+            }
             continue;
         }
 
