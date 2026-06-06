@@ -32,13 +32,11 @@ SECTIONS
         . = ALIGN(4);
         __bss_end = .;
     } > RAM
-    . = ALIGN(4);
-    __heap_start = .;
-    . += 65536;
-    __heap_end = .;
     . = ALIGN(8);
-    . += 8192;
+    . += 32768;
     stack_top = .;
+    . = ALIGN(4096);
+    __heap_start = .;
     /DISCARD/ : {
         *(.ARM.exidx*)
         *(.comment)

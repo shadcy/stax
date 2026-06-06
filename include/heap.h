@@ -30,4 +30,7 @@ void kfree(void *ptr);
 /* Print heap statistics */
 void heap_stats(void);
 
+uint32_t heap_get_total(void);
+uint32_t heap_get_free(void);
+
 #endif /* HEAP_H */

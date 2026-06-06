@@ -1,81 +1,47 @@
 /* ============================================================================
  * TIOS — heap.c
- * Simple bump allocator with free list implementation
-
- @shadcy: just a simple mental model to understand;
- we are basically reussing free chucks if possible;
- otherwise if we need more space, we take it from the heap (grow linearly)
- merge neighbouring free chunks;
-
- kmalloc suballocate heap memory;
- 
- (need to verify this part!!) but there is a twist, we will use the space after the metadata to store the free list;
- and  coalesce helps in reducing fragmentation
+ * Block allocator over page allocator
  * ============================================================================ */
 
 #include "heap.h"
+#include "page.h"
+#include "console.h"
 #include <stddef.h>
 
-/* Heap region defined in linker script */
-extern uint8_t __heap_start[];
-extern uint8_t __heap_end[];
-
-/* Bump allocator state */
-static uint8_t *heap_bump = NULL;
-static block_t *free_list = NULL;
-
-/* Alignment for allocations */
 #define ALIGNMENT 8
 #define ALIGN_UP(size) (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1))
+#define PAGE_SIZE 4096
 
-/* ============================================================================
- * heap_init — initialise heap region and free list
- * ============================================================================ */
-void heap_init(void)
-{
-    heap_bump = __heap_start;
+static block_t *free_list = NULL;
+
+void heap_init(void) {
     free_list = NULL;
+    kputs("Heap Allocator: Initialized (backed by MMU paging).\n");
 }
 
-/* ============================================================================
- * add_to_free_list — insert a block into the free list (sorted by address)
- * ============================================================================ */
-static void add_to_free_list(block_t *block)
-{
+static void add_to_free_list(block_t *block) {
     block->next = NULL;
-    
     if (!free_list) {
         free_list = block;
         return;
     }
-    
-    /* Insert at head if block address is before current head */
     if (block < free_list) {
         block->next = free_list;
         free_list = block;
         return;
     }
-    
-    /* Find insertion point */
     block_t *curr = free_list;
     while (curr->next && curr->next < block) {
         curr = curr->next;
     }
-    
     block->next = curr->next;
     curr->next = block;
 }
 
-/* ============================================================================
- * coalesce — merge adjacent free blocks
- * ============================================================================ */
-static void coalesce(void)
-{
+static void coalesce(void) {
     block_t *curr = free_list;
-    
     while (curr && curr->next) {
         if ((uint8_t*)curr + sizeof(block_t) + curr->size == (uint8_t*)curr->next) {
-            /* Merge with next block */
             curr->size += sizeof(block_t) + curr->next->size;
             curr->next = curr->next->next;
         } else {
@@ -84,106 +50,79 @@ static void coalesce(void)
     }
 }
 
-/* ============================================================================
- * kmalloc — allocate memory
- * ============================================================================ */
-void *kmalloc(size_t size)
-{
+void *kmalloc(size_t size) {
     if (size == 0) return NULL;
-    
-    /* Align size */
     size = ALIGN_UP(size);
     
-    /* Try free list first */
     block_t *prev = NULL;
     block_t *curr = free_list;
     
+    /* First fit */
     while (curr) {
         if (curr->size >= size) {
-            /* Found a suitable block */
-            if (prev) {
-                prev->next = curr->next;
+            if (curr->size > size + sizeof(block_t) + ALIGNMENT) {
+                /* Split block */
+                block_t *new_block = (block_t *)((uint8_t*)curr + sizeof(block_t) + size);
+                new_block->size = curr->size - size - sizeof(block_t);
+                new_block->next = curr->next;
+                curr->size = size;
+                if (prev) prev->next = new_block;
+                else free_list = new_block;
             } else {
-                free_list = curr->next;
+                /* Exact match or too small to split */
+                if (prev) prev->next = curr->next;
+                else free_list = curr->next;
             }
-            
-            /* Return data portion */
-            return curr->data;
+            return (void *)(curr + 1);
         }
         prev = curr;
         curr = curr->next;
     }
     
-    /* No suitable free block, allocate from bump */
-    size_t total_size = sizeof(block_t) + size;
-    uint8_t *new_block = heap_bump;
+    /* Out of memory in the free list, ask page allocator */
+    size_t required_size = size + sizeof(block_t);
+    int pages_needed = (required_size + PAGE_SIZE - 1) / PAGE_SIZE;
     
-    if (new_block + total_size > __heap_end) {
-        return NULL;  /* Out of memory */
+    block_t *new_mem = (block_t *)alloc_pages(pages_needed);
+    if (!new_mem) {
+        kputs("kmalloc: OUT OF MEMORY (Page allocator exhausted)!\n");
+        return NULL;
     }
     
-    heap_bump += total_size;
+    new_mem->size = (pages_needed * PAGE_SIZE) - sizeof(block_t);
+    new_mem->next = NULL;
     
-    /* Initialize block header */
-    block_t *block = (block_t*)new_block;
-    block->size = size;
-    block->next = NULL;
+    /* If the requested pages are larger than what we strictly needed,
+       put the remainder into the free list. */
+    if (new_mem->size > size + sizeof(block_t) + ALIGNMENT) {
+        block_t *remainder = (block_t *)((uint8_t*)new_mem + sizeof(block_t) + size);
+        remainder->size = new_mem->size - size - sizeof(block_t);
+        new_mem->size = size;
+        add_to_free_list(remainder);
+        coalesce();
+    }
     
-    return block->data;
+    return (void *)(new_mem + 1);
 }
 
-/* ============================================================================
- * kfree — free memory
- * ============================================================================ */
-void kfree(void *ptr)
-{
+void kfree(void *ptr) {
     if (!ptr) return;
-    
-    /* Get block header */
-    block_t *block = (block_t*)((uint8_t*)ptr - offsetof(block_t, data));
-    
-    /* Add to free list and coalesce */
+    block_t *block = (block_t *)((uint8_t*)ptr - sizeof(block_t));
     add_to_free_list(block);
     coalesce();
 }
 
-/* ============================================================================
- * heap_stats — print heap statistics
- * ============================================================================ */
-void heap_stats(void)
-{
-    size_t free_blocks = 0;
-    size_t free_bytes = 0;
-    size_t bump_used = heap_bump - __heap_start;
-    
+uint32_t heap_get_free(void) {
+    size_t total = 0;
     block_t *curr = free_list;
     while (curr) {
-        free_blocks++;
-        free_bytes += curr->size;
+        total += curr->size;
         curr = curr->next;
     }
-    
-    /* Print heap statistics using console functions */
-    extern void kputs(const char *s);
-    extern void kput_uint(unsigned int n);
-    
-    kputs("Heap size: ");
-    kput_uint(HEAP_SIZE);
-    kputs(" bytes\n");
-    
-    kputs("Bump allocated: ");
-    kput_uint(bump_used);
-    kputs(" bytes\n");
-    
-    kputs("Free blocks: ");
-    kput_uint(free_blocks);
-    kputs("\n");
-    
-    kputs("Free bytes: ");
-    kput_uint(free_bytes);
-    kputs(" bytes\n");
-    
-    kputs("Total used: ");
-    kput_uint(bump_used - free_bytes);
-    kputs(" bytes\n");
+    return total;
+}
+
+uint32_t heap_get_total(void) {
+    /* Total is now determined by the page allocator, so we approximate total managed pages */
+    return get_total_memory();
 }

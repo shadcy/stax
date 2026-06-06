@@ -68,11 +68,23 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/timer.o \
                 $(BUILD_DIR)/scheduler.o \
                 $(BUILD_DIR)/heap.o \
+                $(BUILD_DIR)/mmu.o \
+                $(BUILD_DIR)/page.o \
                 $(BUILD_DIR)/fat.o \
                 $(BUILD_DIR)/disk.o \
                 $(BUILD_DIR)/irq.o \
                 $(BUILD_DIR)/keyboard.o \
+                $(BUILD_DIR)/mouse.o \
+                $(BUILD_DIR)/wm.o \
                 $(BUILD_DIR)/console.o \
+                $(BUILD_DIR)/app_file_manager.o \
+                $(BUILD_DIR)/app_editor.o \
+                $(BUILD_DIR)/app_taskmgr.o \
+                $(BUILD_DIR)/app_terminal.o \
+                $(BUILD_DIR)/app_calculator.o \
+                $(BUILD_DIR)/app_sysinfo.o \
+                $(BUILD_DIR)/app_image_viewer.o \
+                $(BUILD_DIR)/app_memview.o \
                 $(BUILD_DIR)/framebuffer.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
@@ -97,6 +109,9 @@ KERNEL_OBJS  += $(BUILD_DIR)/math_fixed.o \
                 $(BUILD_DIR)/sprite.o \
                 $(BUILD_DIR)/texture.o \
                 $(BUILD_DIR)/profiler.o
+
+# Core/Apps
+KERNEL_OBJS  += $(BUILD_DIR)/sokoban.o
 
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
@@ -150,9 +165,7 @@ $(OS_BIN): $(KERNEL_BIN)
 	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
 	# =========================================================================
 	# [USER CUSTOMIZATION]: IMPORT IMAGES HERE
-	# To add custom BMP images to the OS disk, uncomment and modify the line below:
-	# @mcopy -o -i $@ MYIMAGE.BMP ::/MYIMAGE.BMP
-	# Note: Image must be a valid .BMP file
+	@if [ -f tos.bmp ]; then mcopy -o -i $@ tos.bmp ::/TOS.BMP; fi
 	# =========================================================================
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"

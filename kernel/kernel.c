@@ -6,6 +6,8 @@
 #include "irq.h"
 #include "timer.h"
 #include "scheduler.h"
+#include "mmu.h"
+#include "page.h"
 #include "heap.h"
 #include "fat.h"
 #include "vic.h"
@@ -13,6 +15,8 @@
 #include "command.h"
 #include "gfx_console.h"
 #include "keyboard.h"
+#include "mouse.h"
+#include "wm.h"
 #include "bmp.h"
 
 /* ---------------------------------------------------------------------------
@@ -30,6 +34,7 @@ static void timer_isr(void)
     timer_ack();
     if ((tick_count % 10) == 0) {
         kb_poll();   /* drain PL050 FIFO into ring buffer every 10 ms */
+        mouse_poll(); /* poll PL050 KMI1 for mouse events */
         /* Trigger round-robin scheduler on every 10ms tick */
         need_schedule = 1;
     }
@@ -59,9 +64,10 @@ void print_prompt(void) {
 
 void kernel_main(void)
 {
-    /* ---- Initialize graphical console + keyboard ---- */
+    /* ---- Initialize graphical console + keyboard + mouse ---- */
     gfx_console_init();  /* also initializes the framebuffer */
     kb_init();           /* enable PL050 PS/2 keyboard */
+    mouse_init();        /* enable PL050 KMI1 PS/2 mouse */
     
     /* ---- Phase 6a: IRQ subsystem ---- */
     irq_system_init();
@@ -69,8 +75,21 @@ void kernel_main(void)
     /* ---- Phase 6c: Scheduler ---- */
     scheduler_init();
 
-    /* ---- Phase 6d: Heap ---- */
+    /* ---- Phase 6d: Memory Subsystem (MMU, Paging, Heap) ---- */
+    mmu_init();
+    page_init();
     heap_init();
+    
+    /* Initialize Window Manager early to capture output */
+    wm_init();
+    
+    /* 1. Terminal / Boot Log window on the left */
+    window_t *boot_win = wm_add_window(10, 10, 300, 300, "Boot Log", gfx_console_draw_window);
+    if (boot_win) {
+        boot_win->state = WM_STATE_ACTIVE;
+    }
+
+    gfx_console_init();
 
     /* ---- Phase 6e: FAT filesystem ---- */
     fat_init();
@@ -87,7 +106,8 @@ void kernel_main(void)
     kputs("Status : running\n");
     kputs("IRQs   : enabled\n");
     kputs("Timer  : SP804 Timer0, 1000 Hz (1 ms ticks)\n");
-    kputs("Heap   : 64 KB bump allocator with free list\n");
+    kputs("MMU    : Enabled (32MB RAM, D/I Caches ON)\n");
+    kputs("Heap   : Paging-backed block allocator\n");
     kputs("FS     : FAT12/16 driver (test image)\n");
     kputs("Display: 640x480 framebuffer (80x60 text)\n");
     kputs("----------------------------------------\n");
@@ -137,11 +157,20 @@ void kernel_main(void)
         }
 
         char c = kgetc();
+        
+        /* Always update and render GUI */
+        for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
+        gfx_tick();
+        wm_update();
+        wm_render();
+
         if (c == 0) {
-            for (volatile int i = 0; i < 50000; i++) __asm__ volatile ("nop");
-            gfx_tick();
             continue;
         }
+
+        /* Pass key to focused window first */
+        extern int wm_dispatch_key(char c);
+        if (wm_dispatch_key(c)) continue;
 
         /* ---- UART arrow-key escape sequence decoder ---- */
         if (esc_state == 0 && c == '\x1b') { esc_state = 1; continue; }
@@ -245,5 +274,9 @@ void kernel_main(void)
         }
     }
 
-    while (1) { __asm__ volatile ("nop"); }
+    while (1) {
+        wm_update();
+        wm_render();
+        __asm__ volatile ("nop");
+    }
 }
