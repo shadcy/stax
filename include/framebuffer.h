@@ -66,4 +66,8 @@ void      fb_swap(void);
 void      fb_draw_sprite(int x, int y, int w, int h, const uint16_t *data);
 void      fb_draw_sprite_colorkey(int x, int y, int w, int h, const uint16_t *data, uint16_t colorkey);
 
+/* Rectangle pixel save/restore API */
+void      fb_save_rect(int x, int y, int w, int h, uint16_t *buffer);
+void      fb_restore_rect(int x, int y, int w, int h, const uint16_t *buffer);
+
 #endif
