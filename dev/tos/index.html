@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>T-OS Developer Toolkit</title>
+    <style>
+        :root {
+            --bg: #1a1b26;
+            --surface: #24283b;
+            --surface-hover: #292e42;
+            --primary: #7aa2f7;
+            --text: #c0caf5;
+            --text-dim: #9aa5ce;
+            --border: #414868;
+            --accent: #bb9af7;
+            --danger: #f7768e;
+            --success: #9ece6a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1, h2, h3 { color: var(--primary); font-weight: 500; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button {
+            background-color: var(--primary);
+            color: var(--bg);
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            background-color: var(--surface-hover);
+            border: 1px dashed var(--primary);
+            padding: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .file-label:hover { background-color: #2f354d; }
+        canvas {
+            border: 1px solid var(--border);
+            max-width: 100%;
+            margin-top: 16px;
+            image-rendering: pixelated;
+        }
+        pre {
+            background-color: #15161e;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            color: var(--success);
+            font-family: monospace;
+        }
+        .grid-editor {
+            display: grid;
+            grid-template-columns: repeat(16, 20px);
+            grid-template-rows: repeat(16, 20px);
+            gap: 1px;
+            background-color: var(--border);
+            width: max-content;
+            margin-bottom: 16px;
+            user-select: none;
+        }
+        .grid-cell {
+            background-color: #15161e;
+            width: 20px;
+            height: 20px;
+            cursor: crosshair;
+        }
+        .palette {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .color-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .color-swatch.active { border-color: var(--text); }
+        .info-box {
+            background-color: rgba(122, 162, 247, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 12px 16px;
+            margin: 16px 0;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>T-OS Developer Toolkit</h1>
+        <p>This toolkit contains everything you need to create compatible assets and UI components for T-OS.</p>
+
+        <!-- 16-Bit BMP Maker -->
+        <div class="card">
+            <h2>1. 16-Bit BMP Image Converter</h2>
+            <div class="info-box">
+                T-OS's `bmp.c` strictly requires 16-bit BMP files (RGB565 format). Use this tool to upload a standard PNG/JPG and convert it into a T-OS compatible `.BMP` binary file.
+            </div>
+            
+            <label class="file-label">
+                Click here to upload an Image (PNG, JPG)
+                <input type="file" id="imageInput" accept="image/png, image/jpeg">
+            </label>
+            
+            <div id="imagePreviewContainer" style="display: none;">
+                <p>Preview (Scaled):</p>
+                <canvas id="previewCanvas"></canvas>
+                <br><br>
+                <button id="downloadBmpBtn">Download Compatible BMP (kernel/os.bin ready)</button>
+            </div>
+        </div>
+
+        <!-- Sprite Grid Editor -->
+        <div class="card">
+            <h2>2. Game Engine Sprite Generator</h2>
+            <div class="info-box">
+                Use this grid to draw 16x16 pixel-art sprites for games like Sokoban or Slime. T-OS uses string arrays for lightweight binary-free sprites (e.g. '@' for Hat, '#' for Eye, '.' for transparent).
+            </div>
+            
+            <div class="palette" id="paletteContainer">
+                <!-- Palette populated by JS -->
+            </div>
+            
+            <div class="grid-editor" id="spriteGrid"></div>
+            
+            <button id="generateCodeBtn" style="margin-right: 8px;">Generate C Array</button>
+            <button id="clearGridBtn" style="background-color: var(--danger);">Clear</button>
+            
+            <pre id="spriteCodeOutput">// Your generated C string array will appear here</pre>
+        </div>
+
+        <!-- UI Instructions -->
+        <div class="card">
+            <h2>3. T-OS UI Component Guidelines</h2>
+            <h3>Creating Windows</h3>
+            <p>To register a new app inside the Window Manager (`wm.c`), use:</p>
+            <pre>window_t *win = wm_add_window(100, 100, 400, 300, "My App", myapp_draw_window);
+if (win) {
+    win->key_event = myapp_key_event;
+    win->update_client = myapp_update; // Optional for real-time loops
+}</pre>
+            
+            <h3>Drawing Primitives (RGB565)</h3>
+            <p>Always draw relative to the `cx` and `cy` window offsets passed into the draw callback!</p>
+            <pre>void myapp_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
+    // Fill window background
+    fb_fillrect(cx, cy, cw, ch, COLOR_WHITE);
+    
+    // Draw text (using wm.h's global font engine)
+    draw_text(cx + 10, cy + 10, "Hello World", COLOR_BLACK);
+    
+    // Draw custom RGB565 elements
+    fb_fillrect(cx + 50, cy + 50, 20, 20, rgb565(255, 100, 100)); // Red square
+}</pre>
+            
+            <h3>Memory Safe Practices</h3>
+            <div class="info-box">
+                Always check if `win->app_data` is initialized. If not, allocate it via `kmalloc()`. Since T-OS currently uses a Bump Allocator, do not repeatedly allocate large structures in update loops as `kfree()` may only reclaim memory effectively if it's the last block!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 16-BIT BMP MAKER LOGIC
+        // ==========================================
+        const imageInput = document.getElementById('imageInput');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const ctx = previewCanvas.getContext('2d');
+        const downloadBtn = document.getElementById('downloadBmpBtn');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        
+        let loadedImage = new Image();
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                loadedImage.onload = () => {
+                    previewCanvas.width = loadedImage.width;
+                    previewCanvas.height = loadedImage.height;
+                    ctx.drawImage(loadedImage, 0, 0);
+                    previewContainer.style.display = 'block';
+                };
+                loadedImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function rgb565(r, g, b) {
+            return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const w = previewCanvas.width;
+            const h = previewCanvas.height;
+            const imgData = ctx.getImageData(0, 0, w, h).data;
+            
+            // Calculate row size (must be multiple of 4 bytes)
+            const rowSize = ((w * 2) + 3) & ~3;
+            const imageSize = rowSize * h;
+            const fileSize = 54 + imageSize; // 14 byte FileHeader + 40 byte InfoHeader
+            
+            const buffer = new ArrayBuffer(fileSize);
+            const view = new DataView(buffer);
+            
+            // 1. BMP File Header (14 bytes)
+            view.setUint16(0, 0x4D42, false); // 'BM' string (big-endian string, but typically written 0x4D42 in LE context. Let's write byte by byte)
+            view.setUint8(0, 0x42); // 'B'
+            view.setUint8(1, 0x4D); // 'M'
+            view.setUint32(2, fileSize, true); // Size
+            view.setUint16(6, 0, true); // Reserved
+            view.setUint16(8, 0, true); // Reserved
+            view.setUint32(10, 54, true); // Offset to image data
+            
+            // 2. BMP Info Header (40 bytes)
+            view.setUint32(14, 40, true); // Header size
+            view.setUint32(18, w, true); // Width
+            view.setInt32(22, h, true); // Height (positive means bottom-up)
+            view.setUint16(26, 1, true); // Planes
+            view.setUint16(28, 16, true); // BPP
+            view.setUint32(30, 0, true); // Compression (0 = None / RGB)
+            view.setUint32(34, imageSize, true); // Image Size
+            view.setUint32(38, 2835, true); // X pixels per meter (~72 DPI)
+            view.setUint32(42, 2835, true); // Y pixels per meter
+            view.setUint32(46, 0, true); // Colors used
+            view.setUint32(50, 0, true); // Important colors
+            
+            // 3. Pixel Data (Bottom-Up, Left-to-Right)
+            let offset = 54;
+            for (let y = h - 1; y >= 0; y--) {
+                for (let x = 0; x < w; x++) {
+                    const idx = (y * w + x) * 4;
+                    const r = imgData[idx];
+                    const g = imgData[idx + 1];
+                    const b = imgData[idx + 2];
+                    
+                    const color16 = rgb565(r, g, b);
+                    // Standard 16-bit BMP on Windows expects 0RRRRRGGGGGBBBBB format (xRGB1555), 
+                    // BUT T-OS expects RGB565 format (RRRRRGGGGGGBBBBB) directly.
+                    // The standard compression=0 16-bit BMP actually uses XRGB1555 usually,
+                    // However, we will write RGB565 and since T-OS directly dumps to fb, it works!
+                    view.setUint16(offset + (x * 2), color16, true);
+                }
+                offset += rowSize; // padding is naturally skipped as we write strictly offset + rowSize
+            }
+            
+            // Trigger Download
+            const blob = new Blob([buffer], { type: "image/bmp" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "custom_image.bmp";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // ==========================================
+        // SPRITE GENERATOR LOGIC
+        // ==========================================
+        const spriteGrid = document.getElementById('spriteGrid');
+        const paletteContainer = document.getElementById('paletteContainer');
+        const codeOutput = document.getElementById('spriteCodeOutput');
+        
+        const colors = [
+            { char: '.', hex: '#15161e', label: 'Trans.' },
+            { char: '@', hex: '#bb9af7', label: 'Hat' },
+            { char: '#', hex: '#c0caf5', label: 'Eye' },
+            { char: 'B', hex: '#7aa2f7', label: 'Body' },
+            { char: 'S', hex: '#000000', label: 'Shoe' },
+            { char: 'X', hex: '#f7768e', label: 'Other' }
+        ];
+        
+        let currentColor = colors[1];
+        let isDrawing = false;
+        const gridData = Array(16).fill().map(() => Array(16).fill('.'));
+
+        // Init Palette
+        colors.forEach((col, idx) => {
+            const swatch = document.createElement('div');
+            swatch.className = `color-swatch ${idx === 1 ? 'active' : ''}`;
+            swatch.style.backgroundColor = col.hex;
+            if(col.char === '.') swatch.style.border = '1px dashed #414868';
+            swatch.textContent = col.char;
+            swatch.title = col.label;
+            
+            swatch.onclick = () => {
+                document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+                swatch.classList.add('active');
+                currentColor = col;
+            };
+            paletteContainer.appendChild(swatch);
+        });
+
+        // Init Grid
+        for (let r = 0; r < 16; r++) {
+            for (let c = 0; c < 16; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                
+                cell.addEventListener('mousedown', (e) => {
+                    isDrawing = true;
+                    applyColor(cell, r, c);
+                });
+                cell.addEventListener('mouseenter', (e) => {
+                    if (isDrawing) applyColor(cell, r, c);
+                });
+                
+                spriteGrid.appendChild(cell);
+            }
+        }
+        
+        document.addEventListener('mouseup', () => isDrawing = false);
+
+        function applyColor(cell, r, c) {
+            cell.style.backgroundColor = currentColor.hex;
+            gridData[r][c] = currentColor.char;
+        }
+
+        document.getElementById('clearGridBtn').addEventListener('click', () => {
+            document.querySelectorAll('.grid-cell').forEach(cell => {
+                cell.style.backgroundColor = '#15161e';
+            });
+            for(let r=0; r<16; r++) {
+                for(let c=0; c<16; c++) {
+                    gridData[r][c] = '.';
+                }
+            }
+        });
+
+        document.getElementById('generateCodeBtn').addEventListener('click', () => {
+            let output = 'static const char *custom_sprite[16] = {\n';
+            for (let r = 0; r < 16; r++) {
+                const rowStr = gridData[r].map(char => char === '.' ? ' ' : char).join('');
+                output += `    "${rowStr}"${r < 15 ? ',' : ''}\n`;
+            }
+            output += '};\n\n';
+            output += '/* Rendering usage (Inside your draw loop) */\n';
+            output += 'for (int r = 0; r < 16; r++) {\n';
+            output += '    for (int c = 0; c < 16; c++) {\n';
+            output += '        char ch = custom_sprite[r][c];\n';
+            output += '        if (ch == \'@\') fb_putpixel(px + c, py + r, rgb565(180, 150, 240));\n';
+            output += '        else if (ch == \'#\') fb_putpixel(px + c, py + r, COLOR_WHITE);\n';
+            output += '        else if (ch == \'B\') fb_putpixel(px + c, py + r, rgb565(120, 160, 240));\n';
+            output += '        else if (ch == \'S\') fb_putpixel(px + c, py + r, COLOR_BLACK);\n';
+            output += '        else if (ch == \'X\') fb_putpixel(px + c, py + r, COLOR_RED);\n';
+            output += '    }\n';
+            output += '}';
+            
+            codeOutput.textContent = output;
+        });
+
+    </script>
+</body>
+</html>
