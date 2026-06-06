@@ -18,13 +18,13 @@
 #define BORDER_WIDTH    2
 #define TASKBAR_HEIGHT  28
 
-#define RGB565_C(r, g, b) (((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3))
+#define RGB565_C(r, g, b) (((b >> 3) << 11) | ((g >> 2) << 5) | (r >> 3))
 static int bg_color_idx = 0;
 static uint16_t bg_colors[] = {
-    RGB565_C(0, 128, 128),   /* Default Teal */
+    RGB565_C(58, 110, 165),  /* Classic Blue (Windows NT/98 default) */
+    RGB565_C(0, 128, 128),   /* Default Teal (Windows 95 Classic) */
     RGB565_C(0, 0, 0),       /* Black */
     RGB565_C(128, 0, 0),     /* Dark Red */
-    RGB565_C(0, 0, 128),     /* Dark Blue */
     RGB565_C(128, 128, 128)  /* Gray */
 };
 #define COL_DESKTOP     (bg_colors[bg_color_idx])
