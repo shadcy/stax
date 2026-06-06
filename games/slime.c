@@ -22,22 +22,97 @@
 #define C_HUD     85   /* Yellow */
 #define C_RED     254  /* Custom Red */
 
-static const char *level_map[] = {
-    "####################",
-    "#                  #",
-    "#      ##          #",
-    "#               @  #",
-    "#                  #",
-    "#    ###           #",
-    "#                  #",
-    "#           ####   #",
-    "#                  #",
-    "#                  #",
-    "#   ^     ^^^^^^   #",
-    "####################"
+#define NUM_LEVELS 6
+static const char *levels[NUM_LEVELS][12] = {
+    { // Level 1: Basics
+        "####################",
+        "#                  #",
+        "#                  #",
+        "#               @  #",
+        "#                  #",
+        "#    ###           #",
+        "#                  #",
+        "#           ####   #",
+        "#                  #",
+        "#                  #",
+        "#         ^^^^^^   #",
+        "####################"
+    },
+    { // Level 2: Jumps
+        "####################",
+        "#                  #",
+        "#  @               #",
+        "# ###              #",
+        "#       ###        #",
+        "#                  #",
+        "#             ###  #",
+        "#                  #",
+        "#      ###         #",
+        "#                  #",
+        "#^^^^^^^^^^^^^^^^^^#",
+        "####################"
+    },
+    { // Level 3: Wall jumps
+        "####################",
+        "#                  #",
+        "#           #   @  #",
+        "#           #  ### #",
+        "#     #     #      #",
+        "#     #     #      #",
+        "#     #            #",
+        "#     #            #",
+        "#                  #",
+        "#                  #",
+        "# ###^^^^^^^^^^^^^^#",
+        "####################"
+    },
+    { // Level 4: Tunnels
+        "####################",
+        "#                  #",
+        "#                  #",
+        "#   #########   @  #",
+        "#   #       #  ### #",
+        "#   #       #      #",
+        "#   #       #      #",
+        "#   #              #",
+        "#   #       #      #",
+        "#           #      #",
+        "# ###^^^^^^^#^^^^^^#",
+        "####################"
+    },
+    { // Level 5: Platforms
+        "####################",
+        "#               @  #",
+        "#              ### #",
+        "#     ###          #",
+        "#                  #",
+        "#  ###             #",
+        "#          ###     #",
+        "#                  #",
+        "#                  #",
+        "#      #           #",
+        "#^^^^^^^^^^^^^^^^^^#",
+        "####################"
+    },
+    { // Level 6: Gauntlet
+        "####################",
+        "#                  #",
+        "#                  #",
+        "#   #   #   #   @  #",
+        "#   #   #   #  ### #",
+        "#   #   #   #      #",
+        "#   #   #   #      #",
+        "#                  #",
+        "#                  #",
+        "#                  #",
+        "#^^^^^^^^^^^^^^^^^^#",
+        "####################"
+    }
 };
+
 #define MAP_H 12
 #define MAP_W 20
+static int current_level = 0;
 
 typedef struct {
     int x, y;    
@@ -50,6 +125,7 @@ typedef enum {
     STATE_SPLASH,
     STATE_TITLE,
     STATE_PLAY,
+    STATE_PAUSE,
     STATE_GAMEOVER,
     STATE_WIN
 } GameState;
@@ -63,20 +139,36 @@ static int menu_selection = 0; // 0=Play, 1=Debug, 2=Exit
 static int up_pressed = 0;
 static int down_pressed = 0;
 static int select_pressed = 0;
+static int death_count = 0;
 
-static void draw_text(int x_pos, int y_pos, const char *str, uint8_t color) {
-    while (*str) {
-        unsigned char c = *str++;
+static void slime_draw_text(int x_pos, int y_pos, const char *str, uint8_t color) {
+    /* Draw text shadow first */
+    const char *s = str;
+    int xp = x_pos + 1;
+    while (*s) {
+        unsigned char c = *s++;
         const unsigned char *g = font8x16_data[c];
         for (int r = 0; r < 16; r++) {
             unsigned char bits = g[r];
             for (int b = 0; b < 8; b++) {
-                if (bits & (0x80u >> b)) {
-                    gfx8_putpixel(x_pos + b, y_pos + r, color);
-                }
+                if (bits & (0x80u >> b)) gfx8_putpixel(xp + b, y_pos + r + 1, C_WALL);
             }
         }
-        x_pos += 8;
+        xp += 8;
+    }
+    /* Draw actual text */
+    s = str;
+    xp = x_pos;
+    while (*s) {
+        unsigned char c = *s++;
+        const unsigned char *g = font8x16_data[c];
+        for (int r = 0; r < 16; r++) {
+            unsigned char bits = g[r];
+            for (int b = 0; b < 8; b++) {
+                if (bits & (0x80u >> b)) gfx8_putpixel(xp + b, y_pos + r, color);
+            }
+        }
+        xp += 8;
     }
 }
 
@@ -114,7 +206,7 @@ static int is_solid(int px, int py) {
     int tx = px / TILE_SIZE;
     int ty = py / TILE_SIZE;
     if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return 1;
-    return (level_map[ty][tx] == '#');
+    return (levels[current_level][ty][tx] == '#');
 }
 
 static int check_collision(int px, int py, int size) {
@@ -128,14 +220,20 @@ static int is_acid(int px, int py) {
     int tx = px / TILE_SIZE;
     int ty = py / TILE_SIZE;
     if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return 0;
-    return (level_map[ty][tx] == '^');
+    return (levels[current_level][ty][tx] == '^');
 }
 
 static int is_portal(int px, int py) {
     int tx = px / TILE_SIZE;
     int ty = py / TILE_SIZE;
     if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return 0;
-    return (level_map[ty][tx] == '@');
+    return (levels[current_level][ty][tx] == '@');
+}
+static char slime_last_key = 0;
+
+static void slime_key_event(struct window *win, char c) {
+    (void)win;
+    slime_last_key = c;
 }
 
 static void slime_update(int dt_ms) {
@@ -149,9 +247,9 @@ static void slime_update(int dt_ms) {
     }
 
     if (game_state == STATE_TITLE) {
-        int current_up = kb_is_pressed('w') || kb_is_pressed('W') || kb_is_pressed(0x48);
-        int current_down = kb_is_pressed('s') || kb_is_pressed('S') || kb_is_pressed(0x50);
-        int current_select = kb_is_pressed(' ') || kb_is_pressed('\n');
+        int current_up = kb_is_pressed('w') || kb_is_pressed('W') || kb_is_pressed(0x48) || slime_last_key == 'w' || slime_last_key == 'W';
+        int current_down = kb_is_pressed('s') || kb_is_pressed('S') || kb_is_pressed(0x50) || slime_last_key == 's' || slime_last_key == 'S';
+        int current_select = kb_is_pressed(' ') || kb_is_pressed('\n') || slime_last_key == ' ' || slime_last_key == '\n' || slime_last_key == '\r';
         
         if (current_up && !up_pressed) {
             menu_selection--;
@@ -176,12 +274,25 @@ static void slime_update(int dt_ms) {
         select_pressed = current_select;
         return;
     }
+    if (game_state == STATE_PAUSE) {
+        if (slime_last_key == 'p' || slime_last_key == 'P' || slime_last_key == '\x1b') {
+            game_state = STATE_PLAY;
+            slime_last_key = 0;
+        }
+        return;
+    }
     
     if (game_state == STATE_GAMEOVER || game_state == STATE_WIN) {
-        if (kb_is_pressed('r') || kb_is_pressed('R') || kb_is_pressed(' ') || kb_is_pressed('\n')) {
+        if (kb_is_pressed('r') || kb_is_pressed('R') || kb_is_pressed(' ') || kb_is_pressed('\n') || slime_last_key == 'r' || slime_last_key == 'R' || slime_last_key == ' ') {
             reset_player();
             game_state = STATE_PLAY;
         }
+        return;
+    }
+    
+    if (slime_last_key == 'p' || slime_last_key == 'P' || slime_last_key == '\x1b') {
+        game_state = STATE_PAUSE;
+        slime_last_key = 0;
         return;
     }
 
@@ -190,8 +301,8 @@ static void slime_update(int dt_ms) {
     if (dt_ms > 40) dt_ms = 40; /* Cap dt to prevent physics tunneling on emulator lag spikes */
 
     int input_x = 0;
-    if (kb_is_pressed(KB_LEFT) || kb_is_pressed('a') || kb_is_pressed('A')) input_x = -1;
-    if (kb_is_pressed(KB_RIGHT) || kb_is_pressed('d') || kb_is_pressed('D')) input_x = 1;
+    if (kb_is_pressed(KB_LEFT) || kb_is_pressed('a') || kb_is_pressed('A') || slime_last_key == 'a' || slime_last_key == 'A') input_x = -1;
+    if (kb_is_pressed(KB_RIGHT) || kb_is_pressed('d') || kb_is_pressed('D') || slime_last_key == 'd' || slime_last_key == 'D') input_x = 1;
     
     player.vx = input_x * MOVE_SPEED;
     
@@ -204,10 +315,10 @@ static void slime_update(int dt_ms) {
         player.vy = MAX_FALL;
     }
     
-    if ((kb_is_pressed(KB_UP) || kb_is_pressed('w') || kb_is_pressed('W') || kb_is_pressed(' ')) && player.on_ground) {
+    if ((kb_is_pressed(KB_UP) || kb_is_pressed('w') || kb_is_pressed('W') || kb_is_pressed(' ') || slime_last_key == 'w' || slime_last_key == 'W' || slime_last_key == ' ') && player.on_ground) {
         player.vy = JUMP_VEL;
         player.on_ground = 0;
-    } else if ((kb_is_pressed(KB_UP) || kb_is_pressed('w') || kb_is_pressed('W') || kb_is_pressed(' ')) && player.on_wall != 0) {
+    } else if ((kb_is_pressed(KB_UP) || kb_is_pressed('w') || kb_is_pressed('W') || kb_is_pressed(' ') || slime_last_key == 'w' || slime_last_key == 'W' || slime_last_key == ' ') && player.on_wall != 0) {
         player.vy = JUMP_VEL;
         player.vx = -player.on_wall * MOVE_SPEED;
         player.on_wall = 0;
@@ -256,10 +367,19 @@ static void slime_update(int dt_ms) {
     int cy = iy + p_size / 2;
     if (is_acid(cx, cy)) {
         game_state = STATE_GAMEOVER;
+        death_count++;
     }
     if (is_portal(cx, cy)) {
-        game_state = STATE_WIN;
+        current_level++;
+        if (current_level >= NUM_LEVELS) {
+            game_state = STATE_WIN;
+            current_level = 0; /* Reset for next play */
+        } else {
+            reset_player();
+        }
     }
+    
+    slime_last_key = 0;
 }
 
 static void slime_draw(void) {
@@ -274,20 +394,18 @@ static void slime_draw(void) {
     }
     
     if (game_state == STATE_TITLE) {
-        draw_text(110, 60, "SLIME", C_SLIME);
-        draw_text(110, 76, "ESCAPE", C_HUD);
+        slime_draw_text(110, 50, "SLIME ESCAPE", C_SLIME);
+        slime_draw_text(120, 110, "NEW GAME", menu_selection == 0 ? C_HUD : C_WALL);
+        slime_draw_text(120, 130, debug_mode ? "DEBUG: ON" : "DEBUG: OFF", menu_selection == 1 ? C_HUD : C_WALL);
         
-        draw_text(120, 110, "PLAY GAME", menu_selection == 0 ? C_HUD : C_WALL);
-        draw_text(120, 130, debug_mode ? "DEBUG: ON" : "DEBUG: OFF", menu_selection == 1 ? C_HUD : C_WALL);
-        
-        draw_text(105, 110 + (menu_selection * 20), ">", C_HUD);
+        slime_draw_text(105, 110 + (menu_selection * 20), ">", C_HUD);
         gfx_present();
         return;
     }
     
     for (int y = 0; y < MAP_H; y++) {
         for (int x = 0; x < MAP_W; x++) {
-            char t = level_map[y][x];
+            char t = levels[current_level][y][x];
             int px = x * TILE_SIZE;
             int py = y * TILE_SIZE;
             
@@ -311,19 +429,51 @@ static void slime_draw(void) {
     int px = FROM_FIX(player.x);
     int py = FROM_FIX(player.y);
     if (game_state == STATE_PLAY) {
-        gfx8_draw_sprite(px - 4, py - 4, spr_slime_width, spr_slime_height, spr_slime_data);
+        int w = 12, h = 12;
+        int off_x = -2, off_y = -4;
+        
+        /* Procedural squish animation based on velocity */
+        if (player.vy < -TO_FIX(100)) { 
+            w = 8; h = 16; off_x = 0; off_y = -8; 
+        } else if (player.vy > TO_FIX(100)) { 
+            w = 8; h = 14; off_x = 0; off_y = -6; 
+        } else if (player.vx != 0) { 
+            w = 14; h = 10; off_x = -3; off_y = -2; 
+        } else if (player.on_ground) {
+            w = 14; h = 10; off_x = -3; off_y = -2; /* idle breathing flat */
+        }
+        
+        if (player.on_wall == 1) { w = 10; h = 14; off_x = -2; off_y = -6; }
+        else if (player.on_wall == -1) { w = 10; h = 14; off_x = 0; off_y = -6; }
+
+        gfx8_fillrect(px + off_x, py + off_y, w, h, C_SLIME);
+        
+        /* Eyes */
+        int eye_x = player.vx > 0 ? 6 : (player.vx < 0 ? 2 : 4);
+        int eye_y = player.vy < 0 ? 2 : (player.vy > 0 ? 6 : 4);
+        gfx8_fillrect(px + off_x + eye_x, py + off_y + eye_y, 2, 2, C_BG);
+        gfx8_fillrect(px + off_x + eye_x + 4, py + off_y + eye_y, 2, 2, C_BG);
     } else {
-        gfx8_fillrect(px, py + 5, 2, 2, C_SLIME);
-        gfx8_fillrect(px + 5, py + 6, 2, 2, C_SLIME);
-        gfx8_fillrect(px + 2, py + 3, 2, 2, C_SLIME);
+        /* Splat animation for death */
+        gfx8_fillrect(px, py + 5, 4, 4, C_SLIME);
+        gfx8_fillrect(px + 6, py + 6, 3, 3, C_SLIME);
+        gfx8_fillrect(px - 3, py + 4, 3, 3, C_SLIME);
+    }
+    
+    if (game_state == STATE_PAUSE) {
+        gfx8_fillrect(110, 70, 100, 40, C_WALL);
+        gfx8_drawline(110, 70, 210, 70, 10);
+        gfx8_drawline(110, 70, 110, 110, 10);
+        slime_draw_text(136, 78, "PAUSED", C_HUD);
+        slime_draw_text(120, 96, "[ PRESS P ]", 255);
     }
     
     if (game_state == STATE_GAMEOVER) {
-        draw_text(130, 80, "MELTED", C_RED); // Custom Red
-        draw_text(115, 100, "[ PRESS R ]", 255);
+        slime_draw_text(130, 80, "MELTED", C_RED); // Custom Red
+        slime_draw_text(115, 100, "[ PRESS R ]", 255);
     } else if (game_state == STATE_WIN) {
-        draw_text(130, 80, "CLEARED", C_PORTAL);
-        draw_text(115, 100, "[ PRESS R ]", 255);
+        slime_draw_text(130, 80, "CLEARED", C_PORTAL);
+        slime_draw_text(115, 100, "[ PRESS R ]", 255);
     }
     
     if (debug_mode) {
@@ -344,13 +494,63 @@ static void slime_draw(void) {
         while (temp[j]) v_str[i++] = temp[j++];
         v_str[i] = '\0';
         
-        draw_text(10, 180, v_str, C_HUD);
+        slime_draw_text(10, 180, v_str, C_HUD);
         gfx_profiler_draw();
     }
-    
-    /* Blit 8-bit 320x200 backbuffer scaled 2x to VRAM */
-    gfx_present();
 }
+
+static void slime_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
+    (void)win;
+    
+    slime_draw(); /* Updates the 320x200 gfx_backbuffer */
+    
+    /* Now blit 320x200 gfx_backbuffer to cx, cy scaled 2x */
+    extern uint16_t* fb_get_buffer(void);
+    uint16_t* vram = fb_get_buffer();
+    if (!vram) return;
+    
+    extern uint8_t gfx_backbuffer[];
+    extern uint16_t gfx_faded_palette[];
+    uint8_t *src = gfx_backbuffer;
+    
+    for (int y = 0; y < 200; y++) {
+        int dest_y1 = cy + y * 2;
+        int dest_y2 = dest_y1 + 1;
+        
+        if (dest_y1 >= cy + ch || dest_y1 >= 480) break;
+        
+        uint16_t *row1 = vram + dest_y1 * 640;
+        uint16_t *row2 = vram + dest_y2 * 640;
+        
+        for (int x = 0; x < 320; x++) {
+            int dest_x1 = cx + x * 2;
+            int dest_x2 = dest_x1 + 1;
+            
+            if (dest_x1 >= cx + cw || dest_x1 >= 640) break;
+            
+            uint16_t color = gfx_faded_palette[src[y * 320 + x]];
+            
+            row1[dest_x1] = color;
+            if (dest_x2 < cx + cw && dest_x2 < 640) {
+                row1[dest_x2] = color;
+            }
+            
+            if (dest_y2 < cy + ch && dest_y2 < 480) {
+                row2[dest_x1] = color;
+                if (dest_x2 < cx + cw && dest_x2 < 640) {
+                    row2[dest_x2] = color;
+                }
+            }
+        }
+    }
+}
+
+static void slime_update_window(struct window *win, int dt_ms) {
+    (void)win;
+    slime_update(dt_ms);
+}
+
+#include "../include/wm.h"
 
 void cmd_slime(int argc, char **argv) {
     debug_mode = 0;
@@ -360,15 +560,13 @@ void cmd_slime(int argc, char **argv) {
         }
     }
     
-    kputs("Starting Slime Escape (8-bit Software Rendered)...\n");
+    slime_init();
     
-    EngineApp app = {
-        .init = slime_init,
-        .update = slime_update,
-        .draw = slime_draw
-    };
-    engine2d_run(&app);
-    
-    extern int gfx_console_init(void);
-    gfx_console_init();
+    /* Open a 640x400 window (+ titlebar and borders) */
+    /* Width: 640, Height: 400 */
+    window_t *win = wm_add_window(0, 0, 640, 400, "Slime Escape", slime_draw_window);
+    if (win) {
+        win->update_client = slime_update_window;
+        win->key_event = slime_key_event;
+    }
 }

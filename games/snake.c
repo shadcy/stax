@@ -180,6 +180,7 @@ void snake_run(void)
     
     game_init();
     full_redraw();
+    fb_swap();
 
     last_tick = tick_count;
     /* 100ms per frame for snake (10 FPS) */
@@ -256,6 +257,7 @@ void snake_run(void)
         
         /* Draw new head */
         draw_cell(body[g_head].x, body[g_head].y, COLOR_YELLOW);
+        fb_swap();
     }
 
     /* ---- Game Over Screen ---- */
@@ -266,6 +268,7 @@ void snake_run(void)
     draw_string(230, 220, "Final Score: ", COLOR_YELLOW);
     draw_uint(330, 220, (unsigned int)g_score, COLOR_GREEN);
     draw_string(190, 260, "Press Enter or Q to return...", COLOR_GRAY);
+    fb_swap();
 
     /* Wait for Enter or Q */
     do {
