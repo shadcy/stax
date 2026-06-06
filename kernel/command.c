@@ -203,7 +203,12 @@ void cmd_mem(int argc, char *argv[])
     (void)argc; (void)argv;
     kputs("Memory Information:\n");
     kputs("==================\n");
-    heap_stats();
+    extern uint32_t heap_get_free(void);
+    extern uint32_t heap_get_total(void);
+    uint32_t tot = heap_get_total();
+    uint32_t fre = heap_get_free();
+    kputs("Heap managed pages: "); kput_uint(tot); kputs(" bytes\n");
+    kputs("Heap free pages: "); kput_uint(fre); kputs(" bytes\n");
 }
 
 void cmd_tasks(int argc, char *argv[])
@@ -304,7 +309,7 @@ extern unsigned char _data_end[];
 extern unsigned char __bss_start[];
 extern unsigned char __bss_end[];
 extern unsigned char __heap_start[];
-extern unsigned char __heap_end[];
+
 extern unsigned char stack_top[];
 
 static void print_size_optimal(unsigned int bytes) {
@@ -357,14 +362,15 @@ void cmd_read(int argc, char *argv[])
         }
     }
     
-    unsigned int total_ram = 4 * 1024 * 1024; /* 4 MB as defined in linker script */
+    unsigned int total_ram = 32 * 1024 * 1024; /* 32 MB as defined in linker script */
     
     /* Using actual linker boundary markers */
     unsigned int kernel_size = _text_end - _text_start;
     unsigned int data_size   = _data_end - _data_start;
     unsigned int bss_size    = __bss_end - __bss_start;
     
-    unsigned int heap_size = __heap_end - __heap_start;
+    extern int get_total_memory(void);
+    unsigned int heap_size = get_total_memory();
     unsigned int stack_size = 8192;
     
     unsigned int total_static = kernel_size + data_size + bss_size;

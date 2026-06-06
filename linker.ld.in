@@ -54,17 +54,14 @@ SECTIONS
         __bss_end = .;
     } > RAM
 
-    /* ---- Heap (grows upward from end of BSS) ---- */
-    . = ALIGN(4);
-    __heap_start = .;
-    . += 65536;               /* 64 KB heap — must match HEAP_SIZE in heap.h */
-    __heap_end = .;
-
-    /* ---- Stack (allocated ABOVE heap, grows downward) ---- */
-    /* stack_top is the highest address; stack grows down toward __heap_end. */
+    /* ---- Stack (allocated BEFORE heap, grows downward) ---- */
     . = ALIGN(8);
-    . += 8192;                /* 8 KB stack guard space */
+    . += 32768;               /* 32 KB stack space */
     stack_top = .;
+
+    /* ---- Heap (takes up the rest of the 32MB RAM) ---- */
+    . = ALIGN(4096);          /* Page aligned */
+    __heap_start = .;
 
     /* ---- Discard debug sections ---- */
     /DISCARD/ : {
