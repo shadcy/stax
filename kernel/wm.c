@@ -877,10 +877,10 @@ void wm_render(void) {
     draw_text(FB_WIDTH - 76, ty + 6, clock_str, COLOR_BLACK);
     
     /* Memory Usage */
-    extern uint32_t heap_get_total(void);
-    extern uint32_t heap_get_free(void);
-    uint32_t tot = heap_get_total();
-    uint32_t f = heap_get_free();
+    extern int get_total_memory(void);
+    extern int get_free_memory(void);
+    uint32_t tot = get_total_memory();
+    uint32_t f = get_free_memory();
     int pct = 0;
     if (tot > 0) pct = ((tot - f) * 100) / tot;
     char mem_str[12];
