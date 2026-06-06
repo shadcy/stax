@@ -165,7 +165,7 @@ $(OS_BIN): $(KERNEL_BIN)
 	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
 	# =========================================================================
 	# [USER CUSTOMIZATION]: IMPORT IMAGES HERE
-	@if [ -f tos.bmp ]; then mcopy -o -i $@ tos.bmp ::/TOS.BMP; fi
+
 	# =========================================================================
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
