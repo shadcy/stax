@@ -61,7 +61,7 @@ typedef struct {
 static app_icon_t app_icons[] = {
     {0, 10, 10, "Boot Log"},
     {1, 10, 90, "File Mgr"},
-    {2, 10, 170, "Slime"}
+    {2, 10, 170, "sh** slime"}
 };
 #define NUM_APPS 3
 
@@ -498,6 +498,12 @@ void wm_update(void) {
                                     file_manager_refresh(); /* refresh FM so renamed/saved files show */
                                 }
                                 curr->state = WM_STATE_HIDDEN; /* Close */
+                                extern void image_viewer_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                                if (curr->draw_client == image_viewer_draw_window && curr->app_data && curr->app_data != (void*)1) {
+                                    extern void kfree(void*);
+                                    kfree(curr->app_data);
+                                    curr->app_data = NULL;
+                                }
                                 if (focused_window == curr) focused_window = NULL;
                                 break;
                             }
