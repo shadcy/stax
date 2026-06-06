@@ -119,8 +119,7 @@ void kernel_main(void)
     kputs("Type 'game --doom' to play graphical DOOM\n");
     kputs("========================================\n");
 
-    kputs("Loading boot screen...\n");
-    bmp_load_and_draw("KITTEN.BMP", 480, 30);
+    kputs("System initialized.\n");
 
     kputs("tios> Interactive command interface ready\n");
 
