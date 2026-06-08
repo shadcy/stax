@@ -532,6 +532,8 @@ void cmd_doom2gfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     FILINFO fno;
+    extern void *doom_create_window(void);
+    
     if (f_stat("DOOM2.WAD", &fno) != FR_OK) {
         if (f_stat("/DOOM2.WAD", &fno) == FR_OK) {
             kputs("DOOM2.WAD is in the root dir. Change dir my dawg!> ");
@@ -551,14 +553,7 @@ void cmd_doom2gfx(int argc, char *argv[])
 
     kputs("Starting DOOM 2 (em-doom)...\n");
     doom2_engine_run();
-    
-    /* Re-initialize console to clear screen and restore the shell layout */
-    gfx_console_init();
-    
-    kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
-    kputs("========================================\n");
-    kputs("Type 'help' for available commands\n");
+    doom_create_window();
 }
 
 /* ============================================================================
