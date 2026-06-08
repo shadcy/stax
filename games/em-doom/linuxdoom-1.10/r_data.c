@@ -42,7 +42,7 @@ rcsid[] = "$Id: r_data.c,v 1.4 1997/02/03 16:47:55 b1 Exp $";
 #include "r_sky.h"
 
 #ifdef LINUX
-#include  <alloca.h>
+
 #endif
 
 
@@ -489,23 +489,8 @@ void R_InitTextures (void)
 
     totalwidth = 0;
     
-    //	Really complex printing shit...
-    temp1 = W_GetNumForName ("S_START");  // P_???????
-    temp2 = W_GetNumForName ("S_END") - 1;
-    temp3 = ((temp2-temp1+63)/64) + ((numtextures+63)/64);
-    printf("[");
-    for (i = 0; i < temp3; i++)
-	printf(" ");
-    printf("         ]");
-    for (i = 0; i < temp3; i++)
-	printf("\x8");
-    printf("\x8\x8\x8\x8\x8\x8\x8\x8\x8\x8");	
-	
     for (i=0 ; i<numtextures ; i++, directory++)
     {
-	if (!(i&63))
-	    printf (".");
-
 	if (i == numtextures1)
 	{
 	    // Start looking in second texture file.
@@ -581,10 +566,20 @@ void R_InitTextures (void)
 void R_InitFlats (void)
 {
     int		i;
-	
-    firstflat = W_GetNumForName ("F_START") + 1;
-    lastflat = W_GetNumForName ("F_END") - 1;
-    numflats = lastflat - firstflat + 1;
+    int		start;
+    int		end;
+
+    start = W_CheckNumForName ("F_START");
+    if (start == -1) start = W_CheckNumForName ("FF_START");
+    if (start == -1) I_Error("R_InitFlats: F_START/FF_START not found");
+
+    end = W_CheckNumForName ("F_END");
+    if (end == -1) end = W_CheckNumForName ("FF_END");
+    if (end == -1) I_Error("R_InitFlats: F_END/FF_END not found");
+
+    firstflat = start + 1;
+    lastflat = end;
+    numflats = lastflat - firstflat;
 	
     // Create translation table for global animation.
     flattranslation = Z_Malloc ((numflats+1)*4, PU_STATIC, 0);
@@ -604,19 +599,26 @@ void R_InitSpriteLumps (void)
 {
     int		i;
     patch_t	*patch;
+    int		start;
+    int		end;
 	
-    firstspritelump = W_GetNumForName ("S_START") + 1;
-    lastspritelump = W_GetNumForName ("S_END") - 1;
+    start = W_CheckNumForName ("S_START");
+    if (start == -1) start = W_CheckNumForName ("SS_START");
+    if (start == -1) I_Error("R_InitSpriteLumps: S_START/SS_START not found");
+
+    end = W_CheckNumForName ("S_END");
+    if (end == -1) end = W_CheckNumForName ("SS_END");
+    if (end == -1) I_Error("R_InitSpriteLumps: S_END/SS_END not found");
     
-    numspritelumps = lastspritelump - firstspritelump + 1;
+    numspritelumps = end - start - 1;
+    firstspritelump = start + 1;
+
     spritewidth = Z_Malloc (numspritelumps*4, PU_STATIC, 0);
     spriteoffset = Z_Malloc (numspritelumps*4, PU_STATIC, 0);
     spritetopoffset = Z_Malloc (numspritelumps*4, PU_STATIC, 0);
 	
     for (i=0 ; i< numspritelumps ; i++)
     {
-	if (!(i&63))
-	    printf (".");
 
 	patch = W_CacheLumpNum (firstspritelump+i, PU_CACHE);
 	spritewidth[i] = SHORT(patch->width)<<FRACBITS;
