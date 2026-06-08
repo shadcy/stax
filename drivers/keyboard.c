@@ -86,6 +86,9 @@ static char kb_decode_sc(unsigned char sc, int is_break)
         ctrl_held = is_break ? 0 : 1;
         return KB_CTRL;
     }
+    if (sc == 0x11) {                  /* alt */
+        return KB_ALT;
+    }
     if (extended) { extended = 0; return 0; }   /* ignore extended for now */
     unsigned char ascii = shift_held ? sc2_shifted[sc] : sc2_normal[sc];
     
@@ -132,6 +135,8 @@ void kb_poll(void)
             else if (sc == 0x72) entry = KB_DOWN;
             else if (sc == 0x6B) entry = KB_LEFT;
             else if (sc == 0x74) entry = KB_RIGHT;
+            else if (sc == 0x11) entry = KB_ALT;
+            else if (sc == 0x14) entry = KB_CTRL;
             
             if (entry) {
                 kb_state[entry] = is_break ? 0 : 1;

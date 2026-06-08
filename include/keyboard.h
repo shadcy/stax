@@ -26,5 +26,6 @@ int kb_getevent(void);
 #define KB_RIGHT 0x14
 #define KB_SHIFT 0x15
 #define KB_CTRL  0x16
+#define KB_ALT   0x17
 
 #endif
