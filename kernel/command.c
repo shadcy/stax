@@ -489,29 +489,31 @@ void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     FILINFO fno;
-    if (f_stat("DOOM.WAD", &fno) != FR_OK) {
-        if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
-            kputs("DOOM.WAD is in the root directory; my bad dawg i am lazy to build a root commands infra > ");
-            char ans = kgetc();
-            kputc(ans); kputc('\n');
-            if (ans == 'y' || ans == 'Y') {
-                f_chdir("/");
-            } else {
-                kputs("Aborted.\n");
-                return;
-            }
-        } else {
-            kputs("Error: DOOM.WAD not found.\n");
-            return;
-        }
+    extern void doom_engine_run_wad(const char *wadname);
+    
+    if (f_stat("DOOM1.WAD", &fno) == FR_OK) {
+        kputs("Starting DOOM Shareware (em-doom)...\n");
+        doom_engine_run_wad("DOOM1.WAD");
+    } else if (f_stat("/DOOM1.WAD", &fno) == FR_OK) {
+        f_chdir("/");
+        kputs("Starting DOOM Shareware (em-doom)...\n");
+        doom_engine_run_wad("DOOM1.WAD");
+    } else if (f_stat("DOOM.WAD", &fno) == FR_OK) {
+        kputs("Starting DOOM (em-doom)...\n");
+        doom_engine_run_wad("DOOM.WAD");
+    } else if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
+        f_chdir("/");
+        kputs("Starting DOOM (em-doom)...\n");
+        doom_engine_run_wad("DOOM.WAD");
+    } else {
+        kputs("Error: DOOM1.WAD or DOOM.WAD not found.\n");
+        return;
     }
+    /* DOOM runs fullscreen and blocks until the user quits (Q/ESC) */
 
-    kputs("Starting DOOM (em-doom)...\n");
-    doom_engine_run();
-    
-    /* Re-initialize console to clear screen and restore the shell layout */
+    /* Re-initialize console to restore the shell layout */
     gfx_console_init();
-    
+
     kputs("========================================\n");
     kputs("  TIOS Kernel - back in shell\n");
     kputs("========================================\n");

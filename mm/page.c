@@ -4,10 +4,10 @@
 
 /* The physical memory available for paging starts after the kernel heap start.
  * In linker.ld, we will define __heap_start and use it as the start of our managed pool.
- * Total RAM is 32MB (0x02000000).
+ * Total RAM is 32MB (0x02000000), but we reserve the last 2MB (0x01E00000 - 0x02000000) for the dual framebuffers.
  */
 extern uint8_t __heap_start[];
-#define RAM_LIMIT 0x02000000
+#define RAM_LIMIT 0x01E00000 /* Stop at 30MB */
 #define PAGE_SIZE 4096
 
 /* Bitmap to track pages (32MB / 4KB = 8192 pages. 8192 bits = 1024 bytes) */

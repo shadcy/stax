@@ -29,7 +29,7 @@ void mmu_init(void) {
                      Cacheable mapping causes massive cache thrashing during fb_swap:
                      every read misses → evicts a dirty line → 3 bus transactions
                      per cache line instead of 2, adding ~50% overhead vs uncached. */
-        if (i == 2 || i == 3) attrs = MMU_DESC_BUFFERABLE;
+        if (i == 30 || i == 31) attrs = MMU_DESC_BUFFERABLE;
         
         page_table[i] = (i << 20) | MMU_DESC_AP_RW | MMU_DESC_DOMAIN(0) | 
                         attrs | MMU_DESC_TYPE_SECTION;
