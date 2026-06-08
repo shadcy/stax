@@ -490,21 +490,26 @@ void cmd_doomgfx(int argc, char *argv[])
     (void)argc; (void)argv;
     FILINFO fno;
     extern void doom_engine_run_wad(const char *wadname);
+    extern void *doom_create_window(void);
     
     if (f_stat("DOOM1.WAD", &fno) == FR_OK) {
         kputs("Starting DOOM Shareware (em-doom)...\n");
         doom_engine_run_wad("DOOM1.WAD");
+        doom_create_window();
     } else if (f_stat("/DOOM1.WAD", &fno) == FR_OK) {
         f_chdir("/");
         kputs("Starting DOOM Shareware (em-doom)...\n");
         doom_engine_run_wad("DOOM1.WAD");
+        doom_create_window();
     } else if (f_stat("DOOM.WAD", &fno) == FR_OK) {
         kputs("Starting DOOM (em-doom)...\n");
         doom_engine_run_wad("DOOM.WAD");
+        doom_create_window();
     } else if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
         f_chdir("/");
         kputs("Starting DOOM (em-doom)...\n");
         doom_engine_run_wad("DOOM.WAD");
+        doom_create_window();
     } else {
         kputs("Error: DOOM1.WAD or DOOM.WAD not found.\n");
         return;

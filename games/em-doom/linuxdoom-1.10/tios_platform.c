@@ -479,24 +479,8 @@ static void draw_overlay_str(int px, int py, const char *s, uint16_t color, uint
 
 void I_FinishUpdate(void)
 {
-    /* Blit DOOM's 8-bit framebuffer (screens[0]) scaled 2x to 640x400,
-     * centered in the 640x480 display with 40px letterboxing. */
-    uint16_t *fb  = fb_get_buffer();
-    byte     *src = screens[0];
-    int       letterbox_y = 40; /* (480 - 400) / 2 */
-
-    for (int y = 0; y < DOOM_H; y++) {
-        uint16_t *dst1 = fb + (letterbox_y + y * 2) * FB_W + 0;
-        uint16_t *dst2 = fb + (letterbox_y + y * 2 + 1) * FB_W + 0;
-        for (int x = 0; x < DOOM_W; x++) {
-            uint16_t color = doom_palette[*src++];
-            *dst1++ = color; *dst1++ = color;
-            *dst2++ = color; *dst2++ = color;
-        }
-    }
-    
-    /* Flip backbuffer to screen */
-    fb_swap();
+    /* In windowed mode, we don't blit directly to fb here or call fb_swap.
+     * The T-OS Window Manager will call our draw_client to copy screens[0] to the window. */
 }
 
 void I_ReadScreen(byte *scr)
@@ -803,19 +787,9 @@ void doom_engine_run_wad(const char* wadname)
 
     D_DoomMain(); /* Init engine, load WAD, setup game state */
 
-    /* Run DOOM in a blocking fullscreen loop.
-     * Timer interrupts keep firing (tick_count updates), and I_StartTic
-     * handles keyboard input directly.  When the user presses Q or ESC,
-     * tios_doom_quit_requested is set and we break out. */
-    while (!tios_doom_quit_requested) {
-        D_DoomStep();
-    }
-
-    /* Restore the graphical console after DOOM exits */
-    kputs("[DOOM] Engine returned\n");
-    fb_clear(0x0000);
-    gfx_console_enable(1);
-    doom_running = 0;
+    /* We no longer run a blocking while loop here.
+     * The T-OS Window Manager will repeatedly call D_DoomStep() 
+     * via the window update_client. */
 }
 
 void doom_engine_run(void)
@@ -826,4 +800,83 @@ void doom_engine_run(void)
 void doom2_engine_run(void)
 {
     doom_engine_run_wad("DOOM2.WAD");
+}
+
+/* ============================================================================
+ * Window Manager Integration for DOOM
+ * ============================================================================ */
+#include "../../../include/wm.h"
+
+extern void D_DoomStep(void);
+
+static void doom_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
+    (void)win;
+    if (!doom_running) return;
+
+    /* DOOM renders to screens[0] at 320x200 */
+    extern uint16_t* fb_get_buffer(void);
+    uint16_t *fbuf = fb_get_buffer();
+    if (!fbuf) return;
+
+    byte *src = screens[0];
+    if (!src) return;
+
+    /* Center the 320x200 DOOM screen, scaled 2x, in the window */
+    int x_offset = (cw - (320 * 2)) / 2;
+    int y_offset = (ch - (200 * 2)) / 2;
+    
+    if (x_offset < 0) x_offset = 0;
+    if (y_offset < 0) y_offset = 0;
+
+    for (int y = 0; y < 200; y++) {
+        int dest_y1 = cy + y_offset + y * 2;
+        int dest_y2 = dest_y1 + 1;
+        
+        if (dest_y1 >= cy + ch || dest_y1 >= 480) break;
+        
+        uint16_t *row_dst1 = fbuf + dest_y1 * 640;
+        uint16_t *row_dst2 = fbuf + dest_y2 * 640;
+        byte *row_src = src + y * 320;
+
+        for (int x = 0; x < 320; x++) {
+            int dest_x1 = cx + x_offset + x * 2;
+            int dest_x2 = dest_x1 + 1;
+            
+            if (dest_x1 >= cx + cw || dest_x1 >= 640) break;
+            
+            uint16_t color = doom_palette[row_src[x]];
+            
+            row_dst1[dest_x1] = color;
+            if (dest_x2 < cx + cw && dest_x2 < 640) row_dst1[dest_x2] = color;
+            
+            if (dest_y2 < cy + ch && dest_y2 < 480) {
+                row_dst2[dest_x1] = color;
+                if (dest_x2 < cx + cw && dest_x2 < 640) row_dst2[dest_x2] = color;
+            }
+        }
+    }
+}
+
+static void doom_update_window(struct window *win, int dt_ms) {
+    (void)win;
+    (void)dt_ms;
+    if (doom_running && !tios_doom_quit_requested) {
+        D_DoomStep();
+    }
+}
+
+static void doom_key_event(struct window *win, char c) {
+    (void)win;
+    /* In DOOM, I_StartTic polls kb_is_pressed directly, 
+     * but we provide this handler if we ever want to hook window keys. */
+    (void)c;
+}
+
+window_t *doom_create_window(void) {
+    window_t *win = wm_add_window(0, 0, 640, 440, "DOOM", doom_draw_window);
+    if (win) {
+        win->update_client = doom_update_window;
+        win->key_event = doom_key_event;
+    }
+    return win;
 }
