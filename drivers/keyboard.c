@@ -76,16 +76,15 @@ static volatile unsigned int  kb_tail = 0;
 /* ── Continuous Key State ── */
 volatile int kb_state[256] = {0};
 
-/* ── internal: decode scancode; *release set to 1 if this is a break code ─ */
 static char kb_decode_sc(unsigned char sc, int is_break)
 {
     if (sc == 0x12 || sc == 0x59) {    /* shift */
         shift_held = is_break ? 0 : 1;
-        return 0;
+        return KB_SHIFT;
     }
     if (sc == 0x14) {                  /* ctrl */
         ctrl_held = is_break ? 0 : 1;
-        return 0;
+        return KB_CTRL;
     }
     if (extended) { extended = 0; return 0; }   /* ignore extended for now */
     unsigned char ascii = shift_held ? sc2_shifted[sc] : sc2_normal[sc];
