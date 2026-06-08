@@ -157,6 +157,7 @@ $(OS_BIN): $(KERNEL_BIN)
 		dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null; \
 		mkfs.vfat -F 16 $@; \
 		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
+		if [ -f $(GAMES_DIR)/em-doom/doom1.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom1.wad ::/DOOM1.WAD; fi; \
 		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
 		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
 	else \
