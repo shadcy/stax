@@ -563,11 +563,6 @@ static int translate_key(char c, int *doom_key)
         case '\033': *doom_key = KEY_ESCAPE;             return 1;
         case ' ':   *doom_key = ' ';                     return 1;  /* use    */
         case '\b':  *doom_key = KEY_BACKSPACE;           return 1;
-        case '8': *doom_key = KEY_UPARROW;      return 1;
-        case '2': *doom_key = KEY_DOWNARROW;    return 1;
-        case '4': *doom_key = KEY_LEFTARROW;    return 1;
-        case '6': *doom_key = KEY_RIGHTARROW;   return 1;
-        case '5': *doom_key = ' ';              return 1;
         /* Hardware arrow keys from PL050 driver */
         case 0x11: *doom_key = KEY_UPARROW;     return 1;
         case 0x12: *doom_key = KEY_DOWNARROW;   return 1;
@@ -575,6 +570,7 @@ static int translate_key(char c, int *doom_key)
         case 0x14: *doom_key = KEY_RIGHTARROW;  return 1;
         case 0x15: *doom_key = KEY_RSHIFT;      return 1;  /* shift -> run */
         case 0x16: *doom_key = KEY_RCTRL;       return 1;  /* ctrl -> fire */
+        case 0x17: *doom_key = KEY_RALT;        return 1;  /* alt -> strafe */
         default:
             if (c >= 'a' && c <= 'z') { *doom_key = c; return 1; }
             if (c >= '1' && c <= '9') { *doom_key = c; return 1; }
@@ -857,10 +853,29 @@ static void doom_draw_window(struct window *win, int cx, int cy, int cw, int ch)
     }
 }
 
+static char doom_prev_kb[256];
+
 static void doom_update_window(struct window *win, int dt_ms) {
     (void)win;
     (void)dt_ms;
     if (doom_running && !tios_doom_quit_requested) {
+        /* Synthesize DOOM events from continuous kb_state because 
+         * kernel.c drains the ring buffer in windowed mode. */
+        extern int kb_is_pressed(char key);
+        for (int i = 0; i < 256; i++) {
+            char state = kb_is_pressed((char)i);
+            if (state != doom_prev_kb[i]) {
+                doom_prev_kb[i] = state;
+                int dk;
+                if (translate_key((char)i, &dk)) {
+                    event_t ev;
+                    ev.type = state ? ev_keydown : ev_keyup;
+                    ev.data1 = dk;
+                    D_PostEvent(&ev);
+                }
+            }
+        }
+        
         D_DoomStep();
     }
 }
