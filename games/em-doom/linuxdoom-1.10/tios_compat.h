@@ -8,6 +8,7 @@
 #define TIOS_COMPAT_H
 
 #define TIOS 1
+#define NORMALUNIX 1
 
 /* ---- Prevent ALL POSIX headers from being included ---- */
 #define _STDLIB_H 1
@@ -126,10 +127,10 @@ static inline int tios_tolower(int c) {
 #define isalpha(c) (isupper(c)||islower(c))
 
 /* ---- Memory allocation ---- */
-void *tios_doom_malloc(int size);
+void *tios_doom_malloc(size_t size);
 void  tios_doom_free(void *ptr);
-void *tios_doom_realloc(void *ptr, int newsize);
-void *tios_doom_alloca(int size);
+void *tios_doom_realloc(void *ptr, size_t newsize);
+void *tios_doom_alloca(size_t size);
 
 #define malloc(n)      tios_doom_malloc(n)
 #define free(p)        tios_doom_free(p)

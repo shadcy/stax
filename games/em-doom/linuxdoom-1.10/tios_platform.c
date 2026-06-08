@@ -323,9 +323,9 @@ static unsigned char doom_slab_buf[SLAB_SIZE] __attribute__((aligned(8)));
 static unsigned int  doom_slab_pos = 0;
 
 /* Tiny bump allocator for DOOM's internal malloc calls (lumpinfo, lumpcache, etc.) */
-void *tios_doom_malloc(int size)
+void *tios_doom_malloc(size_t size)
 {
-    if (size <= 0) return (void*)0;
+    if (size == 0) return (void*)0;
     size = (size + 7) & ~7;   /* 8-byte align */
     if ((unsigned)doom_slab_pos + (unsigned)size > SLAB_SIZE) {
         kputs("[DOOM] malloc OOM\n");
@@ -337,7 +337,7 @@ void *tios_doom_malloc(int size)
 }
 
 /* Realloc: allocate new, copy, abandon old (bump allocator — no free) */
-void *tios_doom_realloc(void *ptr, int newsize)
+void *tios_doom_realloc(void *ptr, size_t newsize)
 {
     void *p = tios_doom_malloc(newsize);
     if (p && ptr) tios_memcpy(p, ptr, newsize);
@@ -347,7 +347,7 @@ void *tios_doom_realloc(void *ptr, int newsize)
 void tios_doom_free(void *ptr) { (void)ptr; /* bump allocator: no-op */ }
 
 /* Stack-style alloca using the slab */
-void *tios_doom_alloca(int size)
+void *tios_doom_alloca(size_t size)
 {
     return tios_doom_malloc(size);
 }
@@ -398,6 +398,10 @@ void I_Tactile(int on, int off, int total) { (void)on; (void)off; (void)total; }
 ticcmd_t  emptycmd;
 ticcmd_t *I_BaseTiccmd(void) { return &emptycmd; }
 
+/* SNDSERV dummies */
+char *sndserver_filename = (char*)0;
+int mb_used = 0;
+
 void I_Error(char *error, ...)
 {
     va_list args;
@@ -408,8 +412,7 @@ void I_Error(char *error, ...)
     kputc('\n');
     doom_running = 0;
     tios_doom_quit_requested = 1;
-    while (1)
-	__asm__ volatile("nop");
+    /* Return to caller — D_DoomStep will check quit flag and stop */
 }
 
 /* ============================================================================
@@ -425,14 +428,17 @@ void I_Error(char *error, ...)
 /* 256-entry RGB565 palette, updated by I_SetPalette() */
 static uint16_t doom_palette[256];
 
+extern void D_DoomStep(void);
+
 void I_InitGraphics(void)
 {
-    /* Take over the framebuffer now that DOOM is ready to render.
-     * Disable the gfx console here (not at engine startup) so all the
-     * WAD-loading / init kputs() messages are visible during loading. */
+    /* Take over the framebuffer for fullscreen DOOM rendering.
+     * Disable the gfx console so DOOM has direct screen access. */
     gfx_console_enable(0);
     fb_init();
-    fb_clear(0x0000);   /* full screen — DOOM only draws the 320x200 window */
+    fb_clear(0x0000);
+    fb_swap();
+    fb_clear(0x0000);
     /* Default greyscale palette until DOOM loads its own */
     for (int i = 0; i < 256; i++) {
         uint8_t v = (uint8_t)i;
@@ -473,34 +479,24 @@ static void draw_overlay_str(int px, int py, const char *s, uint16_t color, uint
 
 void I_FinishUpdate(void)
 {
-    /* Blit DOOM's 8-bit framebuffer (screens[0]) centred in our 640×480 */
+    /* Blit DOOM's 8-bit framebuffer (screens[0]) scaled 2x to 640x400,
+     * centered in the 640x480 display with 40px letterboxing. */
     uint16_t *fb  = fb_get_buffer();
     byte     *src = screens[0];
+    int       letterbox_y = 40; /* (480 - 400) / 2 */
 
     for (int y = 0; y < DOOM_H; y++) {
-        uint16_t *row = fb + (y + OFF_Y) * FB_W + OFF_X;
+        uint16_t *dst1 = fb + (letterbox_y + y * 2) * FB_W + 0;
+        uint16_t *dst2 = fb + (letterbox_y + y * 2 + 1) * FB_W + 0;
         for (int x = 0; x < DOOM_W; x++) {
-            row[x] = doom_palette[*src++];
+            uint16_t color = doom_palette[*src++];
+            *dst1++ = color; *dst1++ = color;
+            *dst2++ = color; *dst2++ = color;
         }
     }
-
-    /* Analytics Overlay */
-    static unsigned int last_fps_time = 0;
-    static int frames_this_second = 0;
-    static int current_fps = 0;
-
-    frames_this_second++;
-    if (tick_count - last_fps_time >= 1000) { /* 1000 ticks = 1 sec */
-        current_fps = frames_this_second;
-        frames_this_second = 0;
-        last_fps_time = tick_count;
-    }
-
-    char stat_buf[128];
-    tios_sprintf(stat_buf, "FPS: %d   |   RAM: %d KB / %d KB       ", 
-                 current_fps, doom_slab_pos / 1024, SLAB_SIZE / 1024);
     
-    draw_overlay_str(10, 10, stat_buf, COLOR_CYAN, COLOR_BLACK);
+    /* Flip backbuffer to screen */
+    fb_swap();
 }
 
 void I_ReadScreen(byte *scr)
@@ -588,6 +584,13 @@ static int translate_key(char c, int *doom_key)
         case '4': *doom_key = KEY_LEFTARROW;    return 1;
         case '6': *doom_key = KEY_RIGHTARROW;   return 1;
         case '5': *doom_key = ' ';              return 1;
+        /* Hardware arrow keys from PL050 driver */
+        case 0x11: *doom_key = KEY_UPARROW;     return 1;
+        case 0x12: *doom_key = KEY_DOWNARROW;   return 1;
+        case 0x13: *doom_key = KEY_LEFTARROW;   return 1;
+        case 0x14: *doom_key = KEY_RIGHTARROW;  return 1;
+        case 0x15: *doom_key = KEY_RSHIFT;      return 1;  /* shift -> run */
+        case 0x16: *doom_key = KEY_RCTRL;       return 1;  /* ctrl -> fire */
         default:
             if (c >= 'a' && c <= 'z') { *doom_key = c; return 1; }
             if (c >= '1' && c <= '9') { *doom_key = c; return 1; }
@@ -607,12 +610,7 @@ void I_StartTic(void)
         char c = (kev > 0) ? (char)kev : (char)(-kev);
         int is_press = (kev > 0);
 
-        /* Quit on Q or Escape press only */
-        if (is_press && (c == 'q' || c == 'Q' || c == '\033')) {
-            tios_doom_quit_requested = 1;
-            doom_running = 0;
-            return;
-        }
+        /* Pass all keys to DOOM to let it handle menus and quitting natively */
 
         if (translate_key(c, &dk)) {
             ev.type  = is_press ? ev_keydown : ev_keyup;
@@ -630,11 +628,6 @@ void I_StartTic(void)
         #define UART_FR_RXFE_I (1 << 4)
         if (!(UART_FR_I & UART_FR_RXFE_I)) {
             char c = (char)(UART_DR_I & 0xFF);
-            if (c == 'q' || c == 'Q' || c == '\033') {
-                tios_doom_quit_requested = 1;
-                doom_running = 0;
-                return;
-            }
             if (translate_key(c, &dk)) {
                 ev.type = ev_keydown; ev.data1 = dk; D_PostEvent(&ev);
                 ev.type = ev_keyup;                  D_PostEvent(&ev);
@@ -769,7 +762,7 @@ static char  doom_nosnd[]   = "-nosound";
  * TryRunTics catch-up storm that freezes the game after level load). */
 extern boolean singletics;
 
-static void doom_engine_run_wad(const char* wadname)
+void doom_engine_run_wad(const char* wadname)
 {
     /* Keep the gfx console alive so all init/debug messages are visible
      * while the WAD loads.  I_InitGraphics() will take over the FB when
@@ -808,12 +801,21 @@ static void doom_engine_run_wad(const char* wadname)
 
     doom_running = 1;
 
-    D_DoomMain();
+    D_DoomMain(); /* Init engine, load WAD, setup game state */
 
-    /* Restore console after DOOM exits */
+    /* Run DOOM in a blocking fullscreen loop.
+     * Timer interrupts keep firing (tick_count updates), and I_StartTic
+     * handles keyboard input directly.  When the user presses Q or ESC,
+     * tios_doom_quit_requested is set and we break out. */
+    while (!tios_doom_quit_requested) {
+        D_DoomStep();
+    }
+
+    /* Restore the graphical console after DOOM exits */
     kputs("[DOOM] Engine returned\n");
     fb_clear(0x0000);
     gfx_console_enable(1);
+    doom_running = 0;
 }
 
 void doom_engine_run(void)
