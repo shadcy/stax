@@ -78,3 +78,39 @@ int task_create(void (*entry)(void))
     num_tasks++;
     return i;
 }
+
+int task_spawn(void (*entry)(void), uint32_t *stack_top)
+{
+    int i;
+    task_t *t;
+
+    for (i = 1; i < MAX_TASKS; i++) {
+        if (task_table[i].state == -1) break;
+    }
+    if (i >= MAX_TASKS) return -1;
+
+    t = &task_table[i];
+    t->r4 = t->r5 = t->r6 = t->r7 = 0;
+    t->r8 = t->r9 = t->r10 = t->r11 = 0;
+    t->r0 = t->r1 = t->r2 = t->r3 = 0;
+    t->r12 = 0;
+    t->sp = (uint32_t)stack_top;
+    t->lr = (uint32_t)task_exit;
+    t->pc = (uint32_t)entry;
+    t->cpsr = 0x13;
+    t->state = TASK_STATE_READY;
+    t->next = current_task->next;
+    current_task->next = t;
+
+    num_tasks++;
+    return i;
+}
+
+void task_kill(int task_id)
+{
+    if (task_id < 1 || task_id >= MAX_TASKS)
+        return;
+    if (task_table[task_id].state == -1)
+        return;
+    task_table[task_id].state = TASK_STATE_BLOCKED;
+}
