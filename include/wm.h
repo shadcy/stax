@@ -37,6 +37,9 @@ typedef struct window {
     /* Callback for mouse click inside the client area (optional). mx/my are relative to client_x/client_y */
     void (*mouse_click)(struct window *win, int mx, int my, int button);
     
+    /* Callback for mouse drag inside the client area (optional). */
+    void (*mouse_drag)(struct window *win, int mx, int my);
+    
     struct window *next;
 } window_t;
 

@@ -44,6 +44,7 @@ static int drag_off_x = 0;
 static int drag_off_y = 0;
 static int prev_mouse_b = 0;
 static window_t *focused_window = NULL;
+static window_t *drag_client_win = NULL;
 
 static void wm_bring_to_front(window_t *win);
 
@@ -219,6 +220,7 @@ window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*dr
     win->update_client = NULL;
     win->key_event = NULL;
     win->mouse_click = NULL;
+    win->mouse_drag = NULL;
     win->path[0] = '\0';
     win->app_data = NULL;
     win->next = window_list;
@@ -273,6 +275,12 @@ int wm_dispatch_key(char c) {
         && focused_window->state == WM_STATE_ACTIVE
         && focused_window->key_event) {
         focused_window->key_event(focused_window, c);
+        
+        if (strcmp(focused_window->title, "Boot Log") == 0) {
+            if (c == 0x11 || c == 0x12) return 1; /* Consumed for scrolling */
+            return 0; /* Let typing fall through to kernel shell */
+        }
+        
         return 1;
     }
     return 0;
@@ -584,6 +592,7 @@ void wm_update(void) {
                             }
                         } else {
                             /* Client area click */
+                            drag_client_win = curr;
                             if (curr->mouse_click) {
                                 curr->mouse_click(curr, mx - curr->x, my - curr->y - BORDER_WIDTH - TITLEBAR_HEIGHT, mb & 3);
                             }
@@ -647,12 +656,18 @@ desktop_hit_done:
 
     } else if (released) {
         drag_win = NULL;
+        drag_client_win = NULL;
         /* If we clicked an icon but didn't drag it, launch it */
         if (drag_type != -1 && !drag_moved) {
             if (drag_type == 0 && drag_idx >= 0 && drag_idx < NUM_APPS) {
                 int i = drag_idx;
                 if (app_icons[i].id == 0) {
-                    wm_add_window(40,40,560,360,"Boot Log",gfx_console_draw_window);
+                    window_t *gw = wm_add_window(40,40,560,360,"Boot Log",gfx_console_draw_window);
+                    if (gw) {
+                        gw->key_event = gfx_console_key_event;
+                        gw->mouse_click = gfx_console_mouse_click;
+                        gw->mouse_drag = gfx_console_mouse_drag;
+                    }
                 } else if (app_icons[i].id == 1) {
                     window_t *fw=wm_add_window(60,60,420,320,"File Manager",file_manager_draw_window);
                     if (fw) { fw->mouse_click=file_manager_click; fw->update_client=file_manager_update; }
@@ -722,6 +737,8 @@ desktop_hit_done:
         if (drag_win) {
             drag_win->x = mx - drag_off_x;
             drag_win->y = my - drag_off_y;
+        } else if (drag_client_win && drag_client_win->mouse_drag) {
+            drag_client_win->mouse_drag(drag_client_win, mx - drag_client_win->x, my - drag_client_win->y - BORDER_WIDTH - TITLEBAR_HEIGHT);
         } else if (drag_type == 0 && drag_idx >= 0 && drag_idx < NUM_APPS) {
             int old_x = app_icons[drag_idx].x;
             int old_y = app_icons[drag_idx].y;

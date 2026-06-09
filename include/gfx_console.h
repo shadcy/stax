@@ -19,5 +19,8 @@ void gfx_tick(void);
 
 struct window;
 void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+void gfx_console_key_event(struct window *win, char c);
+void gfx_console_mouse_click(struct window *win, int mx, int my, int btn);
+void gfx_console_mouse_drag(struct window *win, int mx, int my);
 
 #endif

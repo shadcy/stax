@@ -6,6 +6,7 @@
 #include "gfx_console.h"
 #include "framebuffer.h"
 #include "font8x16.h"
+#include "wm.h"
 
 #define COLS   80
 #define ROWS   30
@@ -159,6 +160,11 @@ void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch)
     if (max_cols > COLS) max_cols = COLS;
     if (max_rows > ROWS) max_rows = ROWS;
 
+    int max_scroll = head_line - (max_rows - 1);
+    if (max_scroll < 0) max_scroll = 0;
+    
+    if (view_offset > max_scroll) view_offset = max_scroll;
+
     int start_line;
     if (head_line < max_rows) {
         start_line = 0;
@@ -194,13 +200,102 @@ void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch)
         }
     }
     
-    /* Draw cursor */
-    if (view_offset == 0 && cur_on) {
-        int cursor_row = (head_line < max_rows) ? head_line : (max_rows - 1);
-        int px = cx + cur_x * 8;
-        int py = cy + cursor_row * 16;
-        if (px + 8 <= cx + cw && py + 16 <= cy + ch) {
-            fb_fillrect(px, py, 8, 16, COLOR_GRAY_5);
+    /* Draw scrollbar if needed */
+    if (head_line >= max_rows) {
+        int track_x = cx + cw - 16;
+        int track_h = ch;
+        int total_rows = head_line + 1;
+        int max_scroll = head_line - (max_rows - 1);
+        
+        int thumb_h = (max_rows * track_h) / total_rows;
+        if (thumb_h < 10) thumb_h = 10;
+        
+        int scroll_pos = max_scroll - view_offset; /* 0 at top, max_scroll at bottom */
+        int thumb_y = cy;
+        if (max_scroll > 0) {
+            thumb_y = cy + (scroll_pos * (track_h - thumb_h)) / max_scroll;
+        }
+        
+        /* Track */
+        fb_fillrect(track_x, cy, 16, track_h, rgb565(40, 40, 40));
+        /* Thumb */
+        fb_fillrect(track_x + 2, thumb_y + 2, 12, thumb_h - 4, rgb565(120, 120, 120));
+    }
+}
+
+void gfx_console_key_event(struct window *win, char c)
+{
+    (void)win;
+    if (c == 0x11) { /* KB_UP */
+        gfx_scroll(1);
+    } else if (c == 0x12) { /* KB_DOWN */
+        gfx_scroll(-1);
+    }
+}
+
+void gfx_console_mouse_click(struct window *win, int mx, int my, int btn)
+{
+    (void)btn;
+    if (!enabled) return;
+    
+    int cw = win->width;
+    int ch = win->height;
+    
+    if (mx >= cw - 16) {
+        int max_rows = ch / 16;
+        if (head_line >= max_rows) {
+            int track_h = ch;
+            int total_rows = head_line + 1;
+            int max_scroll = head_line - (max_rows - 1);
+            if (max_scroll < 0) max_scroll = 0;
+            
+            int thumb_h = (max_rows * track_h) / total_rows;
+            if (thumb_h < 10) thumb_h = 10;
+            
+            int scroll_pos = max_scroll - view_offset;
+            int thumb_y = 0;
+            if (max_scroll > 0) {
+                thumb_y = (scroll_pos * (track_h - thumb_h)) / max_scroll;
+            }
+            
+            if (my < thumb_y) {
+                gfx_scroll(max_rows); /* Page up */
+            } else if (my > thumb_y + thumb_h) {
+                gfx_scroll(-max_rows); /* Page down */
+            }
+        }
+    }
+}
+
+void gfx_console_mouse_drag(struct window *win, int mx, int my)
+{
+    if (!enabled) return;
+    
+    int cw = win->width;
+    int ch = win->height;
+    
+    if (mx >= cw - 24) { /* Allow slight leeway */
+        int max_rows = ch / 16;
+        if (head_line >= max_rows) {
+            int track_h = ch;
+            int total_rows = head_line + 1;
+            int max_scroll = head_line - (max_rows - 1);
+            if (max_scroll < 0) max_scroll = 0;
+            
+            int thumb_h = (max_rows * track_h) / total_rows;
+            if (thumb_h < 10) thumb_h = 10;
+            
+            int track_range = track_h - thumb_h;
+            if (track_range <= 0) return;
+            
+            int drag_y = my - (thumb_h / 2);
+            if (drag_y < 0) drag_y = 0;
+            if (drag_y > track_range) drag_y = track_range;
+            
+            int new_scroll_pos = (drag_y * max_scroll) / track_range;
+            view_offset = max_scroll - new_scroll_pos;
+            if (view_offset < 0) view_offset = 0;
+            if (view_offset > max_scroll) view_offset = max_scroll;
         }
     }
 }

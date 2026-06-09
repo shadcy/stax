@@ -87,6 +87,9 @@ void kernel_main(void)
     window_t *boot_win = wm_add_window(10, 10, 300, 300, "Boot Log", gfx_console_draw_window);
     if (boot_win) {
         boot_win->state = WM_STATE_ACTIVE;
+        boot_win->key_event = gfx_console_key_event;
+        boot_win->mouse_click = gfx_console_mouse_click;
+        boot_win->mouse_drag = gfx_console_mouse_drag;
     }
 
     gfx_console_init();
