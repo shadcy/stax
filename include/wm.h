@@ -47,8 +47,11 @@ typedef struct {
 
 void wm_init(void);
 window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*draw_cb)(window_t*, int, int, int, int));
+void wm_close_window(window_t *win);
+void wm_focus_shell(void);
 void wm_render(void);
 void wm_update(void); /* handles input */
+int wm_dispatch_key(char c);
 void draw_text(int x, int y, const char *s, uint16_t color);
 
 #endif

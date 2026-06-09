@@ -9,6 +9,7 @@
 #include "string.h"
 #include "heap.h"
 #include "gfx_console.h"
+#include "doom.h"
 #include "app_file_manager.h"
 #include "app_terminal.h"
 #include "app_editor.h"
@@ -43,6 +44,8 @@ static int drag_off_x = 0;
 static int drag_off_y = 0;
 static int prev_mouse_b = 0;
 static window_t *focused_window = NULL;
+
+static void wm_bring_to_front(window_t *win);
 
 static context_menu_t ctx_menu = {0, 0, 0};
 
@@ -225,6 +228,30 @@ window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*dr
     return win;
 }
 
+void wm_close_window(window_t *win)
+{
+    if (!win) return;
+    win->state = WM_STATE_HIDDEN;
+    win->key_event = NULL;
+    win->update_client = NULL;
+    if (focused_window == win)
+        focused_window = NULL;
+}
+
+void wm_focus_shell(void)
+{
+    window_t *curr = window_list;
+    while (curr) {
+        if (strcmp(curr->title, "Boot Log") == 0) {
+            wm_bring_to_front(curr);
+            focused_window = curr;
+            return;
+        }
+        curr = curr->next;
+    }
+    focused_window = NULL;
+}
+
 int wm_dispatch_key(char c) {
     if (c == '\t') {
         if (window_list && window_list->next) {
@@ -242,7 +269,9 @@ int wm_dispatch_key(char c) {
         }
         return 1;
     }
-    if (focused_window && focused_window->key_event) {
+    if (focused_window
+        && focused_window->state == WM_STATE_ACTIVE
+        && focused_window->key_event) {
         focused_window->key_event(focused_window, c);
         return 1;
     }
@@ -334,9 +363,11 @@ void wm_update(void) {
         }
         last_tick = current_tick;
         /* Desktop filesystem icons: periodic refresh */
+        extern volatile int doom_running;
+        extern volatile int doom_loading;
         desk_refresh += dt_ms;
         if (desk_refresh >= DESK_REFRESH_MS) {
-            desk_loaded = 0;
+            if (!doom_running && !doom_loading) desk_loaded = 0;
             desk_refresh = 0;
         }
     }
@@ -491,6 +522,12 @@ void wm_update(void) {
                         
                         if (my >= tby + 2 && my < tby + 2 + btn_w) {
                             if (mx >= close_x && mx < close_x + btn_w) {
+                                if (curr->app_data == DOOM_WIN_MARKER) {
+                                    doom_force_cleanup();
+                                    if (focused_window == curr)
+                                        focused_window = NULL;
+                                    break;
+                                }
                                 /* Auto-save if this is an editor window */
                                 extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                                 if (curr->draw_client == editor_draw_window) {
@@ -758,7 +795,9 @@ void wm_render(void) {
         draw_text(ix, iy + 56, app_icons[i].name, COLOR_WHITE);
     }
     /* ---- 2b. Filesystem icons ---- */
-    if (!desk_loaded) desk_load_files();
+    extern volatile int doom_running;
+    extern volatile int doom_loading;
+    if (!desk_loaded && !doom_running && !doom_loading) desk_load_files();
     for (int i = 0; i < desk_count; i++) {
         if (!desk_files[i].valid) continue;
         int ix = desk_files[i].x;

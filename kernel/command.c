@@ -261,9 +261,6 @@ void cmd_test(int argc, char *argv[])
         if (strcmp(argv[1], "--fb") == 0) {
             cmd_fbtest(argc, argv);
             return;
-        } else if (strcmp(argv[1], "--game") == 0) {
-            cmd_test_game(argc, argv);
-            return;
         } else {
             kputs("Unknown test option.\n");
             return;
@@ -489,38 +486,35 @@ void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     FILINFO fno;
-    extern void doom_engine_run_wad(const char *wadname);
-    extern void *doom_create_window(void);
-    
+    const char *wadname = NULL;
+
     if (f_stat("DOOM1.WAD", &fno) == FR_OK) {
-        kputs("Starting DOOM Shareware (em-doom)...\n");
-        doom_engine_run_wad("DOOM1.WAD");
-        doom_create_window();
+        wadname = "DOOM1.WAD";
     } else if (f_stat("/DOOM1.WAD", &fno) == FR_OK) {
         f_chdir("/");
-        kputs("Starting DOOM Shareware (em-doom)...\n");
-        doom_engine_run_wad("DOOM1.WAD");
-        doom_create_window();
+        wadname = "DOOM1.WAD";
     } else if (f_stat("DOOM.WAD", &fno) == FR_OK) {
-        kputs("Starting DOOM (em-doom)...\n");
-        doom_engine_run_wad("DOOM.WAD");
-        doom_create_window();
+        wadname = "DOOM.WAD";
     } else if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
         f_chdir("/");
-        kputs("Starting DOOM (em-doom)...\n");
-        doom_engine_run_wad("DOOM.WAD");
-        doom_create_window();
-    } else {
+        wadname = "DOOM.WAD";
+    }
+
+    if (!wadname) {
         kputs("Error: DOOM1.WAD or DOOM.WAD not found.\n");
         return;
     }
-    /* DOOM runs fullscreen and blocks until the user quits (Q/ESC) */
 
-    /* Re-initialize console to restore the shell layout */
-    gfx_console_init();
+    kputs("Starting DOOM (em-doom)...\n");
+
+    /* doom_launch_wad: creates window → loads WAD → spawns game task → focuses shell */
+    doom_launch_wad(wadname);
+
+    /* Re-enable gfx console (I_InitGraphics disables it for direct FB access) */
+    gfx_console_enable(1);
 
     kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
+    kputs("  DOOM launched — running in window\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
 }
@@ -532,7 +526,6 @@ void cmd_doom2gfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
     FILINFO fno;
-    extern void *doom_create_window(void);
     
     if (f_stat("DOOM2.WAD", &fno) != FR_OK) {
         if (f_stat("/DOOM2.WAD", &fno) == FR_OK) {
@@ -552,8 +545,10 @@ void cmd_doom2gfx(int argc, char *argv[])
     }
 
     kputs("Starting DOOM 2 (em-doom)...\n");
-    doom2_engine_run();
-    doom_create_window();
+    doom_launch_wad("DOOM2.WAD");
+
+    /* Re-enable gfx console (I_InitGraphics disables it for direct FB access) */
+    gfx_console_enable(1);
 }
 
 /* ============================================================================

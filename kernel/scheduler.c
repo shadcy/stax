@@ -20,7 +20,8 @@ void task_exit(void)
 {
     current_task->state = TASK_STATE_BLOCKED;
     while (1) {
-        __asm__ volatile ("nop");
+        /* On ARM926EJ-S (ARMv5), the 'wfi' instruction is undefined.
+         * We just loop and wait for the scheduler to preempt us. */
     }
 }
 
@@ -112,5 +113,18 @@ void task_kill(int task_id)
         return;
     if (task_table[task_id].state == -1)
         return;
-    task_table[task_id].state = TASK_STATE_BLOCKED;
+
+    task_t *victim = &task_table[task_id];
+    victim->state = TASK_STATE_BLOCKED;
+
+    /* Unlink victim from the circular list so the scheduler never
+     * wastes a timeslice trying to switch to a dead task.            */
+    task_t *prev = victim;
+    while (prev->next != victim) {
+        prev = prev->next;
+        if (prev == victim) break;   /* safety: already unlinked */
+    }
+    if (prev->next == victim)
+        prev->next = victim->next;
+    victim->next = victim;           /* self-loop (harmless sentinel) */
 }

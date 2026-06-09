@@ -597,10 +597,21 @@ static void DetectGamemode (void)
     else
 	gamemode = retail;
 
-    /* Auto-start into E1M1 if the WAD has valid map data.
-     * E1M1 marker lumps are always size 0 — the actual data is in the
+    /* Auto-start into the first map if the WAD has valid map data.
+     * Map marker lumps are always size 0 — the actual data is in the
      * THINGS lump that immediately follows the marker. */
-    if (W_CheckNumForName ("E1M1") >= 0
+    if (gamemode == commercial
+        && W_CheckNumForName ("MAP01") >= 0
+        && W_CheckNumForName ("THINGS") >= 0
+        && W_LumpLength (W_CheckNumForName ("THINGS")) > 0)
+    {
+	autostart = true;
+	startepisode = 1;
+	startmap = 1;
+	startskill = sk_medium;
+	printf ("Valid MAP01 found — autostarting map 1\n");
+    }
+    else if (W_CheckNumForName ("E1M1") >= 0
         && W_CheckNumForName ("THINGS") >= 0
         && W_LumpLength (W_CheckNumForName ("THINGS")) > 0)
     {
