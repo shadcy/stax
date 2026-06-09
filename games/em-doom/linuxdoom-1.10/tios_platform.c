@@ -17,6 +17,8 @@
 #include "../../../include/fat.h"
 #include "../../../include/console.h"
 #include "../../../include/gfx_console.h"
+#include "../../../include/doom.h"
+#include "../../../include/scheduler.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -302,12 +304,31 @@ int tios_sprintf(char *buf, const char *fmt, ...)
     return n;
 }
 
+volatile int doom_running = 0;
+static volatile int doom_cleanup_done = 0;
+volatile int doom_loading = 0;
+static int doom_sched_task = -1;
+static int doom_printf_pump = 0;
+
+#define DOOM_TASK_STACK_SIZE 65536
+static uint32_t doom_task_stack[DOOM_TASK_STACK_SIZE / 4];
+
+static void doom_loading_pump(void)
+{
+    extern void wm_update(void);
+    extern void wm_render(void);
+    wm_update();
+    wm_render();
+}
+
 void tios_kprintf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
     tios_vsprintf((char*)0, fmt, args);
     va_end(args);
+    if (doom_loading && (++doom_printf_pump % 2) == 0)
+        doom_loading_pump();
 }
 
 /* ============================================================================
@@ -363,11 +384,22 @@ byte *I_ZoneBase(int *size)
     return (byte *)doom_zone_buf;
 }
 
-/* DOOM runs at 35 tics/sec; our timer runs at 100 Hz */
+static unsigned int doom_time_offset = 0;
+
+void doom_reset_time(void)
+{
+    extern volatile unsigned int tick_count;
+    doom_time_offset = tick_count;
+}
+
+/* DOOM runs at 35 tics/sec; our timer runs at 1000 Hz */
 int I_GetTime(void)
 {
+    extern volatile unsigned int tick_count;
+    unsigned int t = tick_count;
+    if (t < doom_time_offset) return 0;
     /* tick_count * 35/1000 = tick_count * 7/200 */
-    return (int)(tick_count * 7 / 200);
+    return (int)((t - doom_time_offset) * 7 / 200);
 }
 
 void I_Init(void)
@@ -375,7 +407,7 @@ void I_Init(void)
     /* Sound: stubbed */
 }
 
-static int doom_running = 0;
+static void doom_spawn_task(void);
 
 void I_Quit(void)
 {
@@ -412,7 +444,8 @@ void I_Error(char *error, ...)
     kputc('\n');
     doom_running = 0;
     tios_doom_quit_requested = 1;
-    /* Return to caller — D_DoomStep will check quit flag and stop */
+    /* Hang to prevent Data Aborts from callers expecting us not to return */
+    while (1) { __asm__ volatile("nop"); }
 }
 
 /* ============================================================================
@@ -432,13 +465,7 @@ extern void D_DoomStep(void);
 
 void I_InitGraphics(void)
 {
-    /* Take over the framebuffer for fullscreen DOOM rendering.
-     * Disable the gfx console so DOOM has direct screen access. */
-    gfx_console_enable(0);
-    fb_init();
-    fb_clear(0x0000);
-    fb_swap();
-    fb_clear(0x0000);
+    /* DOOM runs in a window now, so we don't clear the whole framebuffer. */
     /* Default greyscale palette until DOOM loads its own */
     for (int i = 0; i < 256; i++) {
         uint8_t v = (uint8_t)i;
@@ -477,10 +504,19 @@ static void draw_overlay_str(int px, int py, const char *s, uint16_t color, uint
     }
 }
 
+static byte doom_front_buffer[320 * 200];
+
 void I_FinishUpdate(void)
 {
-    /* In windowed mode, we don't blit directly to fb here or call fb_swap.
-     * The T-OS Window Manager will call our draw_client to copy screens[0] to the window. */
+    /* Double-buffering: Copy the finished backbuffer to the front buffer.
+     * The T-OS Window Manager reads from doom_front_buffer, eliminating tearing. */
+    if (screens[0]) {
+        tios_memcpy(doom_front_buffer, screens[0], 320 * 200);
+    }
+
+    extern void tios_kprintf(const char *fmt, ...);
+    static int frame_count = 0;
+    if (frame_count++ % 35 == 0) tios_kprintf("DOOM rendered 35 frames\n");
 }
 
 void I_ReadScreen(byte *scr)
@@ -701,7 +737,7 @@ int tios_lseek(int fd, int offset, int whence)
     }
     if (target < 0) target = 0;
     /* Seek within file */
-    fat_seek(t->ff, target);
+    if (fat_seek(t->ff, target) != 0) return -1;
     t->pos = target;
     return target;
 }
@@ -753,14 +789,10 @@ void doom_engine_run_wad(const char* wadname)
     kputs("========================================\n");
     kputs("[DOOM] Initializing em-doom engine\n");
 
-    /* Force singletics: run exactly 1 game tic per rendered frame.
-     * Without this, TryRunTics catches up all tics missed during the slow
-     * level load (hundreds of tics), causing an apparent freeze. */
-    singletics = true;
-
     /* Reset slab allocator for a fresh run */
     doom_slab_pos = 0;
     tios_doom_quit_requested = 0;
+    doom_cleanup_done = 0;
 
     /* Wipe fd table & close leaked handles from previous run */
     for (int i = 0; i < TIOS_MAX_FD; i++) {
@@ -783,9 +815,21 @@ void doom_engine_run_wad(const char* wadname)
 
     D_DoomMain(); /* Init engine, load WAD, setup game state */
 
-    /* We no longer run a blocking while loop here.
-     * The T-OS Window Manager will repeatedly call D_DoomStep() 
-     * via the window update_client. */
+    doom_reset_time();
+}
+
+void doom_launch_wad(const char *wadname)
+{
+    doom_create_window();
+    doom_loading = 1;
+    doom_printf_pump = 0;
+    doom_loading_pump();
+
+    doom_engine_run_wad(wadname);
+
+    doom_loading = 0;
+    doom_loading_pump();
+    doom_spawn_task();
 }
 
 void doom_engine_run(void)
@@ -805,16 +849,47 @@ void doom2_engine_run(void)
 
 extern void D_DoomStep(void);
 
-static void doom_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
+static void doom_draw_loading_badge(int cx, int cy, int cw, int ch)
+{
+    extern volatile unsigned int tick_count;
+    uint16_t *fbuf = fb_get_buffer();
+    if (!fbuf) return;
+
+    fb_fillrect(cx, cy, cw, ch, 0x0000);
+
+    int bw = 220, bh = 48;
+    int bx = cx + (cw - bw) / 2;
+    int by = cy + (ch - bh) / 2;
+
+    fb_fillrect(bx - 2, by - 2, bw + 4, bh + 4, 0xC618);
+    fb_fillrect(bx, by, bw, bh, 0x2104);
+
+    draw_overlay_str(bx + 24, by + 8, "Loading DOOM", 0xFFE0, 0x2104);
+
+    int dots = (int)((tick_count / 400) % 4);
+    char dotbuf[8] = "    ";
+    for (int i = 0; i < dots; i++) dotbuf[i] = '.';
+    draw_overlay_str(bx + 160, by + 8, dotbuf, 0xFFE0, 0x2104);
+    draw_overlay_str(bx + 36, by + 26, "Please wait", 0xC618, 0x2104);
+}
+
+static void doom_draw_window(window_t *win, int cx, int cy, int cw, int ch)
+{
     (void)win;
-    if (!doom_running) return;
+
+    if (doom_loading) {
+        doom_draw_loading_badge(cx, cy, cw, ch);
+        return;
+    }
+
+    if (!doom_running || doom_cleanup_done) return;
 
     /* DOOM renders to screens[0] at 320x200 */
     extern uint16_t* fb_get_buffer(void);
     uint16_t *fbuf = fb_get_buffer();
     if (!fbuf) return;
 
-    byte *src = screens[0];
+    byte *src = doom_front_buffer;
     if (!src) return;
 
     /* Center the 320x200 DOOM screen, scaled 2x, in the window */
@@ -854,30 +929,121 @@ static void doom_draw_window(struct window *win, int cx, int cy, int cw, int ch)
 }
 
 static char doom_prev_kb[256];
+static window_t *doom_win = NULL;
 
-static void doom_update_window(struct window *win, int dt_ms) {
-    (void)win;
-    (void)dt_ms;
-    if (doom_running && !tios_doom_quit_requested) {
-        /* Synthesize DOOM events from continuous kb_state because 
-         * kernel.c drains the ring buffer in windowed mode. */
-        extern int kb_is_pressed(char key);
-        for (int i = 0; i < 256; i++) {
-            char state = kb_is_pressed((char)i);
-            if (state != doom_prev_kb[i]) {
-                doom_prev_kb[i] = state;
-                int dk;
-                if (translate_key((char)i, &dk)) {
-                    event_t ev;
-                    ev.type = state ? ev_keydown : ev_keyup;
-                    ev.data1 = dk;
-                    D_PostEvent(&ev);
-                }
+static void doom_synth_keyboard(void)
+{
+    extern int kb_is_pressed(char key);
+    for (int i = 0; i < 256; i++) {
+        char state = kb_is_pressed((char)i);
+        if (state != doom_prev_kb[i]) {
+            doom_prev_kb[i] = state;
+            int dk;
+            if (translate_key((char)i, &dk)) {
+                event_t ev;
+                ev.type = state ? ev_keydown : ev_keyup;
+                ev.data1 = dk;
+                D_PostEvent(&ev);
             }
         }
-        
-        D_DoomStep();
     }
+}
+
+static void doom_process_task(void)
+{
+    while (doom_running && !tios_doom_quit_requested && !doom_cleanup_done) {
+        doom_synth_keyboard();
+        static int last_t = 0;
+        int t = I_GetTime();
+        if (t != last_t) {
+            extern void tios_kprintf(const char *fmt, ...);
+            tios_kprintf("I_GetTime() = %d\n", t);
+            last_t = t;
+        }
+        D_DoomStep();
+        for (volatile int i = 0; i < 2000; i++)
+            __asm__ volatile ("nop");
+    }
+    doom_sched_task = -1;
+    task_exit();
+}
+
+static void doom_spawn_task(void)
+{
+    if (doom_sched_task >= 0)
+        task_kill(doom_sched_task);
+    doom_sched_task = task_spawn(
+        doom_process_task,
+        &doom_task_stack[DOOM_TASK_STACK_SIZE / 4]);
+}
+
+static void doom_cleanup(void)
+{
+    if (doom_cleanup_done)
+        return;
+    doom_cleanup_done = 1;
+    doom_running = 0;
+    doom_loading = 0;
+
+    if (doom_sched_task >= 0) {
+        task_kill(doom_sched_task);
+        doom_sched_task = -1;
+    }
+
+    if (doom_win) {
+        wm_close_window(doom_win);
+        doom_win = NULL;
+    }
+
+    for (int i = 0; i < 256; i++)
+        doom_prev_kb[i] = 0;
+    kb_flush();
+
+    gfx_console_enable(1);
+    wm_focus_shell();
+    kputs("[DOOM] Process stopped — shell ready\n");
+}
+
+void doom_force_cleanup(void)
+{
+    tios_doom_quit_requested = 1;
+    doom_running = 0;
+    doom_cleanup();
+}
+
+int doom_is_running(void)
+{
+    return (doom_running || doom_loading) && !doom_cleanup_done;
+}
+
+int doom_is_loading(void)
+{
+    return doom_loading;
+}
+
+void doom_request_quit(void)
+{
+    tios_doom_quit_requested = 1;
+    doom_running = 0;
+}
+
+static void doom_update_window(struct window *win, int dt_ms) {
+    (void)dt_ms;
+
+    if (doom_loading) {
+        return;
+    }
+
+    if (win && win->state == WM_STATE_HIDDEN && !doom_cleanup_done) {
+        doom_force_cleanup();
+        return;
+    }
+
+    if (doom_running && !tios_doom_quit_requested)
+        return;
+
+    if (!doom_cleanup_done)
+        doom_cleanup();
 }
 
 static void doom_key_event(struct window *win, char c) {
@@ -888,10 +1054,12 @@ static void doom_key_event(struct window *win, char c) {
 }
 
 window_t *doom_create_window(void) {
-    window_t *win = wm_add_window(0, 0, 640, 440, "DOOM", doom_draw_window);
-    if (win) {
-        win->update_client = doom_update_window;
-        win->key_event = doom_key_event;
+    doom_cleanup_done = 0;
+    doom_win = wm_add_window(0, 0, 640, 440, "DOOM", doom_draw_window);
+    if (doom_win) {
+        doom_win->app_data = DOOM_WIN_MARKER;
+        doom_win->update_client = doom_update_window;
+        doom_win->key_event = doom_key_event;
     }
-    return win;
+    return doom_win;
 }
