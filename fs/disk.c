@@ -151,6 +151,7 @@ int pl181_disk_read(uint32_t lba, uint8_t *buf)
     uint32_t arg = mci_sdhc ? lba : (lba * 512);
     
     /* Send CMD17 */
+    irq_disable();
     MCI_CLEAR = 0xFFF;
     MCI_ARGUMENT = arg;
     MCI_COMMAND = (17 & 0x3F) | (1 << 6) | (1 << 10); /* CMD_WAITRESP | CMD_ENABLE */
@@ -159,7 +160,6 @@ int pl181_disk_read(uint32_t lba, uint8_t *buf)
 
     /* Drain RX FIFO one 32-bit word at a time */
     int words_read = 0;
-    irq_disable();
     for (int i = 0; i < 512; ) {
         uint32_t st = MCI_STATUS;
         if (st & (1 << 21)) { /* ST_RXDATAAVAIL */
@@ -179,6 +179,7 @@ int pl181_disk_read(uint32_t lba, uint8_t *buf)
     while (!(MCI_STATUS & ((1 << 8) | (1 << 3) | (1 << 1)))); /* ST_DATAEND | ST_DATATIMEOUT | ST_DATACRCFAIL */
     
     MCI_CLEAR = 0x1DC07FF;
+    if (words_read != 128) return -1;
     return 0;
 }
 
@@ -194,6 +195,7 @@ int pl181_disk_write(uint32_t lba, const uint8_t *buf)
     uint32_t arg = mci_sdhc ? lba : (lba * 512);
     
     /* Send CMD24 */
+    irq_disable();
     MCI_CLEAR = 0xFFF;
     MCI_ARGUMENT = arg;
     MCI_COMMAND = (24 & 0x3F) | (1 << 6) | (1 << 10); /* CMD_WAITRESP | CMD_ENABLE */
@@ -201,7 +203,7 @@ int pl181_disk_write(uint32_t lba, const uint8_t *buf)
     while (!(MCI_STATUS & ((1 << 6) | (1 << 0) | (1 << 2)))); /* ST_CMDRESPEND | ST_CMDCRCFAIL | ST_CMDTIMEOUT */
 
     /* Fill TX FIFO one 32-bit word at a time */
-    irq_disable();
+    int words_written = 0;
     for (int i = 0; i < 512; ) {
         uint32_t st = MCI_STATUS;
         if (!(st & (1 << 16))) { /* ST_TXFIFOFULL not set */
@@ -210,6 +212,7 @@ int pl181_disk_write(uint32_t lba, const uint8_t *buf)
             w |= (uint32_t)buf[i++] << 16;
             w |= (uint32_t)buf[i++] << 24;
             MCI_FIFO = w;
+            words_written++;
         } else if (st & ((1 << 3) | (1 << 1))) { /* ST_DATATIMEOUT | ST_DATACRCFAIL */
             break;
         }
@@ -220,5 +223,6 @@ int pl181_disk_write(uint32_t lba, const uint8_t *buf)
     while (!(MCI_STATUS & ((1 << 8) | (1 << 3) | (1 << 1)))); /* ST_DATAEND | ST_DATATIMEOUT | ST_DATACRCFAIL */
     
     MCI_CLEAR = 0x1DC07FF;
+    if (words_written != 128) return -1;
     return 0;
 }
