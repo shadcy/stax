@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #define MAX_TASKS       4
-#define TASK_STACK_SIZE 1024
+#define TASK_STACK_SIZE 8192
 
 #define TASK_STATE_READY    0
 #define TASK_STATE_RUNNING  1
@@ -46,5 +46,13 @@ void scheduler_init(void);
 /* Create a new task. Returns task ID or -1 on failure. */
 int task_create(void (*entry)(void));
 
-#endif /* SCHEDULER_H */
+/* Create a task using a caller-supplied stack top pointer. */
+int task_spawn(void (*entry)(void), uint32_t *stack_top);
+
+/* Stop a task (marks it blocked / dead). */
+void task_kill(int task_id);
+
+/* Called when a task function returns — marks it blocked forever. */
 void task_exit(void);
+
+#endif /* SCHEDULER_H */

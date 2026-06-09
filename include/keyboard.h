@@ -19,6 +19,9 @@ char kb_getc(void);
 /* Read next event: +char = key press, -char = key release, 0 = empty */
 int kb_getevent(void);
 
+/* Discard pending events and clear held-key state */
+void kb_flush(void);
+
 /* Extended Key Constants */
 #define KB_UP    0x11
 #define KB_DOWN  0x12

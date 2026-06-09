@@ -578,8 +578,8 @@ void R_InitFlats (void)
     if (end == -1) I_Error("R_InitFlats: F_END/FF_END not found");
 
     firstflat = start + 1;
-    lastflat = end;
-    numflats = lastflat - firstflat;
+    lastflat = end - 1;
+    numflats = lastflat - firstflat + 1;
 	
     // Create translation table for global animation.
     flattranslation = Z_Malloc ((numflats+1)*4, PU_STATIC, 0);
@@ -610,8 +610,9 @@ void R_InitSpriteLumps (void)
     if (end == -1) end = W_CheckNumForName ("SS_END");
     if (end == -1) I_Error("R_InitSpriteLumps: S_END/SS_END not found");
     
-    numspritelumps = end - start - 1;
     firstspritelump = start + 1;
+    lastspritelump = end - 1;
+    numspritelumps = lastspritelump - firstspritelump + 1;
 
     spritewidth = Z_Malloc (numspritelumps*4, PU_STATIC, 0);
     spriteoffset = Z_Malloc (numspritelumps*4, PU_STATIC, 0);
