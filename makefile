@@ -116,7 +116,6 @@ KERNEL_OBJS  += $(BUILD_DIR)/sokoban.o
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
-KERNEL_OBJS  += $(BUILD_DIR)/test_game.o
 KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 
 # em-doom objects
