@@ -46,6 +46,7 @@ typedef struct {
 } context_menu_t;
 
 void wm_init(void);
+void wm_load_background(const char *filename);
 window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*draw_cb)(window_t*, int, int, int, int));
 void wm_close_window(window_t *win);
 void wm_focus_shell(void);
