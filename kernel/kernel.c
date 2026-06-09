@@ -93,6 +93,7 @@ void kernel_main(void)
 
     /* ---- Phase 6e: FAT filesystem ---- */
     fat_init();
+    wm_load_background("BG.BMP");
 
     /* ---- Phase 6b: Timer ---- */
     irq_register(VIC_TIMER0_INT, timer_isr);

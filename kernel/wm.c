@@ -741,9 +741,29 @@ update_done:
     prev_mouse_b = mb;
 }
 
+static uint16_t *desktop_bg_image = NULL;
+
+extern uint16_t *bmp_load(const char *filename, int *out_w, int *out_h);
+void wm_load_background(const char *filename) {
+    if (desktop_bg_image) {
+        kfree(desktop_bg_image);
+        desktop_bg_image = NULL;
+    }
+    int w = 0, h = 0;
+    desktop_bg_image = bmp_load(filename, &w, &h);
+}
+
 void wm_render(void) {
     /* ---- 1. Desktop background ---- */
-    fb_clear(COL_DESKTOP);
+    if (desktop_bg_image) {
+        extern uint16_t *fb_get_buffer(void);
+        uint16_t *fbuf = fb_get_buffer();
+        if (fbuf) {
+            memcpy(fbuf, desktop_bg_image, FB_WIDTH * FB_HEIGHT * 2);
+        }
+    } else {
+        fb_clear(COL_DESKTOP);
+    }
 
     /* ---- 2a. App shortcut icons ---- */
     /* Draw distinct per-app icons */
