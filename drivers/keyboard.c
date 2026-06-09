@@ -202,3 +202,15 @@ int kb_is_pressed(char key)
 {
     return kb_state[(unsigned char)key];
 }
+
+void kb_flush(void)
+{
+    kb_head = 0;
+    kb_tail = 0;
+    shift_held = 0;
+    ctrl_held  = 0;
+    skip_next  = 0;
+    extended   = 0;
+    for (int i = 0; i < 256; i++)
+        kb_state[i] = 0;
+}
