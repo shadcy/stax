@@ -331,14 +331,39 @@ static void draw_window(window_t *win) {
     /* Title text */
     draw_text(tbx + 4, tby + 2, win->title, COL_WIN_TITLE_TXT);
     
-    /* Buttons (Minimize and Close) */
+    /* Buttons (Minimize, Maximize, Close) */
     int btn_w = 16;
     int close_x = wx + ww - BORDER_WIDTH - btn_w - 2;
-    int min_x = close_x - btn_w - 2;
+    int max_x   = close_x - btn_w - 2;
+    int min_x   = max_x - btn_w - 2;
     
     /* Close Button */
     fb_fillrect(close_x, tby + 2, btn_w, btn_w, COL_WIN_BG);
     draw_text(close_x + 4, tby + 2, "X", COLOR_BLACK);
+    
+    /* Maximize Button */
+    fb_fillrect(max_x, tby + 2, btn_w, btn_w, COL_WIN_BG);
+    if (win->is_maximized) {
+        /* Restore icon: two overlapping squares */
+        fb_drawline(max_x + 6, tby + 4, max_x + 13, tby + 4, COLOR_BLACK);
+        fb_drawline(max_x + 6, tby + 5, max_x + 13, tby + 5, COLOR_BLACK);
+        fb_drawline(max_x + 6, tby + 6, max_x + 6, tby + 7, COLOR_BLACK);
+        fb_drawline(max_x + 13, tby + 6, max_x + 13, tby + 11, COLOR_BLACK);
+        fb_drawline(max_x + 10, tby + 11, max_x + 13, tby + 11, COLOR_BLACK);
+
+        fb_drawline(max_x + 2, tby + 8, max_x + 9, tby + 8, COLOR_BLACK);
+        fb_drawline(max_x + 2, tby + 9, max_x + 9, tby + 9, COLOR_BLACK);
+        fb_drawline(max_x + 2, tby + 10, max_x + 2, tby + 15, COLOR_BLACK);
+        fb_drawline(max_x + 9, tby + 10, max_x + 9, tby + 15, COLOR_BLACK);
+        fb_drawline(max_x + 2, tby + 15, max_x + 9, tby + 15, COLOR_BLACK);
+    } else {
+        /* Maximize icon: a single square */
+        fb_drawline(max_x + 3, tby + 5, max_x + 12, tby + 5, COLOR_BLACK);
+        fb_drawline(max_x + 3, tby + 6, max_x + 12, tby + 6, COLOR_BLACK);
+        fb_drawline(max_x + 3, tby + 7, max_x + 3, tby + 14, COLOR_BLACK);
+        fb_drawline(max_x + 12, tby + 7, max_x + 12, tby + 14, COLOR_BLACK);
+        fb_drawline(max_x + 3, tby + 14, max_x + 12, tby + 14, COLOR_BLACK);
+    }
     
     /* Minimize Button */
     fb_fillrect(min_x, tby + 2, btn_w, btn_w, COL_WIN_BG);
@@ -526,7 +551,8 @@ void wm_update(void) {
                         int tby = curr->y + BORDER_WIDTH;
                         int btn_w = 16;
                         int close_x = curr->x + curr->width - BORDER_WIDTH - btn_w - 2;
-                        int min_x = close_x - btn_w - 2;
+                        int max_x   = close_x - btn_w - 2;
+                        int min_x   = max_x - btn_w - 2;
                         
                         if (my >= tby + 2 && my < tby + 2 + btn_w) {
                             if (mx >= close_x && mx < close_x + btn_w) {
@@ -550,6 +576,26 @@ void wm_update(void) {
                                     curr->app_data = NULL;
                                 }
                                 if (focused_window == curr) focused_window = NULL;
+                                break;
+                            }
+                            if (mx >= max_x && mx < max_x + btn_w) {
+                                if (curr->is_maximized) {
+                                    curr->x = curr->saved_x;
+                                    curr->y = curr->saved_y;
+                                    curr->width = curr->saved_width;
+                                    curr->height = curr->saved_height;
+                                    curr->is_maximized = 0;
+                                } else {
+                                    curr->saved_x = curr->x;
+                                    curr->saved_y = curr->y;
+                                    curr->saved_width = curr->width;
+                                    curr->saved_height = curr->height;
+                                    curr->x = 0;
+                                    curr->y = 0;
+                                    curr->width = FB_WIDTH;
+                                    curr->height = FB_HEIGHT - TASKBAR_HEIGHT;
+                                    curr->is_maximized = 1;
+                                }
                                 break;
                             }
                             if (mx >= min_x && mx < min_x + btn_w) {
