@@ -99,9 +99,9 @@ Special thanks to Cursor Agent for helping debug endless crashes, linker issues,
 
 ## Contact
 
-- **Website:** [offday.space](https://offday.space)
+
 - **LinkedIn:** [Shreyash Wanjari](https://in.linkedin.com/in/shreyashwanjari)
-- **Email:** shreyash@offday.space
+- **Email:** shreyashwanjari5162@gmail.com
 
 ## Repository
 
