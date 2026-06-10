@@ -499,11 +499,23 @@ static void sokoban_key_event(struct window *win, char c) {
 void cmd_sokoban(int argc, char **argv) {
     (void)argc;
     (void)argv;
+    
+    /* Check if already running */
+    extern struct window *window_list;
+    struct window *curr = window_list;
+    while (curr) {
+        if (curr->update_client == (void*)sokoban_update_window) {
+            curr->state = 0; /* WM_STATE_ACTIVE */
+            return;
+        }
+        curr = curr->next;
+    }
+    
     gfx_init();
     gfx_set_fade(255);
     s_state = SOKO_TITLE;
     
-    window_t *win = wm_add_window(0, 0, 640, 400, "Sokoban", (void*)sokoban_draw_window);
+    window_t *win = wm_add_window(0, 0, 640, 424, "Sokoban", (void*)sokoban_draw_window);
     if (win) {
         win->update_client = (void*)sokoban_update_window;
         win->key_event = (void*)sokoban_key_event;
