@@ -57,11 +57,11 @@ Lately, I've completely revamped the OS! It now features a proper **Compositing 
 
 **DOOM**
 <br>
-![DOOM](readme-assets/game-doom.png)
+![DOOM](readme-assets/game-doom.gif)
 
 **Slime Escape**
 <br>
-![Slime Escape](readme-assets/game-slime-escape.png)
+![Slime Escape](readme-assets/game-slime.gif)
 
 ## Requirements
 
