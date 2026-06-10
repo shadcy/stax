@@ -15,20 +15,21 @@
 
 ---
 
-Hey there! Welcome to T-OS.
+Welcome to T-OS.
 
-I started this project because I believe the best way to really understand computers isn't just to read textbook theory—it's to roll up your sleeves and build the layers yourself. T-OS is a custom, bare-metal operating system built entirely from scratch. What started as a simple terminal experiment to learn low-level systems, graphics, and memory management has evolved into something I'm really proud of. 
+I started this project because I believe the best way to truly understand computer science isn't just to read textbook theory—it's to roll up your sleeves and build the foundational layers yourself. T-OS is a custom, bare-metal operating system built entirely from scratch for ARM architectures. What started as a simple experiment to learn low-level hardware interaction has evolved into a comprehensive system capable of managing memory, scheduling tasks, and executing graphical applications.
 
-Lately, I've completely revamped the OS! It now features a proper **Compositing Window Manager** with a fully functional desktop environment. You can drag windows around, click on desktop icons, browse files with a graphical file manager, write in the text editor, and seamlessly switch between multiple apps using the new taskbar and start menu. The entire codebase has also been restructured to have a clean, modern architecture separating the core kernel logic, UI rendering, user apps, and drivers.
+While the OS now supports a graphical interface and a suite of applications, the primary focus of T-OS lies in its core technical engineering. From the initial assembly boot sequence to the page-based memory allocator and interrupt-driven scheduler, the architecture is designed to cleanly separate hardware drivers, core kernel operations, and user-space abstractions.
 
-## Features
+## Core Architecture & Features
 
-- **Window Manager:** Fully composited GUI with draggable windows, overlapping support, minimize/maximize capabilities, and a responsive mouse cursor.
-- **Desktop Environment:** Interactive desktop with filesystem icons, a start menu, taskbar with a clock, and real-time memory usage tracking.
-- **Built-in GUI Apps:** Comes natively with a File Manager, Text Editor, Calculator, Image Viewer, System Info, Task Manager, Memory Viewer, and a Terminal!
-- **Core System:** Custom bootloader, FAT16 filesystem support, page-based memory allocator, and a multi-task scheduler.
-- **Gaming:** Native support for playing DOOM and Slime Escape in their own windows!
-- **Networking:** Experiments with lwIP for networking connectivity.
+- **Boot Sequence & Initialization:** Features a custom assembly bootloader that establishes the initial stack pointer, configures ARM CPU operating modes, sets up the interrupt vector table, and securely hands off execution to the C-based kernel.
+- **Memory Management (MMU):** Implements a robust page-based memory allocator to map virtual addresses to physical RAM, alongside a custom kernel heap manager (`kmalloc`/`kfree`) to handle dynamic memory allocation safely without leaks.
+- **Interrupts & Task Scheduling:** Utilizes the PL190 Vectored Interrupt Controller (VIC) and SP804 Timer to drive a preemptive, multi-tasking scheduler. The kernel can manage concurrent processes, yielding and distributing CPU cycles dynamically.
+- **Hardware Drivers:** Bare-metal, from-scratch driver implementations for the ARM VersatilePB board, interfacing directly with memory-mapped I/O registers for the PL050 (Keyboard/Mouse interface) and PL110 (Color Framebuffer).
+- **Storage & Filesystem:** Integrates the FAT16 filesystem layer on top of a PL181 SD card block driver. This allows the OS to persist user data, read game assets, and manage file I/O operations reliably.
+- **Networking:** Foundational integration with the lwIP networking stack for Ethernet frame transmission, packet handling, and DHCP IP assignment.
+- **Windowing System:** A lightweight, compositing Window Manager built directly on the kernel's framebuffer abstraction. It features double-buffering to prevent tearing and provides a clean API for user-space applications to draw to the screen.
 
 ## Screenshots
 
@@ -53,7 +54,7 @@ Lately, I've completely revamped the OS! It now features a proper **Compositing 
 <br>
 ![Calculator](readme-assets/apps-calc.png)
 
-### Games
+### Engine Execution (DOOM)
 
 **DOOM**
 <br>
@@ -65,40 +66,39 @@ Lately, I've completely revamped the OS! It now features a proper **Compositing 
 
 ## Requirements
 
-To compile and run T-OS locally, you will need the following tools installed on your system:
+To compile and execute T-OS locally, you will need the following tools installed on your system:
 - **ARM GCC Toolchain:** `arm-none-eabi-gcc`, `arm-none-eabi-ld`, `arm-none-eabi-objcopy`
-- **QEMU:** `qemu-system-arm` (Specifically for the `versatilepb` machine emulation)
+- **QEMU:** `qemu-system-arm` (Specifically targeting the `versatilepb` machine profile)
 - **Make:** GNU Make for the build system.
 
 ## Build & Run
 
-It's extremely easy to get the OS running locally. First, compile the OS:
+It is straightforward to compile the OS from source. First, build the kernel:
 
 ```bash
 make clean
 make
 ```
 
-To run it in full graphics mode:
+To run the OS in the emulator with full graphics support:
 
 ```bash
 make qemu-gfx
 ```
 
-## Stack
+## Technical Stack
 
-- **C** (Core kernel and apps)
-- **ARM Assembly** (Bootloader and low-level context switching)
-- **QEMU** (Emulation)
-- **lwIP** (Networking)
-- **FATFS** (Filesystem)
+- **C:** Core kernel logic, memory management, and user-space applications.
+- **ARM Assembly:** Bootloader, hardware initialization, and low-level context switching.
+- **QEMU:** Emulation and hardware virtualization.
+- **lwIP:** TCP/IP stack for networking.
+- **FATFS:** Filesystem abstraction.
 
 ## Thanks
 
-Special thanks to Cursor Agent for helping debug endless crashes, linker issues, memory bugs, and random kernel failures during development.
+Special thanks to Cursor Agent for assisting with the debugging of complex linker issues, memory corruption bugs, and random kernel faults during the development cycle.
 
 ## Contact
-
 
 - **LinkedIn:** [Shreyash Wanjari](https://in.linkedin.com/in/shreyashwanjari)
 - **Email:** shreyashwanjari5162@gmail.com
