@@ -37,6 +37,9 @@ typedef struct window {
     /* Callback for mouse click inside the client area (optional). mx/my are relative to client_x/client_y */
     void (*mouse_click)(struct window *win, int mx, int my, int button);
     
+    /* Callback for mouse drag inside the client area (optional). */
+    void (*mouse_drag)(struct window *win, int mx, int my);
+    
     struct window *next;
 } window_t;
 
@@ -46,9 +49,13 @@ typedef struct {
 } context_menu_t;
 
 void wm_init(void);
+void wm_load_background(const char *filename);
 window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*draw_cb)(window_t*, int, int, int, int));
+void wm_close_window(window_t *win);
+void wm_focus_shell(void);
 void wm_render(void);
 void wm_update(void); /* handles input */
+int wm_dispatch_key(char c);
 void draw_text(int x, int y, const char *s, uint16_t color);
 
 #endif

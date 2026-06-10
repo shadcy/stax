@@ -25,6 +25,10 @@ MM_DIR      := mm
 GAMES_DIR   := games
 ENGINE_DIR  := engine
 GFX_DIR     := gfx
+APPS_DIR    := apps
+UI_DIR      := ui
+SHELL_DIR   := shell
+LIB_DIR     := lib
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
@@ -40,7 +44,12 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -g                  \
             -I$(INC_DIR)        \
             -I$(FS_DIR)         \
-            -I$(ENGINE_DIR)
+            -I$(ENGINE_DIR)     \
+            -I$(GFX_DIR)        \
+            -I$(APPS_DIR)       \
+            -I$(UI_DIR)         \
+            -I$(SHELL_DIR)      \
+            -I$(LIB_DIR)
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -76,6 +85,8 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/keyboard.o \
                 $(BUILD_DIR)/mouse.o \
                 $(BUILD_DIR)/wm.o \
+                $(BUILD_DIR)/wm_render.o \
+                $(BUILD_DIR)/wm_desktop.o \
                 $(BUILD_DIR)/console.o \
                 $(BUILD_DIR)/app_file_manager.o \
                 $(BUILD_DIR)/app_editor.o \
@@ -116,7 +127,6 @@ KERNEL_OBJS  += $(BUILD_DIR)/sokoban.o
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
-KERNEL_OBJS  += $(BUILD_DIR)/test_game.o
 KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 
 # em-doom objects
@@ -157,6 +167,7 @@ $(OS_BIN): $(KERNEL_BIN)
 		dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null; \
 		mkfs.vfat -F 16 $@; \
 		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
+		if [ -f $(GAMES_DIR)/em-doom/doom1.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom1.wad ::/DOOM1.WAD; fi; \
 		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
 		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
 	else \
@@ -165,7 +176,7 @@ $(OS_BIN): $(KERNEL_BIN)
 	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
 	# =========================================================================
 	# [USER CUSTOMIZATION]: IMPORT IMAGES HERE
-
+	@if [ -f BG.BMP ]; then mcopy -o -i $@ BG.BMP ::/BG.BMP; fi
 	# =========================================================================
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
@@ -219,6 +230,18 @@ $(BUILD_DIR)/%.o: $(ENGINE_DIR)/%.c | $(BUILD_DIR)
 
 $(BUILD_DIR)/%.o: $(GFX_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -O2 -ffast-math -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(APPS_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(UI_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(SHELL_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(LIB_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # DOOM files need special flags and the tios_compat.h included
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)

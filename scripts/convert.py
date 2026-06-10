@@ -1,0 +1,34 @@
+utf8_str = """
+[ OK ] framebuffer initialized
+[ OK ] shell loaded
+[ OK ] filesystem mounted
+[ OK ] terminal v2 online
+
+████████╗██████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗     
+╚══██╔══╝██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║     
+   ██║   ██████╔╝██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║     
+   ██║   ██╔══██╗██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║     
+   ██║   ██║  ██║██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗
+   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
+"""
+
+mapping = {
+    '█': '\\xDB',
+    '╗': '\\xBB',
+    '╚': '\\xC8',
+    '═': '\\xCD',
+    '╔': '\\xC9',
+    '╝': '\\xBC',
+    '║': '\\xBA',
+}
+
+result = []
+for char in utf8_str:
+    if char in mapping:
+        result.append(mapping[char])
+    elif char == '\n':
+        result.append('\\n')
+    else:
+        result.append(char)
+
+print(''.join(result))

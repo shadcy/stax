@@ -560,11 +560,21 @@ void cmd_slime(int argc, char **argv) {
         }
     }
     
+    /* Check if already running */
+    extern struct window *window_list;
+    struct window *curr = window_list;
+    while (curr) {
+        if (curr->update_client == slime_update_window) {
+            curr->state = 0; /* WM_STATE_ACTIVE */
+            return;
+        }
+        curr = curr->next;
+    }
+    
     slime_init();
     
-    /* Open a 640x400 window (+ titlebar and borders) */
-    /* Width: 640, Height: 400 */
-    window_t *win = wm_add_window(0, 0, 640, 400, "Slime Escape", slime_draw_window);
+    /* Open a 640x424 window to fit 640x400 content properly */
+    window_t *win = wm_add_window(0, 0, 640, 424, "Slime Escape", slime_draw_window);
     if (win) {
         win->update_client = slime_update_window;
         win->key_event = slime_key_event;

@@ -47,6 +47,7 @@ void D_AddFile (char *file);
 // If not overrided by user input, calls N_AdvanceDemo.
 //
 void D_DoomMain (void);
+void D_DoomStep (void);
 
 // Called by IO functions when input is detected.
 void D_PostEvent (event_t* ev);

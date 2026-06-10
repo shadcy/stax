@@ -651,6 +651,7 @@ S_ChangeMusic
 ( int			musicnum,
   int			looping )
 {
+    return;
     musicinfo_t*	music;
     char		namebuf[9];
 
@@ -688,6 +689,7 @@ S_ChangeMusic
 
 void S_StopMusic(void)
 {
+    return;
     if (mus_playing)
     {
 	if (mus_paused)

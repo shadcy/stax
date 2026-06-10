@@ -17,6 +17,8 @@
 #include "../../../include/fat.h"
 #include "../../../include/console.h"
 #include "../../../include/gfx_console.h"
+#include "../../../include/doom.h"
+#include "../../../include/scheduler.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -302,12 +304,31 @@ int tios_sprintf(char *buf, const char *fmt, ...)
     return n;
 }
 
+volatile int doom_running = 0;
+static volatile int doom_cleanup_done = 0;
+volatile int doom_loading = 0;
+static int doom_sched_task = -1;
+static int doom_printf_pump = 0;
+
+#define DOOM_TASK_STACK_SIZE 65536
+static uint32_t doom_task_stack[DOOM_TASK_STACK_SIZE / 4];
+
+static void doom_loading_pump(void)
+{
+    extern void wm_update(void);
+    extern void wm_render(void);
+    wm_update();
+    wm_render();
+}
+
 void tios_kprintf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
     tios_vsprintf((char*)0, fmt, args);
     va_end(args);
+    if (doom_loading && (++doom_printf_pump % 2) == 0)
+        doom_loading_pump();
 }
 
 /* ============================================================================
@@ -323,9 +344,9 @@ static unsigned char doom_slab_buf[SLAB_SIZE] __attribute__((aligned(8)));
 static unsigned int  doom_slab_pos = 0;
 
 /* Tiny bump allocator for DOOM's internal malloc calls (lumpinfo, lumpcache, etc.) */
-void *tios_doom_malloc(int size)
+void *tios_doom_malloc(size_t size)
 {
-    if (size <= 0) return (void*)0;
+    if (size == 0) return (void*)0;
     size = (size + 7) & ~7;   /* 8-byte align */
     if ((unsigned)doom_slab_pos + (unsigned)size > SLAB_SIZE) {
         kputs("[DOOM] malloc OOM\n");
@@ -337,7 +358,7 @@ void *tios_doom_malloc(int size)
 }
 
 /* Realloc: allocate new, copy, abandon old (bump allocator — no free) */
-void *tios_doom_realloc(void *ptr, int newsize)
+void *tios_doom_realloc(void *ptr, size_t newsize)
 {
     void *p = tios_doom_malloc(newsize);
     if (p && ptr) tios_memcpy(p, ptr, newsize);
@@ -347,7 +368,7 @@ void *tios_doom_realloc(void *ptr, int newsize)
 void tios_doom_free(void *ptr) { (void)ptr; /* bump allocator: no-op */ }
 
 /* Stack-style alloca using the slab */
-void *tios_doom_alloca(int size)
+void *tios_doom_alloca(size_t size)
 {
     return tios_doom_malloc(size);
 }
@@ -363,11 +384,22 @@ byte *I_ZoneBase(int *size)
     return (byte *)doom_zone_buf;
 }
 
-/* DOOM runs at 35 tics/sec; our timer runs at 100 Hz */
+static unsigned int doom_time_offset = 0;
+
+void doom_reset_time(void)
+{
+    extern volatile unsigned int tick_count;
+    doom_time_offset = tick_count;
+}
+
+/* DOOM runs at 35 tics/sec; our timer runs at 1000 Hz */
 int I_GetTime(void)
 {
+    extern volatile unsigned int tick_count;
+    unsigned int t = tick_count;
+    if (t < doom_time_offset) return 0;
     /* tick_count * 35/1000 = tick_count * 7/200 */
-    return (int)(tick_count * 7 / 200);
+    return (int)((t - doom_time_offset) * 7 / 200);
 }
 
 void I_Init(void)
@@ -375,7 +407,7 @@ void I_Init(void)
     /* Sound: stubbed */
 }
 
-static int doom_running = 0;
+static void doom_spawn_task(void);
 
 void I_Quit(void)
 {
@@ -398,6 +430,10 @@ void I_Tactile(int on, int off, int total) { (void)on; (void)off; (void)total; }
 ticcmd_t  emptycmd;
 ticcmd_t *I_BaseTiccmd(void) { return &emptycmd; }
 
+/* SNDSERV dummies */
+char *sndserver_filename = (char*)0;
+int mb_used = 0;
+
 void I_Error(char *error, ...)
 {
     va_list args;
@@ -408,8 +444,8 @@ void I_Error(char *error, ...)
     kputc('\n');
     doom_running = 0;
     tios_doom_quit_requested = 1;
-    while (1)
-	__asm__ volatile("nop");
+    /* Hang to prevent Data Aborts from callers expecting us not to return */
+    while (1) { __asm__ volatile("nop"); }
 }
 
 /* ============================================================================
@@ -425,14 +461,11 @@ void I_Error(char *error, ...)
 /* 256-entry RGB565 palette, updated by I_SetPalette() */
 static uint16_t doom_palette[256];
 
+extern void D_DoomStep(void);
+
 void I_InitGraphics(void)
 {
-    /* Take over the framebuffer now that DOOM is ready to render.
-     * Disable the gfx console here (not at engine startup) so all the
-     * WAD-loading / init kputs() messages are visible during loading. */
-    gfx_console_enable(0);
-    fb_init();
-    fb_clear(0x0000);   /* full screen — DOOM only draws the 320x200 window */
+    /* DOOM runs in a window now, so we don't clear the whole framebuffer. */
     /* Default greyscale palette until DOOM loads its own */
     for (int i = 0; i < 256; i++) {
         uint8_t v = (uint8_t)i;
@@ -471,36 +504,19 @@ static void draw_overlay_str(int px, int py, const char *s, uint16_t color, uint
     }
 }
 
+static byte doom_front_buffer[320 * 200];
+
 void I_FinishUpdate(void)
 {
-    /* Blit DOOM's 8-bit framebuffer (screens[0]) centred in our 640×480 */
-    uint16_t *fb  = fb_get_buffer();
-    byte     *src = screens[0];
-
-    for (int y = 0; y < DOOM_H; y++) {
-        uint16_t *row = fb + (y + OFF_Y) * FB_W + OFF_X;
-        for (int x = 0; x < DOOM_W; x++) {
-            row[x] = doom_palette[*src++];
-        }
+    /* Double-buffering: Copy the finished backbuffer to the front buffer.
+     * The T-OS Window Manager reads from doom_front_buffer, eliminating tearing. */
+    if (screens[0]) {
+        tios_memcpy(doom_front_buffer, screens[0], 320 * 200);
     }
 
-    /* Analytics Overlay */
-    static unsigned int last_fps_time = 0;
-    static int frames_this_second = 0;
-    static int current_fps = 0;
-
-    frames_this_second++;
-    if (tick_count - last_fps_time >= 1000) { /* 1000 ticks = 1 sec */
-        current_fps = frames_this_second;
-        frames_this_second = 0;
-        last_fps_time = tick_count;
-    }
-
-    char stat_buf[128];
-    tios_sprintf(stat_buf, "FPS: %d   |   RAM: %d KB / %d KB       ", 
-                 current_fps, doom_slab_pos / 1024, SLAB_SIZE / 1024);
-    
-    draw_overlay_str(10, 10, stat_buf, COLOR_CYAN, COLOR_BLACK);
+    extern void tios_kprintf(const char *fmt, ...);
+    static int frame_count = 0;
+    if (frame_count++ % 35 == 0) tios_kprintf("DOOM rendered 35 frames\n");
 }
 
 void I_ReadScreen(byte *scr)
@@ -583,11 +599,14 @@ static int translate_key(char c, int *doom_key)
         case '\033': *doom_key = KEY_ESCAPE;             return 1;
         case ' ':   *doom_key = ' ';                     return 1;  /* use    */
         case '\b':  *doom_key = KEY_BACKSPACE;           return 1;
-        case '8': *doom_key = KEY_UPARROW;      return 1;
-        case '2': *doom_key = KEY_DOWNARROW;    return 1;
-        case '4': *doom_key = KEY_LEFTARROW;    return 1;
-        case '6': *doom_key = KEY_RIGHTARROW;   return 1;
-        case '5': *doom_key = ' ';              return 1;
+        /* Hardware arrow keys from PL050 driver */
+        case 0x11: *doom_key = KEY_UPARROW;     return 1;
+        case 0x12: *doom_key = KEY_DOWNARROW;   return 1;
+        case 0x13: *doom_key = KEY_LEFTARROW;   return 1;
+        case 0x14: *doom_key = KEY_RIGHTARROW;  return 1;
+        case 0x15: *doom_key = KEY_RSHIFT;      return 1;  /* shift -> run */
+        case 0x16: *doom_key = KEY_RCTRL;       return 1;  /* ctrl -> fire */
+        case 0x17: *doom_key = KEY_RALT;        return 1;  /* alt -> strafe */
         default:
             if (c >= 'a' && c <= 'z') { *doom_key = c; return 1; }
             if (c >= '1' && c <= '9') { *doom_key = c; return 1; }
@@ -607,12 +626,7 @@ void I_StartTic(void)
         char c = (kev > 0) ? (char)kev : (char)(-kev);
         int is_press = (kev > 0);
 
-        /* Quit on Q or Escape press only */
-        if (is_press && (c == 'q' || c == 'Q' || c == '\033')) {
-            tios_doom_quit_requested = 1;
-            doom_running = 0;
-            return;
-        }
+        /* Pass all keys to DOOM to let it handle menus and quitting natively */
 
         if (translate_key(c, &dk)) {
             ev.type  = is_press ? ev_keydown : ev_keyup;
@@ -630,11 +644,6 @@ void I_StartTic(void)
         #define UART_FR_RXFE_I (1 << 4)
         if (!(UART_FR_I & UART_FR_RXFE_I)) {
             char c = (char)(UART_DR_I & 0xFF);
-            if (c == 'q' || c == 'Q' || c == '\033') {
-                tios_doom_quit_requested = 1;
-                doom_running = 0;
-                return;
-            }
             if (translate_key(c, &dk)) {
                 ev.type = ev_keydown; ev.data1 = dk; D_PostEvent(&ev);
                 ev.type = ev_keyup;                  D_PostEvent(&ev);
@@ -728,7 +737,7 @@ int tios_lseek(int fd, int offset, int whence)
     }
     if (target < 0) target = 0;
     /* Seek within file */
-    fat_seek(t->ff, target);
+    if (fat_seek(t->ff, target) != 0) return -1;
     t->pos = target;
     return target;
 }
@@ -769,7 +778,7 @@ static char  doom_nosnd[]   = "-nosound";
  * TryRunTics catch-up storm that freezes the game after level load). */
 extern boolean singletics;
 
-static void doom_engine_run_wad(const char* wadname)
+void doom_engine_run_wad(const char* wadname)
 {
     /* Keep the gfx console alive so all init/debug messages are visible
      * while the WAD loads.  I_InitGraphics() will take over the FB when
@@ -780,14 +789,10 @@ static void doom_engine_run_wad(const char* wadname)
     kputs("========================================\n");
     kputs("[DOOM] Initializing em-doom engine\n");
 
-    /* Force singletics: run exactly 1 game tic per rendered frame.
-     * Without this, TryRunTics catches up all tics missed during the slow
-     * level load (hundreds of tics), causing an apparent freeze. */
-    singletics = true;
-
     /* Reset slab allocator for a fresh run */
     doom_slab_pos = 0;
     tios_doom_quit_requested = 0;
+    doom_cleanup_done = 0;
 
     /* Wipe fd table & close leaked handles from previous run */
     for (int i = 0; i < TIOS_MAX_FD; i++) {
@@ -808,12 +813,23 @@ static void doom_engine_run_wad(const char* wadname)
 
     doom_running = 1;
 
-    D_DoomMain();
+    D_DoomMain(); /* Init engine, load WAD, setup game state */
 
-    /* Restore console after DOOM exits */
-    kputs("[DOOM] Engine returned\n");
-    fb_clear(0x0000);
-    gfx_console_enable(1);
+    doom_reset_time();
+}
+
+void doom_launch_wad(const char *wadname)
+{
+    doom_create_window();
+    doom_loading = 1;
+    doom_printf_pump = 0;
+    doom_loading_pump();
+
+    doom_engine_run_wad(wadname);
+
+    doom_loading = 0;
+    doom_loading_pump();
+    doom_spawn_task();
 }
 
 void doom_engine_run(void)
@@ -824,4 +840,226 @@ void doom_engine_run(void)
 void doom2_engine_run(void)
 {
     doom_engine_run_wad("DOOM2.WAD");
+}
+
+/* ============================================================================
+ * Window Manager Integration for DOOM
+ * ============================================================================ */
+#include "../../../include/wm.h"
+
+extern void D_DoomStep(void);
+
+static void doom_draw_loading_badge(int cx, int cy, int cw, int ch)
+{
+    extern volatile unsigned int tick_count;
+    uint16_t *fbuf = fb_get_buffer();
+    if (!fbuf) return;
+
+    fb_fillrect(cx, cy, cw, ch, 0x0000);
+
+    int bw = 220, bh = 48;
+    int bx = cx + (cw - bw) / 2;
+    int by = cy + (ch - bh) / 2;
+
+    fb_fillrect(bx - 2, by - 2, bw + 4, bh + 4, 0xC618);
+    fb_fillrect(bx, by, bw, bh, 0x2104);
+
+    draw_overlay_str(bx + 24, by + 8, "Loading DOOM", 0xFFE0, 0x2104);
+
+    int dots = (int)((tick_count / 400) % 4);
+    char dotbuf[8] = "    ";
+    for (int i = 0; i < dots; i++) dotbuf[i] = '.';
+    draw_overlay_str(bx + 160, by + 8, dotbuf, 0xFFE0, 0x2104);
+    draw_overlay_str(bx + 36, by + 26, "Please wait", 0xC618, 0x2104);
+}
+
+static void doom_draw_window(window_t *win, int cx, int cy, int cw, int ch)
+{
+    (void)win;
+
+    if (doom_loading) {
+        doom_draw_loading_badge(cx, cy, cw, ch);
+        return;
+    }
+
+    if (!doom_running || doom_cleanup_done) return;
+
+    /* DOOM renders to screens[0] at 320x200 */
+    extern uint16_t* fb_get_buffer(void);
+    uint16_t *fbuf = fb_get_buffer();
+    if (!fbuf) return;
+
+    byte *src = doom_front_buffer;
+    if (!src) return;
+
+    /* Center the 320x200 DOOM screen, scaled 2x, in the window */
+    int x_offset = (cw - (320 * 2)) / 2;
+    int y_offset = (ch - (200 * 2)) / 2;
+    
+    if (x_offset < 0) x_offset = 0;
+    if (y_offset < 0) y_offset = 0;
+
+    for (int y = 0; y < 200; y++) {
+        int dest_y1 = cy + y_offset + y * 2;
+        int dest_y2 = dest_y1 + 1;
+        
+        if (dest_y1 >= cy + ch || dest_y1 >= 480) break;
+        
+        uint16_t *row_dst1 = fbuf + dest_y1 * 640;
+        uint16_t *row_dst2 = fbuf + dest_y2 * 640;
+        byte *row_src = src + y * 320;
+
+        for (int x = 0; x < 320; x++) {
+            int dest_x1 = cx + x_offset + x * 2;
+            int dest_x2 = dest_x1 + 1;
+            
+            if (dest_x1 >= cx + cw || dest_x1 >= 640) break;
+            
+            uint16_t color = doom_palette[row_src[x]];
+            
+            row_dst1[dest_x1] = color;
+            if (dest_x2 < cx + cw && dest_x2 < 640) row_dst1[dest_x2] = color;
+            
+            if (dest_y2 < cy + ch && dest_y2 < 480) {
+                row_dst2[dest_x1] = color;
+                if (dest_x2 < cx + cw && dest_x2 < 640) row_dst2[dest_x2] = color;
+            }
+        }
+    }
+}
+
+static char doom_prev_kb[256];
+static window_t *doom_win = NULL;
+
+static void doom_synth_keyboard(void)
+{
+    extern int kb_is_pressed(char key);
+    for (int i = 0; i < 256; i++) {
+        char state = kb_is_pressed((char)i);
+        if (state != doom_prev_kb[i]) {
+            doom_prev_kb[i] = state;
+            int dk;
+            if (translate_key((char)i, &dk)) {
+                event_t ev;
+                ev.type = state ? ev_keydown : ev_keyup;
+                ev.data1 = dk;
+                D_PostEvent(&ev);
+            }
+        }
+    }
+}
+
+static void doom_process_task(void)
+{
+    while (doom_running && !tios_doom_quit_requested && !doom_cleanup_done) {
+        doom_synth_keyboard();
+        static int last_t = 0;
+        int t = I_GetTime();
+        if (t != last_t) {
+            extern void tios_kprintf(const char *fmt, ...);
+            tios_kprintf("I_GetTime() = %d\n", t);
+            last_t = t;
+        }
+        D_DoomStep();
+        for (volatile int i = 0; i < 2000; i++)
+            __asm__ volatile ("nop");
+    }
+    doom_sched_task = -1;
+    task_exit();
+}
+
+static void doom_spawn_task(void)
+{
+    if (doom_sched_task >= 0)
+        task_kill(doom_sched_task);
+    doom_sched_task = task_spawn(
+        doom_process_task,
+        &doom_task_stack[DOOM_TASK_STACK_SIZE / 4]);
+}
+
+static void doom_cleanup(void)
+{
+    if (doom_cleanup_done)
+        return;
+    doom_cleanup_done = 1;
+    doom_running = 0;
+    doom_loading = 0;
+
+    if (doom_sched_task >= 0) {
+        task_kill(doom_sched_task);
+        doom_sched_task = -1;
+    }
+
+    if (doom_win) {
+        wm_close_window(doom_win);
+        doom_win = NULL;
+    }
+
+    for (int i = 0; i < 256; i++)
+        doom_prev_kb[i] = 0;
+    kb_flush();
+
+    gfx_console_enable(1);
+    wm_focus_shell();
+    kputs("[DOOM] Process stopped — shell ready\n");
+}
+
+void doom_force_cleanup(void)
+{
+    tios_doom_quit_requested = 1;
+    doom_running = 0;
+    doom_cleanup();
+}
+
+int doom_is_running(void)
+{
+    return (doom_running || doom_loading) && !doom_cleanup_done;
+}
+
+int doom_is_loading(void)
+{
+    return doom_loading;
+}
+
+void doom_request_quit(void)
+{
+    tios_doom_quit_requested = 1;
+    doom_running = 0;
+}
+
+static void doom_update_window(struct window *win, int dt_ms) {
+    (void)dt_ms;
+
+    if (doom_loading) {
+        return;
+    }
+
+    if (win && win->state == WM_STATE_HIDDEN && !doom_cleanup_done) {
+        doom_force_cleanup();
+        return;
+    }
+
+    if (doom_running && !tios_doom_quit_requested)
+        return;
+
+    if (!doom_cleanup_done)
+        doom_cleanup();
+}
+
+static void doom_key_event(struct window *win, char c) {
+    (void)win;
+    /* In DOOM, I_StartTic polls kb_is_pressed directly, 
+     * but we provide this handler if we ever want to hook window keys. */
+    (void)c;
+}
+
+window_t *doom_create_window(void) {
+    doom_cleanup_done = 0;
+    doom_win = wm_add_window(0, 0, 640, 440, "DOOM", doom_draw_window);
+    if (doom_win) {
+        doom_win->app_data = DOOM_WIN_MARKER;
+        doom_win->update_client = doom_update_window;
+        doom_win->key_event = doom_key_event;
+    }
+    return doom_win;
 }

@@ -365,9 +365,13 @@ void D_DoomLoop (void)
     }
 	
     I_InitGraphics ();
+}
 
-    while (!tios_doom_quit_requested)
-    {
+void D_DoomStep (void)
+{
+    if (tios_doom_quit_requested)
+        return;
+
 	// frame syncronous IO operations
 	I_StartFrame ();                
 	
@@ -403,7 +407,6 @@ void D_DoomLoop (void)
 	// Update sound output.
 	I_SubmitSound();
 #endif
-    }
 }
 
 
@@ -581,8 +584,6 @@ void IdentifyVersion (void)
 //
 static void DetectGamemode (void)
 {
-    int e1m1;
-
     if (W_CheckNumForName ("MAP01") >= 0)
 	gamemode = commercial;
     else if (W_CheckNumForName ("E4M1") >= 0)
@@ -596,22 +597,29 @@ static void DetectGamemode (void)
     else
 	gamemode = retail;
 
-    /* Skip title and jump into E1M1 when the IWAD has a real map lump */
-    e1m1 = W_CheckNumForName ("E1M1");
-    if (e1m1 >= 0 && W_LumpLength (e1m1) > 1000)
+    /* Auto-start into the first map if the WAD has valid map data.
+     * Map marker lumps are always size 0 — the actual data is in the
+     * THINGS lump that immediately follows the marker. */
+    if (gamemode == commercial
+        && W_CheckNumForName ("MAP01") >= 0
+        && W_CheckNumForName ("THINGS") >= 0
+        && W_LumpLength (W_CheckNumForName ("THINGS")) > 0)
+    {
+	autostart = true;
+	startepisode = 1;
+	startmap = 1;
+	startskill = sk_medium;
+	printf ("Valid MAP01 found — autostarting map 1\n");
+    }
+    else if (W_CheckNumForName ("E1M1") >= 0
+        && W_CheckNumForName ("THINGS") >= 0
+        && W_LumpLength (W_CheckNumForName ("THINGS")) > 0)
     {
 	autostart = true;
 	startepisode = 1;
 	startmap = 1;
 	startskill = sk_medium;
 	printf ("Valid E1M1 found — autostarting episode 1 map 1\n");
-    }
-    else if (e1m1 >= 0 && W_LumpLength (e1m1) <= 1000)
-    {
-	printf (
-	    "WARNING: E1M1 lump is empty or too small.\n"
-	    "Replace DOOM.WAD with shareware doom1.wad (see README_DOOM.md).\n"
-	    "Showing title screen only.\n");
     }
 }
 

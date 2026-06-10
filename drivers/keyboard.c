@@ -76,16 +76,18 @@ static volatile unsigned int  kb_tail = 0;
 /* ── Continuous Key State ── */
 volatile int kb_state[256] = {0};
 
-/* ── internal: decode scancode; *release set to 1 if this is a break code ─ */
 static char kb_decode_sc(unsigned char sc, int is_break)
 {
     if (sc == 0x12 || sc == 0x59) {    /* shift */
         shift_held = is_break ? 0 : 1;
-        return 0;
+        return KB_SHIFT;
     }
     if (sc == 0x14) {                  /* ctrl */
         ctrl_held = is_break ? 0 : 1;
-        return 0;
+        return KB_CTRL;
+    }
+    if (sc == 0x11) {                  /* alt */
+        return KB_ALT;
     }
     if (extended) { extended = 0; return 0; }   /* ignore extended for now */
     unsigned char ascii = shift_held ? sc2_shifted[sc] : sc2_normal[sc];
@@ -133,6 +135,8 @@ void kb_poll(void)
             else if (sc == 0x72) entry = KB_DOWN;
             else if (sc == 0x6B) entry = KB_LEFT;
             else if (sc == 0x74) entry = KB_RIGHT;
+            else if (sc == 0x11) entry = KB_ALT;
+            else if (sc == 0x14) entry = KB_CTRL;
             
             if (entry) {
                 kb_state[entry] = is_break ? 0 : 1;
@@ -197,4 +201,16 @@ int kb_getevent(void)
 int kb_is_pressed(char key)
 {
     return kb_state[(unsigned char)key];
+}
+
+void kb_flush(void)
+{
+    kb_head = 0;
+    kb_tail = 0;
+    shift_held = 0;
+    ctrl_held  = 0;
+    skip_next  = 0;
+    extended   = 0;
+    for (int i = 0; i < 256; i++)
+        kb_state[i] = 0;
 }

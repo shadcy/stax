@@ -149,15 +149,23 @@ schedule:
 
     ldr     r0, =current_task
     ldr     r0, [r0]                /* r0 = current task TCB */
-    ldr     r1, [r0, #48]           /* r1 = next task TCB */
 
+    /* Walk the circular list starting from current->next to find a READY task.
+     * If we loop all the way back to current without finding one, return. */
+    ldr     r1, [r0, #48]           /* r1 = candidate = current->next */
+
+sched_scan:
     cmp     r0, r1
-    beq     sched_return            /* only one task, return */
+    beq     sched_return            /* wrapped around — no other READY task */
 
-    ldr     r3, [r1, #52]           /* r3 = next->state */
-    cmp     r3, #0                  /* READY? */
-    bne     sched_return            /* not ready, return */
+    ldr     r3, [r1, #52]           /* r3 = candidate->state */
+    cmp     r3, #0                  /* TASK_STATE_READY? */
+    beq     sched_do_switch         /* found one — switch to it */
 
+    ldr     r1, [r1, #48]           /* candidate = candidate->next */
+    b       sched_scan
+
+sched_do_switch:
     /* Save current task r4-r11 */
     str     r4,  [r0, #0]
     str     r5,  [r0, #4]
@@ -168,9 +176,10 @@ schedule:
     str     r10, [r0, #24]
     str     r11, [r0, #28]
 
-    /* Save current task SVC/System sp and lr */
+    /* Save current task SVC sp and lr */
     mrs     r2, cpsr
-    orr     r3, r2, #0x1F           /* Switch to System mode */
+    bic     r3, r2, #0x1F
+    orr     r3, r3, #0x13           /* Switch to SVC mode */
     msr     cpsr_c, r3
     str     sp,  [r0, #32]
     str     lr,  [r0, #36]
@@ -217,9 +226,10 @@ schedule:
     ldr     r3, [r1, #40]
     str     r3, [sp, #28]           /* pc */
 
-    /* Restore next task SVC/System sp and lr */
+    /* Restore next task SVC sp and lr */
     mrs     r2, cpsr
-    orr     r3, r2, #0x1F           /* Switch to System mode */
+    bic     r3, r2, #0x1F
+    orr     r3, r3, #0x13           /* Switch to SVC mode */
     msr     cpsr_c, r3
     ldr     sp,  [r1, #32]
     ldr     lr,  [r1, #36]
