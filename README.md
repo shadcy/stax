@@ -15,11 +15,9 @@
 
 ---
 
-Welcome to T-OS.
+**T-OS (Tios)** is a lightweight, bare-metal operating system built from scratch for the ARM architecture. Designed as an experimental systems programming project, T-OS implements foundational kernel mechanics without relying on existing third-party abstractions.
 
-I started this project because I believe the best way to truly understand computer science isn't just to read textbook theory—it's to roll up your sleeves and build the foundational layers yourself. T-OS is a custom, bare-metal operating system built entirely from scratch for ARM architectures. What started as a simple experiment to learn low-level hardware interaction has evolved into a comprehensive system capable of managing memory, scheduling tasks, and executing graphical applications.
-
-While the OS now supports a graphical interface and a suite of applications, the primary focus of T-OS lies in its core technical engineering. From the initial assembly boot sequence to the page-based memory allocator and interrupt-driven scheduler, the architecture is designed to cleanly separate hardware drivers, core kernel operations, and user-space abstractions.
+The project demonstrates a complete vertical stack—from a custom assembly bootloader and low-level hardware drivers to a preemptive task scheduler, a page-based memory allocator, and a fully composited graphical window manager. T-OS enforces a clean architectural separation, decoupling hardware interfaces from core kernel logic and user-space applications.
 
 ## Core Architecture & Features
 
