@@ -16,7 +16,7 @@
 ---
 
 > [!NOTE]
-> **T-OS turns abstract OS/CS concepts (memory management, scheduling, interrupts, drivers) into a real, runnable system students can explore — paired with an AI Concept Explorer that explains the underlying code in plain language.**
+> **T-OS EDUCATION turns abstract OS/CS concepts (memory management, scheduling, interrupts, drivers) into a real, runnable system students can explore — paired with an AI Concept Explorer that explains the underlying code in plain language.**
 >
 > Learn and explore with our interactive [AI Concept Explorer](education/index.html) (self-contained, opens directly in browser).
 
