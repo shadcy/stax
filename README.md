@@ -41,17 +41,17 @@ Lately, I've completely revamped the OS! It now features a proper **Compositing 
 
 **Interactive Concept Dashboard**
 <br>
-![Education Platform - Task Scheduler](readme-assets/edu-1.png)
+![Education Platform - Task Scheduler](readme-assets/edu-new-4.png)
 
-**Dynamic Simulators & Live AI Tutors**
+**Dynamic Simulators & Concept Flow**
 <br>
-![Education Platform - FAT16](readme-assets/edu-2.png)
+![Education Platform - Bootloader](readme-assets/edu-new-2.png)
 <br>
-![Education Platform - Packet Flow](readme-assets/edu-3.png)
+![Education Platform - Packet Flow](readme-assets/edu-new-3.png)
+
+**Universal AI Tutor**
 <br>
-![Education Platform - Bootloader](readme-assets/edu-4.png)
-<br>
-![Education Platform - Live Explanations](readme-assets/edu-5.png)
+![Education Platform - Universal AI Chat](readme-assets/edu-new-1.png)
 
 ### Desktop & Window Management
 ![Desktop Environment](readme-assets/desktop.png)
