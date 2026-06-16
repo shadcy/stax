@@ -49,7 +49,11 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -I$(APPS_DIR)       \
             -I$(UI_DIR)         \
             -I$(SHELL_DIR)      \
-            -I$(LIB_DIR)
+            -I$(LIB_DIR)        \
+            -Ithird_party/lwip/src/include \
+            -Ithird_party/bearssl/inc \
+            -Ithird_party/bearssl/src \
+            -Inet
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -124,6 +128,27 @@ KERNEL_OBJS  += $(BUILD_DIR)/math_fixed.o \
 # Core/Apps
 KERNEL_OBJS  += $(BUILD_DIR)/sokoban.o
 
+# Networking
+KERNEL_OBJS  += $(BUILD_DIR)/smc91c111.o \
+                $(BUILD_DIR)/sys_arch.o \
+                $(BUILD_DIR)/net_init.o \
+                $(BUILD_DIR)/netif_smc.o \
+                $(BUILD_DIR)/ping.o \
+                $(BUILD_DIR)/fetch.o \
+                $(BUILD_DIR)/ftp.o
+
+LWIP_DIR := third_party/lwip/src
+LWIP_SRCS := $(wildcard $(LWIP_DIR)/core/*.c) \
+             $(wildcard $(LWIP_DIR)/core/ipv4/*.c) \
+             $(wildcard $(LWIP_DIR)/netif/*.c)
+LWIP_OBJS := $(patsubst $(LWIP_DIR)/%.c, $(BUILD_DIR)/lwip/%.o, $(LWIP_SRCS))
+KERNEL_OBJS  += $(LWIP_OBJS)
+
+BEARSSL_DIR := third_party/bearssl/src
+BEARSSL_SRCS := $(wildcard $(BEARSSL_DIR)/*/*.c) $(wildcard $(BEARSSL_DIR)/*.c)
+BEARSSL_OBJS := $(patsubst $(BEARSSL_DIR)/%.c, $(BUILD_DIR)/bearssl/%.o, $(BEARSSL_SRCS))
+KERNEL_OBJS  += $(BEARSSL_OBJS)
+
 # Games
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
@@ -147,8 +172,9 @@ OS_BIN       := os.bin
 # ---------------------------------------------------------------------------
 QEMU         := qemu-system-arm
 QEMU_MACHINE := versatilepb
-QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -nographic -serial mon:stdio
-QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -serial stdio
+QEMU_NET     := -nic user,model=smc91c111,hostfwd=tcp::2122-:2121
+QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -nographic -serial mon:stdio
+QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw $(QEMU_NET) -serial stdio
 
 # =============================================================================
 # Rules
@@ -211,6 +237,20 @@ $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(DRIVERS_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: drivers/net/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: net/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/lwip/%.o: $(LWIP_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/bearssl/%.o: $(BEARSSL_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(FS_DIR)/%.c | $(BUILD_DIR)

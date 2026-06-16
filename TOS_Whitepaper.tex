@@ -1,0 +1,111 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+
+% Custom Colors
+\definecolor{primary}{HTML}{212121}
+\definecolor{accent}{HTML}{10a37f}
+\definecolor{textdim}{HTML}{555555}
+
+% Layout and Spacing Improvements
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+\widowpenalty=10000
+\clubpenalty=10000
+
+% Hyperlink styling
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    filecolor=accent,      
+    urlcolor=accent,
+    pdftitle={T-OS: AI-Powered Systems Education Platform},
+}
+
+% Hyperlink styling
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    filecolor=accent,      
+    urlcolor=accent,
+    pdftitle={T-OS: AI-Powered Systems Education Platform},
+}
+
+\title{
+    \vspace{-2cm}
+    \textbf{\huge T-OS: AI-Powered Systems Education Platform}\\
+    \vspace{0.5cm}
+    \Large Bridging the Gap in Low-Level Operating Systems Education\\
+    \large A Technical Whitepaper
+}
+\author{\textbf{Shreyash Wanjari}}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent Learning bare-metal systems programming and operating system kernel development is traditionally characterized by steep learning curves, opaque documentation, and a lack of interactive tooling. \textbf{T-OS} (Teaching Operating System) is an advanced, AI-powered education platform built on top of a fully functional bare-metal ARM kernel. By seamlessly integrating a state-of-the-art Universal Codebase AI Chatbot, dynamic HTML5 canvas simulators, and an interactive quiz framework, T-OS demystifies complex topics such as Memory Management Units (MMU), Task Scheduling, FAT16 Filesystems, and Network Stacks. This paper details the architecture, design philosophy, and technical implementation of T-OS, cementing its position as the premier interactive platform for systems engineering education.
+\end{abstract}
+
+\vspace{0.5cm}
+
+\section{Introduction}
+Operating Systems form the crucial foundation of all modern computing infrastructure. However, the pedagogical approaches to teaching OS development remain antiquated. Students are often handed massive legacy codebases (like Linux or xv6) with static documentation, leaving them to struggle with hardware idiosyncrasies and abstract concepts like virtual memory and interrupt dispatching.
+
+T-OS solves this by merging a highly readable, micro-scale ARM kernel with a modern, dynamic web-based educational dashboard. The platform does not just show the code—it simulates it, explains it contextually using Large Language Models (LLMs), and verifies the user's understanding through integrated testing.
+
+\section{The Bare-Metal Foundation}
+At its core, T-OS is a fully operational, bare-metal operating system targeting the ARM architecture (specifically emulated via QEMU's Integrator/CP or VersatilePB). This provides a tangible, real-world foundation for all educational content. 
+
+\subsection{Core Subsystems}
+The kernel features robust implementations of essential OS components:
+\begin{itemize}
+    \item \textbf{Bootloader \& Initialization:} Custom assembly routines that set up the C runtime, configure CPU modes, and dispatch control to the kernel main loop.
+    \item \textbf{Interrupts \& Timers:} A Vector Interrupt Controller (VIC) driver coupled with the ARM SP804 dual-timer to drive system ticks and preemptive scheduling.
+    \item \textbf{Memory Management (MMU):} Page-table generation, virtual-to-physical memory mapping, and a dynamic kernel heap allocator.
+    \item \textbf{Task Scheduler:} A preemptive, round-robin multitasking engine that manages context switching and process control blocks (PCBs).
+    \item \textbf{Filesystem \& Networking:} A FAT16 driver for SD-card interaction, and an integrated lwIP stack utilizing the SMC91c111 Ethernet controller.
+    \item \textbf{Window Manager (GUI):} A fully functional graphical user interface featuring rendering, event-driven input (evdev), and desktop compositing, capable of running games such as DOOM natively.
+\end{itemize}
+
+\section{AI-Powered Educational Integration}
+The defining feature of T-OS is its interactive, AI-driven educational layer, designed to make the platform the best in the world for OS learning.
+
+\subsection{Universal Codebase Chatbot}
+T-OS abandons generic AI assistants in favor of a specialized, context-aware engine:
+\begin{itemize}
+    \item \textbf{Full Repository Indexing:} The local Agent Server indexes the entire codebase, building a real-time system file tree.
+    \item \textbf{Contextual Mentions (\texttt{@path}):} Users can instantly inject source code files into the LLM context. The AI accurately reads the local C/H files and provides line-by-line breakdowns.
+    \item \textbf{Expert Tutors:} The prompt engine dynamically configures the AI as an expert on the specific subsystem the user is currently viewing.
+\end{itemize}
+
+\subsection{Dynamic Interactive Visualizers}
+Abstract concepts are transformed into concrete animations. Built using raw HTML5 Canvas, the simulators interactively trace data flows. For instance, the Bootloader simulator visualizes the transition of sectors from the SD Card into RAM, while the Interrupt simulator traces IRQ signals through the VIC to the CPU vector table. 
+
+\subsection{Autonomous Artifact Generation}
+When explaining advanced concepts, the AI can autonomously generate \textit{Artifacts}—fully interactive, executable JavaScript modules that render custom simulators directly into the dashboard. These artifacts come bundled with explanations and dynamically generated quizzes, which can be saved to the user's local concept library for permanent access.
+
+\section{System Architecture and UI Design}
+T-OS applies modern web-design paradigms (inspired by leading developer toolkits) to an otherwise archaic domain. The educational dashboard features:
+\begin{enumerate}
+    \item \textbf{A Clean, Icon-Driven Interface:} Removing distracting emojis and adopting a professional, dark-mode focused UI.
+    \item \textbf{Responsive File Explorer:} A dual-pane sidebar providing seamless switching between educational concepts and raw source file exploration.
+    \item \textbf{Offline Resilience:} The platform supports a hybrid architecture. It utilizes OpenRouter API connectivity for live, advanced LLM inference (e.g., Claude 3.5 Sonnet), while maintaining an offline pre-baked mode for users without internet access.
+\end{enumerate}
+
+\section{Conclusion}
+By treating the operating system codebase not merely as software to be executed, but as an interactive dataset to be visualized and queried, T-OS redefines systems education. It eliminates the friction of learning bare-metal programming, providing an unprecedented, highly responsive, and deeply educational environment. T-OS stands out as the ultimate educational companion for aspiring systems engineers.
+
+\vfill
+\begin{center}
+    \small \textit{T-OS - Bridging the Gap Between Code and Comprehension.}
+\end{center}
+
+\end{document}

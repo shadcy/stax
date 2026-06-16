@@ -117,7 +117,19 @@ void kernel_main(void)
     kputs("----------------------------------------\n");
 
     /* Initialize command system */
+    extern void net_init(void);
+    net_init();
     command_init();
+
+    /* Initialize apps */
+    extern void ping_init(void);
+    extern void fetch_init(void);
+    extern void ftp_init(void);
+    extern void ifconfig_init(void);
+    ping_init();
+    fetch_init();
+    ftp_init();
+    ifconfig_init();
     
     kputs("Type 'help' for available commands\n");
     kputs("Type 'game --doom' to play graphical DOOM\n");
@@ -177,8 +189,13 @@ void kernel_main(void)
             while (tick_count == start_tick) {
                 __asm__ volatile ("nop");
             }
+            extern int net_poll(void);
+            if (net_poll()) REDRAW_LINE();
             continue;
         }
+
+        extern int net_poll(void);
+        if (net_poll()) REDRAW_LINE();
 
         /* Pass key to focused window first */
         extern int wm_dispatch_key(char c);

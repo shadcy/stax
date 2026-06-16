@@ -32,22 +32,85 @@ void kputs(const char *s)
     while (*s) kputc(*s++);
 }
 
-void kput_uint(unsigned int n)
-{
-    char buf[12];
+void kput_uint(unsigned int n) {
+    if (n == 0) {
+        kputc('0');
+        return;
+    }
+    char buf[16];
     int i = 0;
-    if (n == 0) { kputc('0'); return; }
-    while (n > 0) { buf[i++] = '0' + (n % 10); n /= 10; }
+    while (n > 0) {
+        buf[i++] = (n % 10) + '0';
+        n /= 10;
+    }
+    while (i > 0) {
+        kputc(buf[--i]);
+    }
+}
+
+void kput_hex(unsigned int n, int width) {
+    char buf[16];
+    int i = 0;
+    do {
+        int rem = n % 16;
+        buf[i++] = (rem < 10) ? (rem + '0') : (rem - 10 + 'a');
+        n /= 16;
+    } while (n > 0);
+    while (i < width) buf[i++] = '0';
     while (i > 0) kputc(buf[--i]);
+}
+
+#include <stdarg.h>
+void kprintf(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    
+    while (*format) {
+        if (*format == '%') {
+            format++;
+            int width = 0;
+            if (*format == '0') {
+                format++;
+                while (*format >= '0' && *format <= '9') {
+                    width = width * 10 + (*format - '0');
+                    format++;
+                }
+            }
+            if (*format == 's') {
+                char *s = va_arg(args, char *);
+                if (s) kputs(s);
+            } else if (*format == 'd' || *format == 'u') {
+                unsigned int n = va_arg(args, unsigned int);
+                kput_uint(n);
+            } else if (*format == 'x' || *format == 'X') {
+                unsigned int n = va_arg(args, unsigned int);
+                kput_hex(n, width);
+            } else if (*format == 'c') {
+                char c = (char)va_arg(args, int);
+                kputc(c);
+            } else if (*format == '%') {
+                kputc('%');
+            } else {
+                kputc('%');
+                if (width) kputc('0');
+                kputc(*format);
+            }
+        } else {
+            kputc(*format);
+        }
+        format++;
+    }
+    va_end(args);
 }
 
 char kgetc(void)
 {
-    /* 1. Check UART RX first (works for: make qemu / serial terminal) */
-    if (!(UART_FR & UART_FR_RXFE))
-        return (char)UART_DR;
-
-    /* 2. Fall back to PL050 PS/2 keyboard (works for: make qemu-gfx window) */
+    // UART input
+    if (!(UART_FR & UART_FR_RXFE)) {
+        char c = (char)UART_DR;
+        if (c != 0) return c;
+    }
+    // PS/2 keyboard fallback
     return kb_getc();
 }
 
@@ -61,19 +124,16 @@ void kgets(char *buf, int max_len)
     if (!buf || max_len <= 0) return;
     
     while (i < max_len - 1) {
-        /* Wait for character with timeout */
-        timeout = 1000000;  /* Large timeout value */
-        while (timeout-- && (UART_FR & UART_FR_RXFE)) {
-            __asm__ volatile ("nop");
-        }
-        
-        if (timeout <= 0) {
-            /* Timeout - just continue loop */
+        /* Poll keyboard + UART; also keep network stack alive */
+        extern int net_poll(void);
+        net_poll();
+
+        c = kgetc();
+        if (c == 0) {
+            /* No character yet — spin briefly and retry */
+            for (volatile int k = 0; k < 50000; k++) __asm__ volatile ("nop");
             continue;
         }
-        
-        c = kgetc();
-        if (c == 0) continue;  /* No valid character */
         
         /* Handle backspace */
         if (c == '\b' || c == 127) {

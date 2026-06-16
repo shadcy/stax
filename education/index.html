@@ -1,0 +1,4274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T-OS AI x STEM Concept Explorer</title>
+    <!-- Google Fonts & FontAwesome -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-darker: #212121;
+            --bg-dark: #171717;
+            --bg-card: #171717;
+            --surface-hover: #212121;
+            --border-color: #2f2f2f;
+            --border-hover: #4d4d4d;
+            --primary: #ececec;
+            --primary-invert: #212121;
+            --primary-glow: rgba(236, 236, 236, 0.1);
+            --accent: #b4b4b4;
+            --success: #10a37f;
+            --success-glow: rgba(16, 163, 127, 0.1);
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #ececec;
+            --text-dim: #b4b4b4;
+            --code-bg: #212121;
+            --radius: 6px;
+            --radius-lg: 8px;
+            --radius-full: 9999px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-darker);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-darker);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: var(--radius-full);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            width: 100vw;
+        }
+
+        .mobile-header {
+            display: none;
+        }
+
+        @media (max-width: 1200px) {
+            .app-container {
+                display: flex;
+                flex-direction: column;
+                overflow: auto;
+                min-height: 100vh;
+                height: auto;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -280px;
+                width: 280px;
+                height: 100vh;
+                z-index: 100;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .mobile-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 99;
+                backdrop-filter: blur(2px);
+            }
+
+            .mobile-overlay.open {
+                display: block;
+            }
+
+            .mobile-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 16px 24px;
+                background: var(--bg-dark);
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .hamburger-btn {
+                background: transparent;
+                border: none;
+                color: var(--primary);
+                font-size: 20px;
+                cursor: pointer;
+            }
+
+            .main-content {
+                padding: 20px;
+                flex: 1;
+                overflow: visible;
+                height: auto;
+            }
+
+            .concept-title {
+                font-size: 1.5rem;
+            }
+
+            .simulator-card,
+            .quiz-card,
+            .concept-header-card {
+                padding: 20px;
+            }
+
+            .sim-canvas-container {
+                min-height: 200px;
+            }
+
+            .right-panel {
+                display: flex;
+                flex-direction: column;
+                height: auto;
+                min-height: 800px;
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+            }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background-color: var(--bg-dark);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            width: 272px;
+            flex-shrink: 0;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .resizer {
+            width: 4px;
+            background-color: var(--border-color);
+            cursor: col-resize;
+            transition: background-color 0.2s;
+            z-index: 10;
+        }
+
+        .resizer:hover,
+        .resizer.resizing {
+            background-color: var(--primary);
+        }
+
+        .logo-icon {
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+            color: var(--primary);
+        }
+
+        .logo-badge {
+            font-size: 9px;
+            background-color: var(--border-color);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            margin-left: auto;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .api-config {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 12px;
+            margin-bottom: 16px;
+            transition: var(--transition);
+        }
+
+        .api-config:hover {
+            border-color: var(--border-hover);
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            background: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            padding: 3px;
+            border-radius: var(--radius-lg);
+            gap: 3px;
+            margin-bottom: 16px;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 7px 10px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: var(--transition);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .sidebar-tab:hover {
+            color: var(--primary);
+        }
+
+        .sidebar-tab.active {
+            background: var(--bg-darker);
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .api-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .api-input-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        .api-input {
+            flex: 1;
+            min-width: 0;
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--primary);
+            padding: 8px 12px;
+            border-radius: var(--radius);
+            font-size: 12px;
+            font-family: 'Fira Code', monospace;
+            transition: var(--transition);
+        }
+
+        .api-input:focus {
+            outline: none;
+            border-color: var(--border-hover);
+        }
+
+        .api-btn {
+            background-color: var(--primary);
+            color: var(--primary-invert);
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 12px;
+            transition: var(--transition);
+        }
+
+        .api-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .concept-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .concept-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .concept-btn:hover {
+            color: var(--text-main);
+        }
+
+        .concept-btn.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .concept-btn .nav-indicator {
+            opacity: 0;
+            color: var(--success);
+            font-size: 18px;
+            line-height: 0;
+            transition: var(--transition);
+        }
+
+        .concept-btn.active .nav-indicator {
+            opacity: 1;
+        }
+
+        /* Main Workspace */
+        .main-content {
+            padding: 32px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            background-color: var(--bg-darker);
+            flex: 1;
+            min-width: 0;
+            position: relative;
+        }
+
+        .panel-toggle-btn {
+            position: absolute;
+            top: 24px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-dim);
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: var(--transition);
+        }
+
+        .panel-toggle-btn:hover {
+            color: var(--primary);
+            border-color: var(--border-hover);
+        }
+
+        .panel-toggle-btn.left {
+            left: 24px;
+        }
+
+        .panel-toggle-btn.right {
+            right: 24px;
+        }
+
+        .concept-header-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            transition: var(--transition);
+        }
+
+        .concept-header-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .concept-title {
+            font-size: 2.2rem;
+            font-weight: 500;
+            letter-spacing: -0.03em;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .concept-subtitle {
+            color: var(--text-dim);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .concept-desc {
+            color: var(--text-main);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        /* Simulator */
+        .simulator-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            transition: var(--transition);
+        }
+
+        .simulator-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .simulator-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .simulator-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: var(--primary);
+        }
+
+        .simulator-controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .sim-btn {
+            background-color: var(--bg-darker);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .sim-btn:hover {
+            background-color: var(--border-color);
+            color: var(--primary);
+            border-color: var(--border-hover);
+        }
+
+        .sim-canvas-container {
+            background-color: #050505;
+            background-image: radial-gradient(#2f2f2f 1px, transparent 1px);
+            background-size: 20px 20px;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sim-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Quiz */
+        .quiz-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            transition: var(--transition);
+        }
+
+        .quiz-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .quiz-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: var(--primary);
+            margin-bottom: 24px;
+        }
+
+        .quiz-question {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .quiz-option {
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: var(--transition);
+            text-align: left;
+            font-size: 15px;
+            color: var(--text-main);
+        }
+
+        .quiz-option:hover {
+            border-color: var(--border-hover);
+            background-color: var(--bg-dark);
+        }
+
+        .quiz-option.selected {
+            border-color: var(--border-hover);
+        }
+
+        .quiz-option.correct {
+            border-color: var(--success);
+            background-color: var(--success-glow);
+        }
+
+        .quiz-option.incorrect {
+            border-color: var(--danger);
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        .quiz-indicator {
+            width: 24px;
+            height: 24px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .quiz-option.correct .quiz-indicator {
+            border-color: var(--success);
+            background-color: var(--success);
+            color: var(--primary-invert);
+        }
+
+        .quiz-option.incorrect .quiz-indicator {
+            border-color: var(--danger);
+            background-color: var(--danger);
+            color: var(--primary-invert);
+        }
+
+        .quiz-feedback {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: var(--radius);
+            font-size: 15px;
+            display: none;
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border-color);
+        }
+
+        .quiz-feedback.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .quiz-feedback.danger {
+            border-left: 4px solid var(--danger);
+        }
+
+        .quiz-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .quiz-score-tracker {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-dim);
+        }
+
+        /* Right Panel */
+        .right-panel {
+            background-color: var(--bg-dark);
+            border-left: 1px solid var(--border-color);
+            display: grid;
+            grid-template-rows: 1fr 1.2fr;
+            height: 100vh;
+            overflow: hidden;
+            width: 420px;
+            flex-shrink: 0;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .right-panel.collapsed {
+            width: 0;
+            border-left: none;
+        }
+
+        .code-container {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid var(--border-color);
+            overflow: hidden;
+            background-color: var(--bg-dark);
+        }
+
+        .code-tab-header {
+            display: flex;
+            background-color: var(--bg-darker);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .code-tab {
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-right: 1px solid var(--border-color);
+            font-family: 'Fira Code', monospace;
+            background-color: transparent;
+            transition: var(--transition);
+            white-space: nowrap;
+            border-top: 2px solid transparent;
+        }
+
+        .code-tab.active {
+            background-color: var(--bg-dark);
+            color: var(--primary);
+            border-top-color: var(--primary);
+        }
+
+        .code-viewer {
+            flex: 1;
+            overflow: auto;
+            background-color: var(--bg-dark);
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            padding: 20px 0;
+            position: relative;
+        }
+
+        .code-line {
+            display: flex;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 2px 20px;
+            border-left: 2px solid transparent;
+        }
+
+        .code-line:hover {
+            background-color: var(--border-color);
+        }
+
+        .code-line.highlight {
+            background-color: var(--border-color);
+            border-left-color: var(--primary);
+        }
+
+        .line-num {
+            width: 32px;
+            text-align: right;
+            color: var(--border-hover);
+            margin-right: 20px;
+            user-select: none;
+        }
+
+        .line-content {
+            color: var(--text-main);
+            white-space: pre;
+        }
+
+        .line-content .keyword {
+            color: #818cf8;
+            font-weight: 600;
+        }
+
+        .line-content .type {
+            color: #34d399;
+        }
+
+        .line-content .comment {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .line-content .string {
+            color: #fcd34d;
+        }
+
+        .line-content .number {
+            color: #f472b6;
+        }
+
+        .line-content .func {
+            color: #60a5fa;
+        }
+
+        /* AI Pane */
+        .ai-pane {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: var(--bg-darker);
+        }
+
+        .ai-pane-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-darker);
+        }
+
+        .ai-status-badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .ai-status-badge.local {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-dim);
+            border-color: var(--border-color);
+        }
+
+        .ai-think-box {
+            border-left: 3px solid var(--primary);
+            background-color: rgba(16, 163, 127, 0.05);
+            margin: 12px 0;
+            padding: 12px;
+            border-radius: 0 4px 4px 0;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .ai-think-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-think-content {
+            font-style: italic;
+        }
+
+        /* Resizer styles */
+
+        .ai-status-badge.live {
+            background-color: var(--success-glow);
+            color: var(--success);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+
+        .ai-output-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .ai-chat-bubble {
+            display: flex;
+            gap: 16px;
+        }
+
+        .ai-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+        }
+
+        .ai-avatar.bot {
+            background-color: transparent;
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .ai-message {
+            background-color: transparent;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-main);
+            flex: 1;
+            padding-top: 4px;
+        }
+
+        .ai-message strong {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .ai-message code {
+            font-family: 'Fira Code', monospace;
+            background-color: var(--border-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--primary);
+        }
+
+        .ai-message pre {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: var(--radius-lg);
+            overflow-x: auto;
+            margin-bottom: 12px;
+        }
+
+        .ai-message pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            color: var(--primary);
+        }
+
+        .ai-message p {
+            margin-bottom: 12px;
+        }
+
+        .ai-message p:last-child {
+            margin-bottom: 0;
+        }
+
+        .ai-message ul {
+            margin-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        .ai-input-form {
+            display: flex;
+            border-top: 1px solid var(--border-color);
+            padding: 20px 24px;
+            gap: 12px;
+            background-color: var(--bg-darker);
+        }
+
+        .ai-chat-input {
+            flex: 1;
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--primary);
+            padding: 12px 56px 12px 16px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 48px;
+            max-height: 300px;
+            transition: border-color 0.3s ease;
+        }
+
+        .ai-chat-input:focus {
+            outline: none;
+            border-color: var(--border-hover);
+        }
+
+        .ai-send-btn {
+            background-color: var(--primary);
+            color: var(--primary-invert);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .ai-send-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 2px;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background-color: var(--primary);
+            color: var(--primary-invert);
+        }
+
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1.0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="mobile-overlay" id="mobileOverlay" onclick="toggleSidebar()"></div>
+    <div class="mobile-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 700; font-size: 18px; color: var(--primary);">TOS</span>
+            <span style="font-weight: 300; font-size: 18px; color: var(--primary);">Education</span>
+        </div>
+        <button class="hamburger-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    </div>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header"
+                style="justify-content: space-between; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 700; font-size: 18px; color: var(--primary);">TOS</span>
+                    <span style="font-weight: 300; font-size: 18px; color: var(--text-dim);">Education</span>
+                </div>
+                <button class="hamburger-btn" style="display: none;" id="closeSidebarBtn" onclick="toggleSidebar()"><i
+                        class="fa-solid fa-times"></i></button>
+            </div>
+
+            <!-- Universal Chat Navigation -->
+            <a style="width: 100%; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; background-color: var(--success); color: var(--primary-invert); border: none; padding: 9px 16px; border-radius: var(--radius-full); cursor: pointer; font-weight: 500; font-size: 13px; text-decoration: none; transition: var(--transition);"
+                href="chat.html" onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'"
+                onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'">
+                <i class="fa-solid fa-robot"></i> Universal AI Chat
+            </a>
+
+            <!-- Search Concepts -->
+            <div class="search-container" style="margin-bottom: 24px;">
+                <input type="text" id="conceptSearch" class="api-input" placeholder="Search concepts..."
+                    oninput="filterConcepts()" style="width: 100%;">
+            </div>
+
+            <!-- Optional API Key Input -->
+            <div class="api-config">
+                <div class="api-header">
+                    <i class="fa-solid fa-key"></i> OpenRouter API Key
+                </div>
+                <div class="api-input-container">
+                    <input type="password" id="openrouterApiKey" class="api-input" placeholder="sk-or-v1-..."
+                        title="Stored locally. Leave blank for offline mode.">
+                    <button id="saveApiKey" class="api-btn" onclick="saveApiKey()"><i
+                            class="fa-solid fa-check"></i></button>
+                    <button id="clearChatBtn" class="api-btn" onclick="clearChatHistory()" title="Clear Chat History"
+                        style="background: transparent; border: 1px solid var(--border-color); color: var(--text-dim); padding: 0 8px;"><i
+                            class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" id="tabConcepts" onclick="switchSidebarTab('concepts')">
+                    <i class="fa-solid fa-book-open"></i> Concepts
+                </button>
+                <button class="sidebar-tab" id="tabFiles" onclick="switchSidebarTab('files')">
+                    <i class="fa-solid fa-folder-tree"></i> Explorer
+                </button>
+            </div>
+
+            <!-- Concept Buttons -->
+            <nav class="concept-nav" id="conceptNav">
+                <!-- Dynamically populated -->
+            </nav>
+
+            <!-- File Explorer Add Form -->
+            <div id="fileExplorerTools" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+                <div class="api-input-container">
+                    <input type="text" id="addFileInput" class="api-input" placeholder="Path to track (e.g. fs/fat.c)"
+                        title="Add an unindexed file to the Explorer for quick access.">
+                    <button class="api-btn" onclick="addCustomFile()">Track</button>
+                </div>
+            </div>
+
+            <!-- File Explorer Tree -->
+            <div id="fileExplorer"
+                style="display: none; flex-direction: column; gap: 4px; overflow-y: auto; overflow-x: hidden; font-family: 'Fira Code', monospace; font-size: 12px; padding-right: 8px;">
+                <!-- Dynamically populated -->
+            </div>
+        </aside>
+
+        <!-- Main Workspace (Visualizations & Quizzes) -->
+        <main class="main-content">
+            <button class="panel-toggle-btn left" id="toggleLeftBtn" onclick="toggleLeftSidebar()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
+                </svg>
+            </button>
+            <button class="panel-toggle-btn right" id="toggleRightBtn" onclick="toggleRightSidebar()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 18l6-6-6-6" />
+                </svg>
+            </button>
+
+            <!-- Header Card -->
+            <section class="concept-header-card">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <span id="subsystemIconEl" style="color: var(--text-dim); font-size: 14px;"></span>
+                    <div class="concept-subtitle" id="subsystemType" style="margin-bottom: 0;">Subsystem Type</div>
+                </div>
+                <h1 class="concept-title" id="subsystemTitle">Subsystem Title</h1>
+                <p class="concept-desc" id="subsystemDesc">Subsystem Description</p>
+            </section>
+
+            <!-- Simulator Widget -->
+            <section class="simulator-card">
+                <div class="simulator-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-circle-play" style="color: var(--text-dim);"></i>
+                        <h2 class="simulator-title">Concept Visualization</h2>
+                    </div>
+                    <div class="simulator-controls" id="simulatorControls"></div>
+                </div>
+                <div class="sim-canvas-container" id="simContainer">
+                    <canvas id="simCanvas" class="sim-canvas"></canvas>
+                </div>
+            </section>
+
+            <!-- Quiz Card -->
+            <section class="quiz-card" id="quizCard">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                    <i class="fa-solid fa-circle-question" style="color: var(--text-dim);"></i>
+                    <h2 class="quiz-title" style="margin-bottom: 0;">Test Your Knowledge</h2>
+                </div>
+                <div id="quizContainer"></div>
+                <div class="quiz-footer">
+                    <span class="quiz-score-tracker" id="quizScore">Score: 0 / 0</span>
+                    <button class="sim-btn" id="nextQuizBtn" onclick="nextQuizQuestion()" style="display: none;">
+                        Next <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Vertical Resizer -->
+        <div class="resizer" id="rightResizer"></div>
+
+        <!-- AI Assistant & Code Viewer -->
+        <aside class="right-panel" id="rightPanel">
+            <!-- Source Code Viewer -->
+            <div class="code-container">
+                <div class="code-tab-header"
+                    style="justify-content: space-between; align-items: center; padding-right: 16px;">
+                    <div id="codeTabs" style="display: flex; overflow-x: auto; flex: 1;">
+                        <!-- Tabs populated by active concept -->
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="api-btn" id="askAITopBtn"
+                            style="padding: 4px 8px; font-size: 11px; display: none; background-color: var(--success); color: var(--primary-invert);"
+                            onclick="askAIAboutLoadedFile()"><i class="fa-solid fa-sparkles"></i> Ask AI</button>
+                        <button class="api-btn" id="copyCodeBtn" style="padding: 4px 8px; font-size: 11px;"
+                            onclick="copyActiveCode()"><i class="fa-solid fa-copy"></i> Copy</button>
+                    </div>
+                </div>
+                <div class="code-viewer" id="codeViewer">
+                    <!-- Code content -->
+                </div>
+            </div>
+
+            <!-- AI Explanation Panel -->
+            <div class="ai-pane">
+                <div class="ai-pane-header">
+                    <i class="fa-solid fa-robot" style="color: var(--primary); font-size: 14px;"></i>
+                    <span style="font-weight: 500; font-size: 13px; color: var(--primary); flex: 1;">AI Assistant</span>
+                    <span id="aiStatusBadge" class="ai-status-badge local">Offline</span>
+                </div>
+                <div class="ai-output-container" id="aiOutput">
+                    <!-- AI Dialog Bubble -->
+                </div>
+                <form class="ai-input-form" id="aiInputForm" onsubmit="askAI(event)" style="position: relative;">
+                    <textarea id="aiChatInput" class="ai-chat-input"
+                        placeholder="Ask AI or type /open <path> to load local file... (Shift+Enter for newline)"
+                        oninput="handleChatInput(event)" onkeydown="handleChatKeydown(event)"></textarea>
+                    <button type="submit" class="ai-send-btn" style="position: absolute; right: 34px; bottom: 26px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                    </button>
+                    <!-- Autocomplete Dropdown -->
+                    <div id="autocompletePopup"
+                        style="display: none; position: absolute; bottom: calc(100% - 10px); left: 24px; right: 24px; max-height: 250px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; z-index: 1000; box-shadow: 0 -8px 20px rgba(0,0,0,0.8); font-family: 'Fira Code', monospace; font-size: 13px; padding: 4px;">
+                    </div>
+                </form>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Data & Scripts -->
+    <script>
+        // Data containing codes, explanations, quizzes, and visualizations for all 9 subsystems
+        const subsystems = [
+            {
+                id: "bootloader",
+                title: "Bootloader & FAT16 Loader",
+                type: "Stage 2 Boot Sequence",
+                icon: "fa-solid fa-power-off",
+                desc: "Before the main operating system starts, a small program called a bootloader runs. Its only job is to look at the SD card, find the main OS file (KERNEL.BIN), copy it into memory, and start running it.",
+                files: [
+                    {
+                        name: "bootloader.c",
+                        path: "boot/bootloader.c",
+                        code: `// T-OS Bootloader Entry Point
+void bootloader_main(void) {
+    uart_init();
+    uart_puts("Initializing PL181 SD Card Controller...\\n");
+    sd_init();
+    
+    uart_puts("Parsing FAT16 filesystem to find KERNEL.BIN...\\n");
+    static uint8_t sector_buf[512];
+    sd_read_sector(0, sector_buf); // Read Master Boot Record / BPB
+    
+    uint16_t bytes_per_sec = *(uint16_t *)(sector_buf + 11);
+    uint8_t  sec_per_clus  = *(uint8_t  *)(sector_buf + 13);
+    uint16_t rsvd_sec_cnt  = *(uint16_t *)(sector_buf + 14);
+    uint8_t  num_fats      = *(uint8_t  *)(sector_buf + 16);
+    uint16_t root_ent_cnt  = *(uint16_t *)(sector_buf + 17);
+    uint16_t fat_size_16   = *(uint16_t *)(sector_buf + 22);
+
+    uint32_t fat_start      = rsvd_sec_cnt;
+    uint32_t root_dir_start = fat_start + (num_fats * fat_size_16);
+    uint32_t root_dir_sects = (root_ent_cnt * 32 + 511) / 512;
+    uint32_t data_start     = root_dir_start + root_dir_sects;
+
+    uint16_t kernel_cluster = 0;
+    // Iterate through root directory entries looking for KERNEL.BIN
+    for (uint32_t s = 0; s < root_dir_sects; s++) {
+        sd_read_sector(root_dir_start + s, sector_buf);
+        for (int i = 0; i < 512; i += 32) {
+            uint8_t *entry = sector_buf + i;
+            if (entry[0] == 0x00) break; // End of entries
+            if (entry[0] == 0xE5) continue; // Deleted file
+            
+            int match = 1;
+            const char *target = "KERNEL  BIN"; // FAT16 8.3 filename
+            for (int j = 0; j < 11; j++) {
+                if (entry[j] != target[j]) { match = 0; break; }
+            }
+            if (match) {
+                kernel_cluster = *(uint16_t *)(entry + 26);
+                break;
+            }
+        }
+        if (kernel_cluster != 0) break;
+    }
+
+    if (kernel_cluster == 0) {
+        uart_puts("Error: KERNEL.BIN not found!\\n");
+        while(1);
+    }
+    
+    // Read kernel cluster-by-cluster into RAM at KERNEL_EXEC_ADDR (0x00100000)
+    uint8_t *dst = (uint8_t *)KERNEL_EXEC_ADDR;
+    uint32_t current_cluster = kernel_cluster;
+    while (current_cluster >= 0x0002 && current_cluster <= 0xFFEF) {
+        uint32_t lba = data_start + (current_cluster - 2) * sec_per_clus;
+        for (int i = 0; i < sec_per_clus; i++) {
+            sd_read_sector(lba + i, dst);
+            dst += 512;
+        }
+        
+        // Find next cluster from the FAT table
+        uint32_t fat_offset = current_cluster * 2;
+        uint32_t fat_sec = fat_start + (fat_offset / 512);
+        uint32_t ent_offset = fat_offset % 512;
+        sd_read_sector(fat_sec, sector_buf);
+        current_cluster = *(uint16_t *)(sector_buf + ent_offset);
+    }
+    
+    // Verify Integrity
+    const char *kernel_magic = (const char *)(KERNEL_EXEC_ADDR + 4);
+    if (kernel_magic[0] == 'T' && kernel_magic[1] == 'I' && 
+        kernel_magic[2] == 'O' && kernel_magic[3] == 'S') {
+        uart_puts("Verify magic OK! Jumping to kernel...\\n");
+        void (*kernel_entry)(void) = (void (*)(void))KERNEL_EXEC_ADDR;
+        kernel_entry(); // Boot!
+    } else {
+        uart_puts("Verify FAILED!\\n");
+        while(1);
+    }
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>How the Loader Works:</strong></p>
+                <p>An operating system cannot boot itself. When the computer turns on, execution begins at a fixed ROM memory address. QEMU directly loads the T-OS bootloader binary to RAM starting at <code>0x00010000</code>.</p>
+                <ul>
+                    <li><strong>FAT16 Structures</strong>: The bootloader reads sector 0 to locate reserved sectors, the File Allocation Tables (FAT), and the Root Directory.</li>
+                    <li><strong>Directory Scanning</strong>: It maps directory records looking for <code>KERNEL.BIN</code>. The FAT16 standard encodes filenames in an 8.3 format (8 chars for name, 3 for extension).</li>
+                    <li><strong>Cluster Chaining</strong>: Files are stored in sectors called clusters. A single file can span multiple non-contiguous clusters. The File Allocation Table serves as a linked list tracker, routing the bootloader through the blocks until it reads the entire kernel file.</li>
+                    <li><strong>Magic Signature Check</strong>: To prevent jumping into junk data, the bootloader verifies the string <code>"TIOS"</code> at offset 4 of the kernel before jumping control.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "What is the physical address in RAM where QEMU starts executing the T-OS bootloader?",
+                        options: ["0x00000000", "0x00010000", "0x00100000", "0x10005000"],
+                        answer: 1,
+                        explanation: "QEMU directly places the Stage 2 bootloader at the 64KB mark (0x00010000) and routes execution there."
+                    },
+                    {
+                        question: "How does the bootloader parse KERNEL.BIN if the file is split across different locations on disk?",
+                        options: [
+                            "It reads sequentially and hopes there are no gaps",
+                            "It asks the keyboard driver for locations",
+                            "It reads the next cluster address from the File Allocation Table (FAT)",
+                            "The scheduler performs page table walks to link them"
+                        ],
+                        answer: 2,
+                        explanation: "The FAT table maps every cluster index to the next one, forming a link chain that the bootloader traces cluster-by-cluster."
+                    }
+                ],
+                sim: "bootloader"
+            },
+            {
+                id: "mmu",
+                title: "Memory Management (MMU)",
+                type: "ARM CP15 Co-Processor & Paging",
+                icon: "fa-solid fa-memory",
+                desc: "The Memory Management Unit (MMU) acts like a hardware translator. It links virtual software addresses to physical memory chips. More importantly, it controls 'caching'—telling the CPU which data can be memorized for speed, and which data (like the screen or hardware inputs) must be read fresh every single time.",
+                files: [
+                    {
+                        name: "mmu.c",
+                        path: "kernel/mmu.c",
+                        code: `/* 16KB aligned Translation Table Base (TTB) for 4096 * 4-byte entries */
+static uint32_t __attribute__((aligned(16384))) page_table[4096];
+
+#define MMU_DESC_TYPE_SECTION 0x2
+#define MMU_DESC_CACHEABLE    0x8
+#define MMU_DESC_BUFFERABLE   0x4
+#define MMU_DESC_AP_RW        (0x3 << 10) /* Privileged & User Read/Write */
+#define MMU_DESC_DOMAIN(x)    ((x) << 5)
+
+void mmu_init(void) {
+    int i;
+    /* 1. Clear translation table (fault all accesses initially) */
+    for (i = 0; i < 4096; i++) {
+        page_table[i] = 0;
+    }
+    
+    /* 2. Identity Map RAM: 0x00000000 to 0x02000000 (32MB) */
+    for (i = 0x000; i < 0x020; i++) {
+        uint32_t attrs = MMU_DESC_CACHEABLE | MMU_DESC_BUFFERABLE;
+        
+        // Framebuffers are at Section 30 & 31. Set as Non-Cacheable + Bufferable!
+        // This stops massive cache thrashing during double buffering block swaps.
+        if (i == 30 || i == 31) attrs = MMU_DESC_BUFFERABLE;
+        
+        page_table[i] = (i << 20) | MMU_DESC_AP_RW | MMU_DESC_DOMAIN(0) | 
+                        attrs | MMU_DESC_TYPE_SECTION;
+    }
+    
+    /* 3. Identity Map Peripherals: 0x10000000 to 0x101FFFFF (2MB for MMIO) */
+    for (i = 0x100; i < 0x102; i++) {
+        page_table[i] = (i << 20) | MMU_DESC_AP_RW | MMU_DESC_DOMAIN(0) | 
+                        MMU_DESC_TYPE_SECTION;
+    }
+    
+    /* 4. Configure CP15 Co-processor via Inline Assembly */
+    uint32_t ttbr = (uint32_t)page_table;
+    asm volatile (
+        "mov r1, #0\\n"
+        "mcr p15, 0, r1, c7, c7, 0\\n" /* Invalidate I/D caches */
+        "mcr p15, 0, r1, c8, c7, 0\\n" /* Invalidate unified TLB */
+        
+        "mcr p15, 0, %0, c2, c0, 0\\n" /* Write Translation Table Base Register (TTBR) */
+        
+        "ldr r1, =0x00000001\\n"
+        "mcr p15, 0, r1, c3, c0, 0\\n" /* Domain Access Control to Client (01) */
+        
+        "mrc p15, 0, r1, c1, c0, 0\\n" /* Read control register */
+        "orr r1, r1, #0x0001\\n"       /* Set MMU enable bit */
+        "orr r1, r1, #0x0004\\n"       /* Set D-Cache enable */
+        "orr r1, r1, #0x1000\\n"       /* Set I-Cache enable */
+        "bic r1, r1, #0x2000\\n"       /* Clear V bit (Low vectors at 0x00000000) */
+        "mcr p15, 0, r1, c1, c0, 0\\n" /* Write back to Enable MMU + Caches */
+        : : "r"(ttbr) : "r1", "memory"
+    );
+    kputs("MMU: Initialized and Caches enabled.\\n");
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>Core Memory Concepts:</strong></p>
+                <p>The MMU plays a critical role in system isolation, caching, and hardware interfacing:</p>
+                <ul>
+                    <li><strong>Page Table (L1 Descriptor)</strong>: On ARM926EJ-S, the page table is a 16KB structure storing 4,096 entries. Each entry represents a 1MB memory section. The entry maps virtual sections to physical address blocks and specifies page permissions and caching policies.</li>
+                    <li><strong>Double Buffering & Framebuffer Cache Policies</strong>: Framebuffers are mapped to sections 30 & 31. Because these exceed the size of the L1 D-Cache, standard caching causes continuous cache eviction overhead. By mapping them as Non-Cacheable, but keeping them Bufferable, we write directly to RAM via write buffers without thrashing the CPU cache.</li>
+                    <li><strong>Strongly Ordered MMIO</strong>: Peripheral registers (like UART, VIC, SD Card) must never be cached or buffered. The CPU must read/write to the hardware registers immediately, requiring strongly-ordered configuration.</li>
+                    <li><strong>CP15 Registers</strong>: ARM systems use a dedicated co-processor (CP15) to manage memory subsystems, cache invalidation, and TLB configurations.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "Why does T-OS map the PL110 LCD framebuffers as Non-Cacheable + Bufferable?",
+                        options: [
+                            "Because the CPU does not support caching physical RAM",
+                            "To bypass cache eviction loops and avoid cache thrashing during screen block copies",
+                            "To protect the kernel memory structures from game hacks",
+                            "To speed up the page allocation algorithm"
+                        ],
+                        answer: 1,
+                        explanation: "Since the backbuffer (614KB) far exceeds the 16KB L1 cache, caching results in continuous cache misses and page eviction overheads. Non-cacheable mapping eliminates this thrashing."
+                    },
+                    {
+                        question: "What happens if a memory segment mapped to MMIO (like the UART register) is mistakenly configured as Cacheable?",
+                        options: [
+                            "The system operates twice as fast",
+                            "Reads from the register will retrieve old, stale cached values instead of live hardware inputs",
+                            "The CPU crashes immediately with an undefined instruction fault",
+                            "The scheduler suspends the current task"
+                        ],
+                        answer: 1,
+                        explanation: "If MMIO is cached, the CPU reads the register value from cache memory instead of querying the physical peripheral lines, hiding keyboard input or network status updates."
+                    }
+                ],
+                sim: "mmu"
+            },
+            {
+                id: "scheduler",
+                title: "Preemptive Task Scheduler",
+                type: "Round-Robin Task Scheduling",
+                icon: "fa-solid fa-clock",
+                desc: "The Task Scheduler is the brain that lets the OS run multiple programs at the same time. A hardware timer ticks every 1 millisecond. Each tick, the scheduler pauses the current program, saves its exact state, and switches to the next program in line. This happens so fast that it looks like everything is running simultaneously.",
+                files: [
+                    {
+                        name: "scheduler.c",
+                        path: "kernel/scheduler.c",
+                        code: `// task_create allocates a Task Control Block (TCB) and sets up its initial stack
+int task_create(void (*entry)(void))
+{
+    int i;
+    task_t *t;
+
+    // Find a free task slot in the task table
+    for (i = 1; i < MAX_TASKS; i++) {
+        if (task_table[i].state == -1) break;
+    }
+    if (i >= MAX_TASKS) return -1; // No free slots
+
+    t = &task_table[i];
+    t->r4 = t->r5 = t->r6 = t->r7 = 0;
+    t->r8 = t->r9 = t->r10 = t->r11 = 0;
+    t->r0 = t->r1 = t->r2 = t->r3 = 0;
+    t->r12 = 0;
+    
+    // Allocate the top of stack address
+    t->sp = (uint32_t)&task_stacks[i][TASK_STACK_SIZE / 4];
+    
+    // Set Link Register (lr) to task_exit, so if entry returns, it exits cleanly
+    t->lr = (uint32_t)task_exit;
+    
+    // Set Program Counter (pc) to the task's main execution function
+    t->pc = (uint32_t)entry;
+    
+    // CPSR: Set mode to Supervisor (SVC) and enable IRQ interrupts
+    t->cpsr = 0x13; 
+    t->state = TASK_STATE_READY;
+    
+    // Link this task into the circular linked list of active tasks
+    t->next = current_task->next;
+    current_task->next = t;
+
+    num_tasks++;
+    return i;
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>Preemptive Scheduling Walkthrough:</strong></p>
+                <p>Task execution scheduling relies on a combination of timer hardware interrupts and state restoration:</p>
+                <ul>
+                    <li><strong>TCB Structure</strong>: A Task Control Block contains the copy of CPU registers (r0-r12, sp, lr, pc, cpsr) that represent the exact thread execution snapshot when paused.</li>
+                    <li><strong>Initial Stack Mapping</strong>: When spawning a new task, we preload the stack memory. The program counter (PC) is loaded with the task entry address, while the Link Register (LR) gets loaded with <code>task_exit</code>. If the task function returns, the CPU branches to LR, executing clean-up code.</li>
+                    <li><strong>Context Switching Mechanism</strong>: Every 100ms, the system timer interrupts the CPU. The CPU switches to IRQ mode, branches to the IRQ handler, pushes registers of the interrupted task onto its stack, updates its TCB, advances to the next task in the circular queue, and restores its stack registers back to the CPU.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "What is the purpose of preloading the Link Register (LR) with 'task_exit' during task initialization?",
+                        options: [
+                            "To launch the task immediately",
+                            "To redirect execution to a clean-up function if the task returns, preventing the CPU from executing random memory",
+                            "To route the keyboard inputs to the application",
+                            "To map the task's virtual address spaces"
+                        ],
+                        answer: 1,
+                        explanation: "If a task completes and returns, there is no caller function to return to. Preloading LR with a cleanup routine (task_exit) halts or cleans up the task safely instead of crashing."
+                    },
+                    {
+                        question: "How is the preemptive switch triggered in the T-OS scheduling loop?",
+                        options: [
+                            "Through a user loop monitoring memory",
+                            "By a hardware Timer Interrupt (IRQ) that triggers the scheduler context switch code",
+                            "By the bootloader loading new programs",
+                            "The scheduler runs continuously on a separate physical core"
+                        ],
+                        answer: 1,
+                        explanation: "The SP804 dual-timer asserts an interrupt line at set intervals. When the interrupt fires, the CPU suspends the thread and jumps to the scheduler swap routine."
+                    }
+                ],
+                sim: "scheduler"
+            },
+            {
+                id: "interrupts",
+                title: "Vectored Interrupt Controller (VIC)",
+                type: "Interrupt Vector Table & IRQ Dispatcher",
+                icon: "fa-solid fa-bolt",
+                desc: "Instead of the OS constantly asking hardware 'do you need attention?', the hardware can tap the OS on the shoulder. These taps are called interrupts. When a key is pressed or a timer ticks, the system instantly pauses the current program to run a specific response function, saving massive amounts of processing power.",
+                files: [
+                    {
+                        name: "irq.c",
+                        path: "drivers/irq.c",
+                        code: `// Dispatch the active interrupt from the VIC
+void irq_dispatch(void)
+{
+    void (*handler)(void);
+    // Read the active interrupt handler address directly from VIC register
+    handler = (void (*)(void))VICVECTADDR;
+    
+    if (handler) {
+        handler(); // Execute the interrupt handler
+    } else {
+        early_puts("[IRQ] unhandled interrupt!\\n");
+    }
+    vic_acknowledge(); // Clear interrupt flag in the VIC
+}
+
+// Copy the vector table to address 0x00000000 on startup
+void irq_system_init(void)
+{
+    extern uint32_t vector_table[];
+    
+    /* Copy vector table instructions using inline assembly to bypass Null-Pointer checks
+       which GCC would normally optimize out as Undefined Behavior (UB) */
+    asm volatile (
+        "mov r0, #0\\n"
+        "mov r1, %0\\n"
+        "ldm r1!, {r2-r9}\\n"
+        "stm r0!, {r2-r9}\\n"
+        "ldm r1!, {r2-r9}\\n"
+        "stm r0!, {r2-r9}\\n"
+        : : "r"(vector_table) : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "memory"
+    );
+
+    vic_init();
+}`
+                    },
+                    {
+                        name: "vic.c",
+                        path: "drivers/vic.c",
+                        code: `// Bind a custom interrupt handler to a slot in the VIC
+int vic_register_handler(int slot, uint32_t source, void (*handler)(void))
+{
+    if (slot < 0 || slot >= VIC_NUM_SLOTS) return -1;
+    if (source > 31) return -1;
+
+    slot_sources[slot] = (int)source;
+
+    /* Write handler function pointer to the hardware slot address register */
+    VICVECTADDRn(slot) = (uint32_t)handler;
+
+    /* Enable the vectored slot and map it to the hardware source number */
+    VICVECTCNTLn(slot) = (1U << 5) | (source & 0x1F);
+
+    return 0;
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>Interrupt Lifecycle Walkthrough:</strong></p>
+                <p>Interrupt handling requires hardware-software coordination:</p>
+                <ul>
+                    <li><strong>Vector Table Relocation</strong>: The ARM vector table contains branching instructions for interrupts. Since the CPU searches for this table at address <code>0x00000000</code>, on startup T-OS relocates the code there. Because writing directly to null pointers causes compiler optimizations to remove the code, T-OS uses inline assembly to force the transfer.</li>
+                    <li><strong>VIC Vectored Architecture</strong>: Modern processors use Vectored Interrupts. Instead of polling every device (like checking keyboard, mouse, and timer), the VIC automatically matches the firing hardware line to a pre-registered handler address and presents it in the <code>VICVECTADDR</code> register.</li>
+                    <li><strong>Dispatcher Execution</strong>: The central dispatcher (<code>irq_dispatch</code>) reads this address, calls the ISR function pointer, and writes back to acknowledge and reset the interrupt.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "Why does T-OS use inline assembly block to copy the vector table to address 0x00000000?",
+                        options: [
+                            "Assembly runs faster than standard C copying functions",
+                            "C compiler optimization flags would treat writing to address 0 (null) as undefined behavior and delete the code",
+                            "ARM processors do not support copying arrays in C",
+                            "The bootloader requires the CPU to be in assembly mode"
+                        ],
+                        answer: 1,
+                        explanation: "Writing to address 0x0 in C represents null pointer dereferencing. Standard C compilers assume null pointers are never written to and optimize out the writes. Inline assembly bypasses this optimization."
+                    },
+                    {
+                        question: "What is the primary advantage of a Vectored Interrupt Controller over simple polled interrupt handling?",
+                        options: [
+                            "Vectored controllers use less RAM memory",
+                            "The hardware provides the exact ISR address immediately, bypassing slow software polling checks of each device",
+                            "It compiles into smaller binary sizes",
+                            "It enables virtual address translation in the MMU"
+                        ],
+                        answer: 1,
+                        explanation: "In a vectored system, the VIC hardware identifies the active interrupt line and populates its address register directly, avoiding the need to poll devices manually."
+                    }
+                ],
+                sim: "interrupts"
+            },
+            {
+                id: "drivers",
+                title: "Device Drivers (PL050/PL110/PL181)",
+                type: "Memory-Mapped I/O Hardware Controls",
+                icon: "fa-solid fa-gamepad",
+                desc: "Device drivers act as simple translation layers. They let the software talk to physical hardware like keyboards, mice, and screens. They do this by reading and writing numbers directly to specific memory addresses that are wired right to the physical device chips.",
+                files: [
+                    {
+                        name: "keyboard.c",
+                        path: "drivers/keyboard.c",
+                        code: `// PL050 Keyboard Driver Polling Loop
+#define KMI_BASE    0x10006000u
+#define KMI_CR      (*(volatile uint32_t *)(KMI_BASE + 0x00)) /* Control Register */
+#define KMI_STAT    (*(volatile uint32_t *)(KMI_BASE + 0x04)) /* Status Register */
+#define KMI_DATA    (*(volatile uint32_t *)(KMI_BASE + 0x08)) /* Data Register */
+
+#define KMI_STAT_RXFULL (1u << 4) // Indicates input data is waiting in FIFO
+
+void kb_poll(void)
+{
+    // Check if the hardware data buffer has input waiting
+    while (KMI_STAT & KMI_STAT_RXFULL) {
+        unsigned char sc = (unsigned char)(KMI_DATA & 0xFFu); // Read scan-code
+
+        if (sc == 0xE0) { extended = 1; continue; }
+        if (sc == 0xF0) { skip_next = 1; continue; } // Break prefix
+
+        int is_break = skip_next;
+        skip_next = 0;
+
+        if (extended) {
+            extended = 0;
+            // Decode extended keys (arrow keys)
+            unsigned char entry = decode_extended(sc);
+            if (entry) push_to_kb_buffer(entry, is_break);
+            continue;
+        }
+
+        char c = kb_decode_sc(sc, is_break); // Decode normal scan-code
+        if (c == 0) continue;
+
+        push_to_kb_buffer((unsigned char)c, is_break);
+    }
+}`
+                    },
+                    {
+                        name: "mouse.c",
+                        path: "drivers/mouse.c",
+                        code: `// PL050 Mouse Driver Polling Loop
+#define KMI1_BASE 0x10007000u
+#define KMI_DATA (*(volatile uint32_t*)(KMI1_BASE + 0x08))
+
+void mouse_poll(void) {
+    while (KMI_STAT & KMI_STAT_RXFULL) {
+        uint8_t data = KMI_DATA & 0xFF;
+        switch (mouse_cycle) {
+            case 0: // Sync packet
+                if (data & 0x08) { mouse_byte[0] = data; mouse_cycle++; }
+                break;
+            case 1: // Delta X
+                mouse_byte[1] = data; mouse_cycle++;
+                break;
+            case 2: // Delta Y
+                mouse_byte[2] = data; mouse_cycle = 0;
+                int rel_x = mouse_byte[1];
+                int rel_y = mouse_byte[2];
+                if (mouse_byte[0] & 0x10) rel_x -= 256;
+                if (mouse_byte[0] & 0x20) rel_y -= 256;
+                
+                mouse_x += (rel_x * 2);
+                mouse_y -= (rel_y * 2); // Apply mouse cursor changes
+                break;
+        }
+    }
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>MMIO and Driver Interaction:</strong></p>
+                <p>Drivers act as the intermediary between the hardware and the OS using these concepts:</p>
+                <ul>
+                    <li><strong>Memory-Mapped I/O</strong>: Devices register internal buffers to specific physical memory ranges (e.g. <code>0x10006000</code> for Keyboard KMI). Reading and writing to these locations interacts directly with the hardware controller.</li>
+                    <li><strong>PS/2 Scan-Codes</strong>: Keyboards do not send ASCII characters. They transmit raw sequence flags called scan-codes (e.g., pressing a key sends a make-code, releasing it transmits a break-code <code>0xF0</code>). The driver decodes these sequences back into printable ASCII values.</li>
+                    <li><strong>FIFO Draining</strong>: The PL050 uses a First-In-First-Out (FIFO) queue. The driver checks the status register <code>KMI_STAT_RXFULL</code> flag, drains data bytes from the data port, and pushes them to the kernel's internal circular buffer.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "What does the CPU read from KMI_DATA when a key is pressed?",
+                        options: [
+                            "The ASCII representation of the character",
+                            "A hardware Scan-Code representing the physical key location",
+                            "The virtual address mapping of the key",
+                            "An interrupt service routine address pointer"
+                        ],
+                        answer: 1,
+                        explanation: "Keyboards output physical layout numbers called scan-codes. The OS driver translates these scan-codes into ASCII characters using lookup tables."
+                    },
+                    {
+                        question: "How does T-OS differentiate between pressing a key and releasing a key?",
+                        options: [
+                            "It measures the timing difference of the signals",
+                            "Key release events are prefixed with a special break scan-code (typically 0xF0)",
+                            "It uses separate interrupt pins on the CPU",
+                            "The MMU maps them to different page addresses"
+                        ],
+                        answer: 1,
+                        explanation: "PS/2 keyboards send a break prefix scan-code (0xF0) immediately before sending the scan-code of the released key, telling the driver to register a release event."
+                    }
+                ],
+                sim: "drivers"
+            },
+            {
+                id: "fat16",
+                title: "FAT16 Filesystem",
+                type: "Storage & File Allocation Chain",
+                icon: "fa-solid fa-folder-tree",
+                desc: "The FAT16 Filesystem organizes raw storage space on an SD card into folders and files that we can actually read and write. It acts exactly like a book's table of contents, mapping human-readable filenames (like 'game.exe') to physical storage blocks scattered across the memory card.",
+                files: [
+                    {
+                        name: "fat.c",
+                        path: "fs/fat.c",
+                        code: `// T-OS FAT16 File Helper Wrappers
+int fat_init(void)
+{
+    // Mount the global FatFs structure
+    FRESULT res = f_mount(&fs, "", 1);
+    if (res != FR_OK) {
+        kputs("[FAT] f_mount failed\\n");
+        return -1;
+    }
+    return 0;
+}
+
+fat_file_t *fat_open(const char *filename)
+{
+    // Allocate file context on the system heap
+    fat_file_t *file = (fat_file_t *)kmalloc(sizeof(fat_file_t));
+    if (!file) return NULL;
+    
+    // Open the file inside FatFs in Read-Only mode
+    FRESULT res = f_open(&file->f, filename, FA_READ);
+    if (res != FR_OK) {
+        kfree(file);
+        return NULL;
+    }
+    return file;
+}
+
+int fat_read(fat_file_t *file, void *buffer, uint32_t count)
+{
+    if (!file) return 0;
+    UINT br;
+    // Read the requested number of bytes into the buffer
+    FRESULT res = f_read(&file->f, buffer, count, &br);
+    if (res != FR_OK) {
+        tios_kprintf("[FAT] f_read error: %d\\n", res);
+        return 0;
+    }
+    return (int)br; // Return actual bytes read
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>FAT16 Core Operations:</strong></p>
+                <p>The FAT16 filesystem handles files using three main structures:</p>
+                <ul>
+                    <li><strong>Directory Record Table</strong>: A directory table stores 32-byte records mapping metadata: the file name (8.3 format), file size, creation dates, attributes, and the initial cluster index.</li>
+                    <li><strong>File Allocation Table (FAT)</strong>: The FAT is an array of 16-bit entries. Each index maps to a physical cluster on the disk. The value stored at index <code>X</code> contains the number of the next cluster <code>Y</code> containing file data, chaining file fragments together. An entry of <code>0xFFFF</code> designates the End-Of-File (EOF).</li>
+                    <li><strong>Sector Transfer Drivers</strong>: The upper FAT wrapper interfaces with lower-level block drivers to read sector bytes via QEMU's SD emulation.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "What denotes the end of a file's cluster chain in a FAT16 File Allocation Table?",
+                        options: ["An entry value of 0x0000", "An entry value of 0xFFFF", "The file size hitting 0", "A dedicated directory break record"],
+                        answer: 1,
+                        explanation: "A FAT table value of 0xFFFF indicates the end of the file cluster chain, letting the file reader know there are no further blocks to load."
+                    },
+                    {
+                        question: "Why does the fat_open wrapper allocate memory dynamically using kmalloc?",
+                        options: [
+                            "Because FAT16 files must always be stored in the CPU cache",
+                            "To store file pointers and state metadata (like current read offset) on the heap",
+                            "To register the file inside the scheduler task queue",
+                            "To allocate page tables in the virtual memory manager"
+                        ],
+                        answer: 1,
+                        explanation: "Opening a file creates active system handles. Dynamic heap allocations allow the OS to load file descriptors on demand, freeable when the file is closed."
+                    }
+                ],
+                sim: "fat16"
+            },
+            {
+                id: "wm",
+                title: "Compositing Window Manager",
+                type: "Overlapping Windows & Graphics Rendering",
+                icon: "fa-solid fa-window-restore",
+                desc: "The Window Manager is what draws the graphical user interface on your screen. To prevent the screen from looking glitched or flickering when things move, programs first draw their windows invisibly in the background. The manager then stacks them all together like paper cutouts and copies the final image to the screen all at once.",
+                files: [
+                    {
+                        name: "wm.c",
+                        path: "ui/wm.c",
+                        code: `// T-OS Window Manager Allocations & Rendering
+window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*draw_cb)(window_t*, int, int, int, int)) {
+    window_t *win = (window_t*)kmalloc(sizeof(window_t));
+    if (!win) return NULL;
+    
+    win->id = next_id++;
+    win->x = x;
+    win->y = y;
+    win->width = w;
+    win->height = h;
+    
+    int i;
+    for (i = 0; i < 31 && title[i] != '\\0'; i++) {
+        win->title[i] = title[i];
+    }
+    win->title[i] = '\\0';
+    
+    win->state = WM_STATE_ACTIVE;
+    win->draw_client = draw_cb;
+    
+    // Add window to head of the active window list (highest z-order)
+    win->next = window_list;
+    window_list = win;
+    focused_window = win;
+    
+    return win;
+}
+
+// Bring the selected window to the top of the z-order stacking list
+void wm_bring_to_front(window_t *win) {
+    if (!win || window_list == win) return;
+    
+    window_t *prev = NULL;
+    window_t *curr = window_list;
+    while (curr && curr != win) {
+        prev = curr;
+        curr = curr->next;
+    }
+    if (curr) {
+        prev->next = curr->next;
+        curr->next = window_list;
+        window_list = curr; // Put at head of linked list
+    }
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>How Compositing Works:</strong></p>
+                <p>Drawing multiple windows with cursor support requires specialized graphics buffers:</p>
+                <ul>
+                    <li><strong>Z-Ordering Stacking</strong>: Windows are stored in a linked list. The head of the list represents the top-most window (highest z-order). Clicking a window unlinks it from its current position and pushes it to the head of the list.</li>
+                    <li><strong>Double Buffering and Swapping</strong>: If apps draw directly to the physical LCD framebuffer, users observe flickering during updates. The Window Manager uses double-buffering. Windows are composited onto an off-screen back-buffer, which is then copied to the physical screen (front-buffer) in a single fast block copy operation.</li>
+                    <li><strong>Desktop Compositing Pass</strong>: On every tick, the render engine redraws the desktop screen layers:
+                        1. Fills background color.
+                        2. Iterates window list from tail to head, drawing borders, titlebars, and app clients.
+                        3. Draws the start menu and bottom taskbar.
+                        4. Blits the mouse cursor coordinates on top of everything.
+                    </li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "How does T-OS handle overlapping windows during rendering?",
+                        options: [
+                            "It clips them out of memory entirely",
+                            "It iterates the window list from tail to head (bottom-to-top), drawing top-most windows on top of lower ones",
+                            "It prompts the user to minimize other windows",
+                            "The scheduler maps each window to its own CPU core"
+                        ],
+                        answer: 1,
+                        explanation: "By walking the linked list in reverse order (bottom to top), the compositor naturally overlaps windows: the top-most window is rendered last, overwriting lower pixels."
+                    },
+                    {
+                        question: "What is the primary benefit of double buffering?",
+                        options: [
+                            "It doubles the memory capacity of user applications",
+                            "It prevents screen tearing and flickering by assembling the image off-screen before displaying it",
+                            "It enables user programs to run in 32-bit colors",
+                            "It reduces the size of the compiled OS image file"
+                        ],
+                        answer: 1,
+                        explanation: "Double buffering isolates drawing operations from screen refresh rates. Users only see complete frames, eliminating flickering during complex redrawing."
+                    }
+                ],
+                sim: "wm"
+            },
+            {
+                id: "lwip",
+                title: "lwIP Networking Stack",
+                type: "TCP/IP Protocol Layering",
+                icon: "fa-solid fa-network-wired",
+                desc: "The Networking Stack connects our OS to the internet. Instead of worrying about raw electrical pulses, this stack handles all the complex rules for sending and receiving data packets. This allows programs to seamlessly download files, fetch weather APIs, or talk to web servers.",
+                files: [
+                    {
+                        name: "net_init.c",
+                        path: "net/net_init.c",
+                        code: `// Initialize the lwIP stack and default interfaces
+void net_init(void) {
+    lwip_init(); // Boot the lwIP networking structures
+
+    ip4_addr_t ipaddr, netmask, gw;
+    // Set standard QEMU network configurations (10.0.2.x subnet)
+    IP4_ADDR(&ipaddr, 10, 0, 2, 15);
+    IP4_ADDR(&netmask, 255, 255, 255, 0);
+    IP4_ADDR(&gw, 10, 0, 2, 2);
+
+    // Register our custom SMC91C111 network driver callbacks
+    if (netif_add(&smc_netif, &ipaddr, &netmask, &gw, NULL, smc_netif_init, ethernet_input) == NULL) {
+        kputs("net: failed to add smc0 interface\\n");
+        return;
+    }
+    netif_set_default(&smc_netif);
+    netif_set_up(&smc_netif);
+    netif_set_link_up(&smc_netif);
+
+    // Set Google Public DNS
+    ip_addr_t dns;
+    IP_ADDR4(&dns, 8, 8, 8, 8);
+    dns_setserver(0, &dns);
+
+    /* QEMU static ARP bypass:
+       Register gateway MAC (52:54:00:12:35:02) to avoid slow DHCP ARP resolution steps */
+    ip4_addr_t gw_ip;
+    IP4_ADDR(&gw_ip, 10, 0, 2, 2);
+    struct eth_addr gw_mac = {{0x52, 0x54, 0x00, 0x12, 0x35, 0x02}};
+    etharp_add_static_entry(&gw_ip, &gw_mac);
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>Embedded Network Layering:</strong></p>
+                <p>lwIP enables low-level packet management via distinct layers:</p>
+                <ul>
+                    <li><strong>Driver Interface Link</strong>: The network interface card driver (SMC91C111) handles direct frame transfers. It polls the hardware buffer, extracts packets, and pushes them into lwIP's <code>ethernet_input</code> loop.</li>
+                    <li><strong>ARP Cache Optimizations</strong>: Before sending IP packets, devices request destination hardware MAC addresses using Address Resolution Protocol (ARP). To prevent DHCP/DNS delays on boot, T-OS registers a static ARP mapping for QEMU's gateway MAC.</li>
+                    <li><strong>Stack Traversal</strong>: Outgoing payloads flow down: Application (HTTP) &rarr; Transport (TCP headers) &rarr; Network (IP packet mapping) &rarr; Link (Ethernet frames) &rarr; Network driver. Incoming packets traverse in reverse.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "Why does net_init.c add a static ARP entry mapping 10.0.2.2 to MAC address 52:54:00:12:35:02?",
+                        options: [
+                            "To encrypt network traffic",
+                            "To bypass slow ARP broadcasts and route gateway traffic immediately on boot",
+                            "To configure the DNS server configuration address",
+                            "To map virtual memory blocks"
+                        ],
+                        answer: 1,
+                        explanation: "On bare-metal boot, waiting for ARP requests to resolve the gateway MAC can timeout. Pre-loading the static entry enables immediate IP packet transmission."
+                    },
+                    {
+                        question: "What is the primary goal of the lwIP stack in embedded operating systems?",
+                        options: [
+                            "To provide web browser applications",
+                            "To implement a lightweight, resource-efficient TCP/IP stack that fits within small RAM limits",
+                            "To handle scheduling of tasks and interrupts",
+                            "To load files from the SD card"
+                        ],
+                        answer: 1,
+                        explanation: "lwIP (Lightweight IP) is optimized for embedded boards, providing complete socket APIs and TCP/IP protocol processing with minimal RAM footprint."
+                    }
+                ],
+                sim: "lwip"
+            },
+            {
+                id: "allocator",
+                title: "Memory Allocator (kmalloc)",
+                type: "Dynamic Memory Management",
+                icon: "fa-solid fa-boxes-stacked",
+                desc: "An operating system needs a way to hand out chunks of memory to programs when they ask for it, and take it back when they are done. A Memory Allocator does exactly this, tracking which blocks of RAM are used and which are free.",
+                files: [
+                    {
+                        name: "kmalloc.c",
+                        path: "kernel/kmalloc.c",
+                        code: `// Simple Bump Allocator for T-OS
+static uint8_t *heap_ptr = (uint8_t *)0x00200000;
+static uint8_t *heap_end = (uint8_t *)0x01E00000;
+
+void* kmalloc(uint32_t size) {
+    if (size == 0) return NULL;
+    
+    // Align to 4 bytes
+    uint32_t align = 4;
+    size = (size + align - 1) & ~(align - 1);
+    
+    if (heap_ptr + size > heap_end) {
+        uart_puts("Kernel Panic: Out of memory!\\n");
+        return NULL;
+    }
+    
+    void *ptr = heap_ptr;
+    heap_ptr += size;
+    return ptr;
+}
+
+void kfree(void *ptr) {
+    // Basic bump allocator cannot free individual blocks!
+    // It only reclaims memory if the whole heap is reset.
+}`
+                    }
+                ],
+                walkthrough: `<p><strong>How the Allocator Works:</strong></p>
+                <p>T-OS uses a very simple 'Bump Allocator':</p>
+                <ul>
+                    <li><strong>Allocation</strong>: When a program needs memory, the OS just gives it the next available chunk and moves a pointer forward.</li>
+                    <li><strong>Freeing</strong>: Because it's so simple, it cannot free individual blocks in the middle. It can only reset the entire pointer back to the start.</li>
+                </ul>`,
+                quizzes: [
+                    {
+                        question: "Why does the T-OS Bump Allocator align sizes to 4 bytes?",
+                        options: [
+                            "Because memory chips are sold in sets of 4",
+                            "To ensure variables match the 32-bit ARM processor architecture for faster access",
+                            "Because files always come in 4-byte sizes"
+                        ],
+                        answer: 1,
+                        explanation: "ARM processors read data much faster when it's aligned to 4-byte boundaries. If data is unaligned, the processor might crash or take twice as long to read it."
+                    }
+                ],
+                sim: "allocator"
+            }
+        ];
+
+        // Active State
+        let currentSubsystemIdx = 0;
+        let activeFileIdx = 0;
+        let activeLineNum = null;
+        let quizQuestionIdx = 0;
+        let totalAnswered = 0;
+        let correctAnswers = 0;
+        let simAnimationId = null;
+
+        // Initialize UI
+        window.addEventListener('DOMContentLoaded', () => {
+            // Load OpenRouter API Key if saved
+            const savedKey = localStorage.getItem('openrouter_api_key');
+            if (savedKey) {
+                document.getElementById('openrouterApiKey').value = savedKey;
+                updateAIStatusBadge(true);
+            }
+
+            // Load saved custom concepts
+            try {
+                const savedConcepts = JSON.parse(localStorage.getItem('tios_custom_concepts') || '[]');
+                savedConcepts.forEach(sc => {
+                    let renderFn = function () { };
+                    try {
+                        new Function(sc.rawCode)();
+                        if (window.artifactConcept && window.artifactConcept.render) {
+                            renderFn = window.artifactConcept.render;
+                        }
+                    } catch (e) { }
+
+                    subsystems.push({
+                        title: sc.title,
+                        desc: sc.desc,
+                        files: [{ name: 'Custom Concept', code: '// Custom loaded concept' }],
+                        quizzes: [sc.quiz],
+                        simType: "custom_" + Date.now() + Math.random(),
+                        customRender: renderFn,
+                        isCustom: true
+                    });
+                });
+            } catch (e) {
+                console.error("Error loading custom concepts", e);
+            }
+
+            loadChatHistory();
+            renderConceptSidebar();
+            selectSubsystem(0);
+            initResizer();
+        });
+
+        // Resizable panels
+        function initResizer() {
+            let isResizing = false;
+            const resizer = document.getElementById('rightResizer');
+            const rightPanel = document.getElementById('rightPanel');
+
+            const savedWidth = localStorage.getItem('tios_panel_width');
+            if (savedWidth) {
+                rightPanel.style.width = savedWidth + 'px';
+            }
+
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                resizer.classList.add('resizing');
+                document.body.style.userSelect = 'none';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                const newWidth = window.innerWidth - e.clientX;
+                if (newWidth > 300 && newWidth < window.innerWidth - 300) {
+                    rightPanel.style.width = newWidth + 'px';
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                    resizer.classList.remove('resizing');
+                    document.body.style.userSelect = '';
+                    localStorage.setItem('tios_panel_width', parseInt(rightPanel.style.width, 10));
+                    window.dispatchEvent(new Event('resize'));
+                }
+            });
+        }
+
+        // Chat History State
+        let chatHistories = {};
+
+        function saveChatHistory() {
+            localStorage.setItem('tios_chat_histories_v2', JSON.stringify(chatHistories));
+        }
+
+        function loadChatHistory() {
+            const saved = localStorage.getItem('tios_chat_histories_v2');
+            if (saved) {
+                try {
+                    chatHistories = JSON.parse(saved);
+                } catch (e) {
+                    console.error("Failed to load chat histories", e);
+                    chatHistories = {};
+                }
+            }
+        }
+
+        function clearChatHistory() {
+            const sub = subsystems[currentSubsystemIdx];
+            if (sub) {
+                chatHistories[sub.title] = [];
+                saveChatHistory();
+                renderChatHistory();
+            }
+        }
+        
+        function renderChatHistory() {
+            const aiOutput = document.getElementById('aiOutput');
+            aiOutput.innerHTML = '';
+            const sub = subsystems[currentSubsystemIdx];
+            if (!sub) return;
+            
+            const title = sub.title;
+            if (!chatHistories[title] || chatHistories[title].length === 0) {
+                // Initialize with intro message
+                chatHistories[title] = [{
+                    role: 'system',
+                    content: `
+                        <strong>${sub.title}</strong><br>
+                        ${sub.walkthrough || sub.desc}
+                        <p style="margin-top: 12px; font-size: 12px; color: var(--text-dim); border-top: 1px solid var(--border-color); padding-top: 10px;">
+                            <i class="fa-solid fa-lightbulb" style="margin-right: 4px;"></i>
+                            <em>Click any code line to get an AI explanation, or type <strong>/open &lt;path&gt;</strong> to explore files.</em>
+                        </p>
+                    `
+                }];
+                saveChatHistory();
+            }
+
+            chatHistories[title].forEach(msg => {
+                const bubble = document.createElement('div');
+                bubble.className = 'ai-chat-bubble';
+                if (msg.role === 'user') {
+                    bubble.innerHTML = `
+                        <div class="ai-avatar user" style="background-color: var(--border-color); color: #fff;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </div>
+                        <div class="ai-message">${msg.content}</div>
+                    `;
+                } else if (msg.role === 'system') {
+                    bubble.innerHTML = `
+                        <div class="ai-avatar bot">
+                            <i class="fa-solid fa-robot" style="font-size: 12px;"></i>
+                        </div>
+                        <div class="ai-message">${msg.content}</div>
+                    `;
+                } else {
+                    bubble.innerHTML = `
+                        <div class="ai-avatar bot">
+                            <i class="fa-solid fa-robot" style="font-size: 12px;"></i>
+                        </div>
+                        <div class="ai-message">${formatMarkdown(msg.content)}</div>
+                    `;
+                }
+                aiOutput.appendChild(bubble);
+            });
+            aiOutput.scrollTop = aiOutput.scrollHeight;
+        }
+
+        // 1. Sidebar Nav Renderer
+        function renderConceptSidebar() {
+            const container = document.getElementById('conceptNav');
+            container.innerHTML = '';
+            subsystems.forEach((sub, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'concept-btn' + (idx === currentSubsystemIdx ? ' active' : '');
+                btn.innerHTML = `<span class="nav-indicator">•</span> <span>${sub.title}</span>`;
+                btn.onclick = () => selectSubsystem(idx);
+                container.appendChild(btn);
+            });
+        }
+
+        // 1.5 File Explorer Logic
+        const TIOS_FILES = ["weather_output.txt", "BG.BMP", "test_net.py", "makefile", "README.md", "linker.ld.in", "one-page-description.md", ".gitignore", "test_fetch.py", "ui/wm_render.c", "ui/gfx_console.c", "ui/bmp.c", "ui/wm_desktop.c", "ui/wm_internal.h", "ui/wm.c", "ui/icons/desktop_icons.h", "shell/command.c", "shell/console.c", "gfx/backbuffer.c", "gfx/palette.c", "gfx/backbuffer.h", "gfx/sprite.c", "gfx/sprite.h", "gfx/math_fixed.h", "gfx/renderer.h", "gfx/profiler.h", "gfx/profiler.c", "gfx/texture.h", "gfx/palette.h", "gfx/gfx.h", "gfx/texture.c", "gfx/renderer.c", "boot/bootloader.ld.in", "boot/boot_startup.s", "boot/bootloader.c", "net/net_init.c", "net/sys_arch.c", "net/netif_smc.c", "net/lwipopts.h", "net/arch/cc.h", "apps/app_calculator.c", "apps/app_memview.c", "apps/ftp.c", "apps/app_image_viewer.c", "apps/app_sysinfo.c", "apps/app_file_manager.c", "apps/ping.c", "apps/app_terminal.c", "apps/app_taskmgr.c", "apps/app_editor.c", "apps/fetch.c", "lib/math_fixed.c", "lib/font8x16.c", "lib/string.c", "education/index.html", "games/assets.h", "games/doom_gfx.c", "games/snake.c", "games/slime.c", "games/sokoban.c", "games/doom.c", "games/em-doom/LICENSE.TXT", "games/em-doom/doom1.wad", "games/em-doom/doom.wad", "games/em-doom/doom2.wad", "games/em-doom/linuxdoom-1.10/d_think.h", "games/em-doom/linuxdoom-1.10/p_mobj.h", "games/em-doom/linuxdoom-1.10/w_wad.c", "games/em-doom/linuxdoom-1.10/r_state.h", "games/em-doom/linuxdoom-1.10/w_wad.h", "games/em-doom/linuxdoom-1.10/info.h", "games/em-doom/linuxdoom-1.10/p_ceilng.c", "games/em-doom/linuxdoom-1.10/f_finale.c", "games/em-doom/linuxdoom-1.10/r_sky.h", "games/em-doom/linuxdoom-1.10/z_zone.h", "games/em-doom/linuxdoom-1.10/doomstat.c", "games/em-doom/linuxdoom-1.10/doomstat.h", "games/em-doom/linuxdoom-1.10/m_bbox.h", "games/em-doom/linuxdoom-1.10/i_system.h", "games/em-doom/linuxdoom-1.10/f_wipe.c", "games/em-doom/linuxdoom-1.10/p_saveg.h", "games/em-doom/linuxdoom-1.10/ChangeLog", "games/em-doom/linuxdoom-1.10/p_switch.c", "games/em-doom/linuxdoom-1.10/hu_lib.h", "games/em-doom/linuxdoom-1.10/st_lib.h", "games/em-doom/linuxdoom-1.10/r_things.h", "games/em-doom/linuxdoom-1.10/r_data.c", "games/em-doom/linuxdoom-1.10/doomdata.h", "games/em-doom/linuxdoom-1.10/tios_wad_io.h", "games/em-doom/linuxdoom-1.10/p_pspr.h", "games/em-doom/linuxdoom-1.10/m_misc.c", "games/em-doom/linuxdoom-1.10/README.gl", "games/em-doom/linuxdoom-1.10/p_doors.c", "games/em-doom/linuxdoom-1.10/r_segs.h", "games/em-doom/linuxdoom-1.10/m_random.h", "games/em-doom/linuxdoom-1.10/i_sound.h", "games/em-doom/linuxdoom-1.10/tios_compat.h", "games/em-doom/linuxdoom-1.10/README.sound", "games/em-doom/linuxdoom-1.10/i_video.h", "games/em-doom/linuxdoom-1.10/r_defs.h", "games/em-doom/linuxdoom-1.10/p_lights.c", "games/em-doom/linuxdoom-1.10/d_main.h", "games/em-doom/linuxdoom-1.10/d_main.c", "games/em-doom/linuxdoom-1.10/v_video.h", "games/em-doom/linuxdoom-1.10/p_local.h", "games/em-doom/linuxdoom-1.10/p_tick.h", "games/em-doom/linuxdoom-1.10/m_cheat.c", "games/em-doom/linuxdoom-1.10/doomtype.h", "games/em-doom/linuxdoom-1.10/p_inter.h", "games/em-doom/linuxdoom-1.10/d_player.h", "games/em-doom/linuxdoom-1.10/tables.c", "games/em-doom/linuxdoom-1.10/f_wipe.h", "games/em-doom/linuxdoom-1.10/README.b", "games/em-doom/linuxdoom-1.10/p_floor.c", "games/em-doom/linuxdoom-1.10/p_mobj.c", "games/em-doom/linuxdoom-1.10/r_plane.h", "games/em-doom/linuxdoom-1.10/m_bbox.c", "games/em-doom/linuxdoom-1.10/hu_stuff.h", "games/em-doom/linuxdoom-1.10/r_bsp.c", "games/em-doom/linuxdoom-1.10/m_argv.h", "games/em-doom/linuxdoom-1.10/info.c", "games/em-doom/linuxdoom-1.10/m_random.c", "games/em-doom/linuxdoom-1.10/r_main.h", "games/em-doom/linuxdoom-1.10/s_sound.c", "games/em-doom/linuxdoom-1.10/v_video.c", "games/em-doom/linuxdoom-1.10/README.book", "games/em-doom/linuxdoom-1.10/m_menu.c", "games/em-doom/linuxdoom-1.10/d_net.c", "games/em-doom/linuxdoom-1.10/p_setup.h", "games/em-doom/linuxdoom-1.10/wi_stuff.h", "games/em-doom/linuxdoom-1.10/d_ticcmd.h", "games/em-doom/linuxdoom-1.10/z_zone.c", "games/em-doom/linuxdoom-1.10/r_main.c", "games/em-doom/linuxdoom-1.10/r_plane.c", "games/em-doom/linuxdoom-1.10/f_finale.h", "games/em-doom/linuxdoom-1.10/r_data.h", "games/em-doom/linuxdoom-1.10/m_swap.h", "games/em-doom/linuxdoom-1.10/p_tick.c", "games/em-doom/linuxdoom-1.10/m_menu.h", "games/em-doom/linuxdoom-1.10/d_englsh.h", "games/em-doom/linuxdoom-1.10/wi_stuff.c", "games/em-doom/linuxdoom-1.10/p_sight.c", "games/em-doom/linuxdoom-1.10/p_pspr.c", "games/em-doom/linuxdoom-1.10/g_game.c", "games/em-doom/linuxdoom-1.10/doomdef.c", "games/em-doom/linuxdoom-1.10/sounds.c", "games/em-doom/linuxdoom-1.10/tios_platform.c", "games/em-doom/linuxdoom-1.10/st_stuff.c", "games/em-doom/linuxdoom-1.10/FILES2", "games/em-doom/linuxdoom-1.10/st_stuff.h", "games/em-doom/linuxdoom-1.10/d_items.c", "games/em-doom/linuxdoom-1.10/am_map.h", "games/em-doom/linuxdoom-1.10/d_french.h", "games/em-doom/linuxdoom-1.10/d_items.h", "games/em-doom/linuxdoom-1.10/i_video.c", "games/em-doom/linuxdoom-1.10/r_local.h", "games/em-doom/linuxdoom-1.10/s_sound.h", "games/em-doom/linuxdoom-1.10/p_inter.c", "games/em-doom/linuxdoom-1.10/p_map.c", "games/em-doom/linuxdoom-1.10/m_argv.c", "games/em-doom/linuxdoom-1.10/dstrings.h", "games/em-doom/linuxdoom-1.10/p_spec.c", "games/em-doom/linuxdoom-1.10/i_net.c", "games/em-doom/linuxdoom-1.10/g_game.h", "games/em-doom/linuxdoom-1.10/i_sound.c", "games/em-doom/linuxdoom-1.10/m_misc.h", "games/em-doom/linuxdoom-1.10/i_system.c", "games/em-doom/linuxdoom-1.10/dstrings.c", "games/em-doom/linuxdoom-1.10/m_fixed.h", "games/em-doom/linuxdoom-1.10/d_event.h", "games/em-doom/linuxdoom-1.10/st_lib.c", "games/em-doom/linuxdoom-1.10/r_sky.c", "games/em-doom/linuxdoom-1.10/doomdef.h", "games/em-doom/linuxdoom-1.10/d_textur.h", "games/em-doom/linuxdoom-1.10/tables.h", "games/em-doom/linuxdoom-1.10/am_map.c", "games/em-doom/linuxdoom-1.10/README.asm", "games/em-doom/linuxdoom-1.10/r_things.c", "games/em-doom/linuxdoom-1.10/d_net.h", "games/em-doom/linuxdoom-1.10/p_saveg.c", "games/em-doom/linuxdoom-1.10/i_net.h", "games/em-doom/linuxdoom-1.10/p_setup.c", "games/em-doom/linuxdoom-1.10/m_swap.c", "games/em-doom/linuxdoom-1.10/r_bsp.h", "games/em-doom/linuxdoom-1.10/m_fixed.c", "games/em-doom/linuxdoom-1.10/sounds.h", "games/em-doom/linuxdoom-1.10/p_spec.h", "games/em-doom/linuxdoom-1.10/m_cheat.h", "games/em-doom/linuxdoom-1.10/FILES", "games/em-doom/linuxdoom-1.10/p_enemy.c", "games/em-doom/linuxdoom-1.10/p_maputl.c", "games/em-doom/linuxdoom-1.10/p_plats.c", "games/em-doom/linuxdoom-1.10/r_segs.c", "games/em-doom/linuxdoom-1.10/i_main.c", "games/em-doom/linuxdoom-1.10/r_draw.h", "games/em-doom/linuxdoom-1.10/r_draw.c", "games/em-doom/linuxdoom-1.10/Makefile", "games/em-doom/linuxdoom-1.10/hu_stuff.c", "games/em-doom/linuxdoom-1.10/p_user.c", "games/em-doom/linuxdoom-1.10/hu_lib.c", "games/em-doom/linuxdoom-1.10/p_telept.c", "games/em-doom/linuxdoom-1.10/TODO", "games/em-doom/linuxdoom-1.10/CVS/Root", "games/em-doom/linuxdoom-1.10/CVS/Repository", "games/em-doom/linuxdoom-1.10/CVS/Entries", "kernel/vectors.s", "kernel/mmu.c", "kernel/kernel.c", "kernel/scheduler.c", "kernel/startup.s", "kernel/tasks.c", "include/keyboard.h", "include/mouse.h", "include/irq.h", "include/timer.h", "include/app_editor.h", "include/snake.h", "include/fat.h", "include/wm.h", "include/font8x16.h", "include/vic.h", "include/gfx_console.h", "include/tasks.h", "include/mmu.h", "include/app_taskmgr.h", "include/app_file_manager.h", "include/string.h", "include/scheduler.h", "include/memory_map.h", "include/page.h", "include/console.h", "include/framebuffer.h", "include/doom.h", "include/command.h", "include/heap.h", "include/app_terminal.h", "include/bmp.h", "mm/page.c", "mm/heap.c", "drivers/irq.c", "drivers/timer.c", "drivers/framebuffer.c", "drivers/keyboard.c", "drivers/mouse.c", "drivers/vic.c", "drivers/net/smc91c111.c", "drivers/net/smc91c111.h", "engine/engine2d.c", "engine/engine2d.h", "fs/fat.c", "fs/fatfs_diskio.c", "fs/disk.c", "fs/fatfs/ffsystem.c", "fs/fatfs/ff.c", "fs/fatfs/ffconf.h", "fs/fatfs/00history.txt", "fs/fatfs/diskio.c", "fs/fatfs/00readme.txt", "fs/fatfs/ff.h", "fs/fatfs/ffunicode.c", "fs/fatfs/diskio.h"];
+
+        function switchSidebarTab(tab) {
+            if (tab === 'concepts') {
+                document.getElementById('tabConcepts').classList.add('active');
+                document.getElementById('tabFiles').classList.remove('active');
+                document.getElementById('conceptNav').style.display = 'flex';
+                document.getElementById('fileExplorerTools').style.display = 'none';
+                document.getElementById('fileExplorer').style.display = 'none';
+            } else {
+                document.getElementById('tabFiles').classList.add('active');
+                document.getElementById('tabConcepts').classList.remove('active');
+                document.getElementById('conceptNav').style.display = 'none';
+                document.getElementById('fileExplorerTools').style.display = 'flex';
+                document.getElementById('fileExplorer').style.display = 'flex';
+                // Check if file tree has been built (skip empty text nodes like comments)
+                const explorer = document.getElementById('fileExplorer');
+                if (explorer.children.length === 0) {
+                    renderFileTree();
+                }
+            }
+        }
+
+        function addCustomFile() {
+            const input = document.getElementById('addFileInput');
+            const path = input.value.trim();
+            if (path) {
+                if (!TIOS_FILES.includes(path)) {
+                    TIOS_FILES.push(path);
+                    renderFileTree();
+                    input.value = '';
+                    alert(`Added ${path} to tracked files!`);
+                } else {
+                    alert(`${path} is already tracked.`);
+                    input.value = '';
+                }
+            }
+        }
+
+        function renderFileTree() {
+            const container = document.getElementById('fileExplorer');
+            container.innerHTML = '';
+
+            // Build simple tree
+            const tree = {};
+            TIOS_FILES.forEach(path => {
+                const parts = path.split('/');
+                let curr = tree;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    if (!curr[parts[i]]) curr[parts[i]] = {};
+                    curr = curr[parts[i]];
+                }
+                curr[parts[parts.length - 1]] = path;
+            });
+
+            function buildHTML(node, indent = 0) {
+                let html = '';
+                for (const key of Object.keys(node).sort()) {
+                    if (typeof node[key] === 'string') {
+                        // File
+                        html += `<div style="padding: 4px 0 4px ${indent * 12}px; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap;" class="file-item" onclick="triggerOpenCommand('${node[key]}')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                            ${key}
+                        </div>`;
+                    } else {
+                        // Folder
+                        html += `<div style="padding: 4px 0 4px ${indent * 12}px; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap;" class="folder-item" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            ${key}/
+                        </div>`;
+                        html += `<div style="display: block;">${buildHTML(node[key], indent + 1)}</div>`;
+                    }
+                }
+                return html;
+            }
+
+            container.innerHTML = buildHTML(tree);
+        }
+
+        async function triggerOpenCommand(path) {
+            document.getElementById('rightPanel').classList.remove('collapsed');
+
+            try {
+                const res = await fetch("../" + path);
+                if (res.ok) {
+                    const fileContent = await res.text();
+
+                    document.getElementById('codeTabs').innerHTML = `<div class="code-tab active">${path.split('/').pop()}</div>`;
+                    const codeViewer = document.getElementById('codeViewer');
+                    codeViewer.innerHTML = '';
+                    const lines = fileContent.split('\n');
+                    lines.forEach((line, idx) => {
+                        const lineEl = document.createElement('div');
+                        lineEl.className = 'code-line';
+                        lineEl.innerHTML = `<div class="line-num">${idx + 1}</div><div class="line-content">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+
+                        // Add onclick to trigger line explanation
+                        lineEl.onclick = () => {
+                            activeLineNum = idx + 1;
+                            document.querySelectorAll('.code-line').forEach(l => l.classList.remove('highlighted'));
+                            lineEl.classList.add('highlighted');
+
+                            document.getElementById('line-expl-loading').innerHTML = `
+                                <div class="loading-dots"><span></span><span></span><span></span></div>
+                                <span style="margin-left: 8px;">Generating contextual explanation...</span>
+                            `;
+
+                            explainCodeLine(activeLineNum, lineEl.querySelector('.line-content').innerText, { name: path.split('/').pop(), path: path });
+                        };
+
+                        codeViewer.appendChild(lineEl);
+                    });
+
+                    // Show Ask AI button
+                    const btn = document.getElementById('askAITopBtn');
+                    if (btn) {
+                        btn.style.display = 'inline-block';
+                        btn.setAttribute('data-path', path);
+                    }
+                } else {
+                    const codeViewer = document.getElementById('codeViewer');
+                    codeViewer.innerHTML = `<div style="padding: 24px; color: var(--danger); text-align: center;">
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size: 24px; margin-bottom: 12px;"></i><br>
+                        <strong>File Not Found:</strong> ${path} (HTTP ${res.status})<br><br>
+                        <span style="color: var(--text-dim); font-size: 13px;">If you are running this from a local server, ensure the root directory is set to the T-OS root (not the education folder).</span>
+                    </div>`;
+                    console.error("File not found:", path);
+                }
+            } catch (e) {
+                const codeViewer = document.getElementById('codeViewer');
+                codeViewer.innerHTML = `<div style="padding: 24px; color: var(--warning); text-align: center;">
+                    <i class="fa-solid fa-shield-halved" style="font-size: 24px; margin-bottom: 12px;"></i><br>
+                    <strong>Browser Security Restriction</strong><br><br>
+                    <p style="color: var(--text-main); font-size: 14px; text-align: left; background: var(--bg-dark); padding: 16px; border-radius: var(--radius); margin-top: 12px;">
+                        Your browser is blocking the application from reading local files (CORS/file:// protocol restriction).<br><br>
+                        To use the File Explorer, you must run this dashboard through a local web server. Open your terminal in the <code>tios/</code> root directory and run:<br>
+                        <code style="color: var(--primary); display: block; margin-top: 8px; font-weight: bold;">python3 -m http.server 8000</code><br>
+                        Then open <a href="http://localhost:8000/education/index.html" style="color: var(--success);">http://localhost:8000/education/index.html</a> in your browser.
+                    </p>
+                </div>`;
+                console.error("Fetch error", e);
+            }
+        }
+
+        function askAIAboutLoadedFile() {
+            const btn = document.getElementById('askAITopBtn');
+            const path = btn.getAttribute('data-path');
+            if (path) {
+                const input = document.getElementById('aiChatInput');
+                input.value = '/open ' + path;
+                input.closest('form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+        }
+
+        // 2. Select Concept / Subsystem
+        function selectSubsystem(idx) {
+            currentSubsystemIdx = idx;
+            activeFileIdx = 0;
+            activeLineNum = null;
+            quizQuestionIdx = 0;
+
+            // Update Sidebar buttons state
+            document.querySelectorAll('.concept-btn').forEach((btn, bIdx) => {
+                if (bIdx === idx) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            const sub = subsystems[idx];
+            document.getElementById('subsystemType').innerText = sub.type;
+            document.getElementById('subsystemTitle').innerHTML = sub.title;
+            document.getElementById('subsystemDesc').innerText = sub.desc;
+            // Render subsystem icon
+            const iconEl = document.getElementById('subsystemIconEl');
+            if (iconEl) iconEl.innerHTML = sub.icon ? `<i class="${sub.icon}"></i>` : '';
+
+            // Render code tabs and viewer
+            renderCodeTabs();
+            renderCodeViewer();
+
+            // Render per-concept chat history
+            renderChatHistory();
+
+            // Reset and Render Quiz
+            renderQuiz();
+
+            // Initialize Visualization
+            initVisualization(sub.sim || sub.simType);
+        }
+
+        // 3. Code Tabs & Viewer
+        function renderCodeTabs() {
+            const container = document.getElementById('codeTabs');
+            container.innerHTML = '';
+            const sub = subsystems[currentSubsystemIdx];
+            sub.files.forEach((file, fIdx) => {
+                const tab = document.createElement('div');
+                tab.className = 'code-tab' + (fIdx === activeFileIdx ? ' active' : '');
+                tab.innerText = file.name;
+                tab.onclick = () => {
+                    activeFileIdx = fIdx;
+                    activeLineNum = null;
+                    document.querySelectorAll('.code-tab').forEach((el, tIdx) => {
+                        el.className = 'code-tab' + (tIdx === fIdx ? ' active' : '');
+                    });
+                    renderCodeViewer();
+                };
+                container.appendChild(tab);
+            });
+        }
+
+        function renderCodeViewer() {
+            const viewer = document.getElementById('codeViewer');
+            viewer.innerHTML = '';
+            const sub = subsystems[currentSubsystemIdx];
+            const file = sub.files[activeFileIdx];
+
+            if (!file) return;
+
+            const lines = file.code.split('\n');
+            lines.forEach((line, lineIdx) => {
+                const lineNum = lineIdx + 1;
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'code-line' + (lineNum === activeLineNum ? ' highlight' : '');
+                lineDiv.onclick = () => selectCodeLine(lineNum);
+
+                const numSpan = document.createElement('span');
+                numSpan.className = 'line-num';
+                numSpan.innerText = lineNum;
+
+                const contentSpan = document.createElement('span');
+                contentSpan.className = 'line-content';
+                contentSpan.innerHTML = highlightSyntax(line);
+
+                lineDiv.appendChild(numSpan);
+                lineDiv.appendChild(contentSpan);
+                viewer.appendChild(lineDiv);
+            });
+        }
+
+        // Extremely simple code syntax highlighter for visual presentation
+        function highlightSyntax(code) {
+            // Escape html first
+            let escaped = code
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            // Comments
+            escaped = escaped.replace(/(\/\/.*)/g, '<span class="comment">$1</span>');
+
+            // Keywords
+            const keywords = ['void', 'int', 'uint32_t', 'uint16_t', 'uint8_t', 'static', 'const', 'volatile', 'struct', 'if', 'else', 'for', 'while', 'return', 'break', 'continue', 'extern', 'asm'];
+            keywords.forEach(kw => {
+                const regex = new RegExp(`\\b${kw}\\b`, 'g');
+                escaped = escaped.replace(regex, `<span class="keyword">${kw}</span>`);
+            });
+
+            // Types & Functions (very simple heuristic)
+            escaped = escaped.replace(/(\w+)(?=\()/g, '<span class="func">$1</span>');
+            escaped = escaped.replace(/(0x[0-9a-fA-F]+|\b\d+\b)/g, '<span class="number">$1</span>');
+
+            return escaped;
+        }
+
+        function selectCodeLine(lineNum) {
+            activeLineNum = lineNum;
+            document.querySelectorAll('.code-line').forEach((el, idx) => {
+                if (idx + 1 === lineNum) el.classList.add('highlight');
+                else el.classList.remove('highlight');
+            });
+
+            // Provide targeted AI explanation
+            explainCodeLine(lineNum);
+        }
+
+        // 4. API Key Handling
+        function saveApiKey() {
+            const key = document.getElementById('openrouterApiKey').value.trim();
+            if (key) {
+                localStorage.setItem('openrouter_api_key', key);
+                updateAIStatusBadge(true);
+                alert("OpenRouter API Key saved successfully! Live AI query model is active.");
+            } else {
+                localStorage.removeItem('openrouter_api_key');
+                updateAIStatusBadge(false);
+                alert("API Key cleared. Reverted to offline explanation mode.");
+            }
+        }
+
+        function updateAIStatusBadge(isLive) {
+            const badge = document.getElementById('aiStatusBadge');
+            if (isLive) {
+                badge.className = 'ai-status-badge live';
+                badge.innerText = 'Online Live AI';
+            } else {
+                badge.className = 'ai-status-badge local';
+                badge.innerText = 'Offline Pre-Baked';
+            }
+        }
+
+        // 5. Code Line Explanation & Gemini API Integration
+        async function explainCodeLine(lineNum, targetLine, fileObj = null) {
+            const sub = subsystems[currentSubsystemIdx];
+            const file = fileObj || sub.files[activeFileIdx];
+
+            let codeLines = [];
+            if (file.code) {
+                codeLines = file.code.split('\n');
+            } else {
+                // Read from dynamically loaded DOM
+                const lineElements = document.querySelectorAll('#codeViewer .line-content');
+                lineElements.forEach(el => codeLines.push(el.innerText));
+            }
+
+            if (!targetLine) {
+                targetLine = codeLines[lineNum - 1] || "Unknown Line";
+            }
+
+            // Setup temporary output indicator
+            const aiOutput = document.getElementById('aiOutput');
+            const userBubble = document.createElement('div');
+            userBubble.className = 'ai-chat-bubble';
+            userBubble.innerHTML = `
+                <div class="ai-avatar user" style="background-color: var(--border-color); color: #fff;"><i class="fa-solid fa-user"></i></div>
+                <div class="ai-message">
+                    Explain line <code>${lineNum}</code> of <code>${file.name}</code>:
+                    <pre style="margin-top: 6px; padding: 6px; background-color: var(--code-bg); font-family: monospace; font-size: 11px; color: var(--warning); border-radius: 4px; overflow-x: auto;">${targetLine.trim()}</pre>
+                </div>
+            `;
+            aiOutput.appendChild(userBubble);
+            aiOutput.scrollTop = aiOutput.scrollHeight;
+
+            const botBubble = document.createElement('div');
+            botBubble.className = 'ai-chat-bubble';
+            botBubble.innerHTML = `
+                <div class="ai-avatar bot"><i class="fa-solid fa-robot"></i></div>
+                <div class="ai-message" id="line-expl-loading">
+                    <div class="loading-dots"><span></span><span></span><span></span></div> Thinking...
+                </div>
+            `;
+            aiOutput.appendChild(botBubble);
+            aiOutput.scrollTop = aiOutput.scrollHeight;
+
+            const apiKey = localStorage.getItem('openrouter_api_key');
+            if (apiKey) {
+                // Call OpenRouter Live API
+                try {
+                    const prompt = `You are a computer science professor teaching system programming. Explain this specific line of code from the T-OS bare-metal ARM operating system:
+                    File: ${file.name}
+                    Line ${lineNum}: ${targetLine}
+                    Context of surrounding code:
+                    \`\`\`c
+                    ${codeLines.slice(Math.max(0, lineNum - 5), Math.min(codeLines.length, lineNum + 5)).join('\n')}
+                    \`\`\`
+                    Explain:
+                    1. What this line does physically/logically.
+                    2. Why it is important for operating systems / CS concepts.
+                    Keep the explanation concise, clear, and beginner-friendly. Limit to 2 paragraphs maximum. Use markdown.`;
+
+                    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'HTTP-Referer': 'https://github.com/shadcy/TOS',
+                            'X-Title': 'T-OS Education',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            "model": "nex-agi/nex-n2-pro:free",
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": prompt
+                                }
+                            ]
+                        })
+                    });
+                    const data = await response.json();
+                    let text = data.choices[0].message.content;
+                    // Format response markdown simple parsing
+                    text = formatMarkdown(text);
+                    document.getElementById('line-expl-loading').innerHTML = `<strong>AI Walkthrough:</strong> ${text}`;
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('line-expl-loading').innerHTML = `<strong>Error:</strong> Failed to fetch live explanation from OpenRouter. Falling back to offline description.<br><br>` + getOfflineLineExplanation(file.name, lineNum, targetLine);
+                }
+            } else {
+                // Return pre-baked description
+                setTimeout(() => {
+                    const desc = getOfflineLineExplanation(file.name, lineNum, targetLine);
+                    document.getElementById('line-expl-loading').innerHTML = `<strong>Code Walkthrough (Offline Mode):</strong> ${desc}`;
+                }, 400);
+            }
+            aiOutput.scrollTop = aiOutput.scrollHeight;
+        }
+
+        function formatMarkdown(text) {
+            let formatted = text;
+
+            // Handle think tags gracefully (OpenRouter deep reasoning)
+            let unclosedThink = false;
+            if (formatted.includes('<think>')) {
+                formatted = formatted.replace(/<think>/g, '<div class="ai-think-box"><div class="ai-think-header"><i class="fa-solid fa-brain"></i> AI Reasoning Process</div><div class="ai-think-content">');
+                if (formatted.includes('</think>')) {
+                    formatted = formatted.replace(/<\/think>/g, '</div></div>');
+                } else {
+                    unclosedThink = true;
+                }
+            }
+
+            // Hide the raw artifact code block from the chat output
+            const artifactRegex = /```(?:javascript)?\n\/\/ ARTIFACT_SKILL\n([\s\S]*?)```/g;
+            const incompleteArtifactRegex = /```(?:javascript)?\n\/\/ ARTIFACT_SKILL\n([\s\S]*)$/;
+
+            let artifactFound = false;
+            formatted = formatted.replace(artifactRegex, (match, code) => {
+                artifactFound = true;
+                const safeCode = encodeURIComponent(code);
+                return `<div class="ai-status-badge live" style="display:inline-flex; align-items: center; gap: 8px; margin-top:12px;">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Interactive Artifact Generated
+                    <button class="api-btn" style="padding: 2px 12px; font-size: 11px; background-color: var(--success); color: var(--primary-invert);" onclick="loadAIArtifact(decodeURIComponent('${safeCode}'))">
+                        <i class="fa-solid fa-rotate-right"></i> Reload Artifact
+                    </button>
+                </div>`;
+            });
+
+            if (!artifactFound) {
+                formatted = formatted.replace(incompleteArtifactRegex, '<div class="ai-status-badge live" style="display:inline-block; margin-top:12px; border-color: var(--warning); color: var(--warning);"><div class="loading-dots" style="margin-right: 8px;"><span></span><span></span><span></span></div> Generating visual artifact...</div>');
+            }
+
+            // Replace full code blocks safely
+            formatted = formatted.replace(/```[a-zA-Z]*\n([\s\S]*?)```/g, function (match, p1) {
+                const codeContent = p1.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<pre style="background: var(--bg-dark); padding: 12px; border-radius: var(--radius); overflow-x: auto; border: 1px solid var(--border-color); margin: 8px 0; font-family: 'Fira Code', monospace; font-size: 12px;"><code>${codeContent}</code></pre>`;
+            });
+
+            // Replace inline code blocks
+            formatted = formatted.replace(/`([^`\n]+)`/g, '<code style="background: var(--bg-dark); padding: 2px 6px; border-radius: 4px; font-family: \'Fira Code\', monospace; color: var(--primary); border: 1px solid var(--border-color); font-size: 12px;">$1</code>');
+
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+            // Replace newlines outside of pre tags
+            let parts = formatted.split('</pre>');
+            for (let i = 0; i < parts.length; i++) {
+                let idx = parts[i].indexOf('<pre');
+                if (idx !== -1) {
+                    let beforePre = parts[i].substring(0, idx).replace(/\n/g, '<br>');
+                    let preAndAfter = parts[i].substring(idx);
+                    parts[i] = beforePre + preAndAfter;
+                } else {
+                    parts[i] = parts[i].replace(/\n/g, '<br>');
+                }
+            }
+            formatted = parts.join('</pre>');
+
+            if (unclosedThink) {
+                formatted += '</div></div>';
+            }
+
+            return formatted;
+        }
+
+        // Offline pre-baked explanations for specific key lines to guarantee performance
+        function getOfflineLineExplanation(fileName, lineNum, lineContent) {
+            const lowerContent = lineContent.toLowerCase();
+            if (fileName === "bootloader.c") {
+                if (lowerContent.includes("sd_read_sector")) {
+                    return "<p>This line calls the PL181 SD card interface driver. It triggers the controller hardware to fetch a 512-byte sector block from the physical SD card storage and place the bytes directly into the specified buffer in RAM. This transfers software data from permanent disk files into active system memory.</p>";
+                }
+                if (lowerContent.includes("kernel_magic")) {
+                    return "<p>To prevent executing corrupted data, this line reads offset 4 of the loaded binary and checks for the signature 'TIOS'. Operating systems verify header signatures (like 'ELF' or 'MZ') before branching control to prevent crashes.</p>";
+                }
+                if (lowerContent.includes("kernel_entry")) {
+                    return "<p>This is a function pointer jump. By casting the physical address 0x00100000 (where the kernel was loaded) to a function pointer and calling it, the CPU loads 0x00100000 into the Program Counter register, jumping control into the kernel kernel_main startup code.</p>";
+                }
+            }
+            if (fileName === "mmu.c") {
+                if (lowerContent.includes("page_table")) {
+                    return "<p>This declares the primary Page Table array in memory. The aligned attribute ensures it aligns with a 16KB physical RAM boundary, a hardware requirement for the CPU's Translation Table Base Register. The table contains 4096 sections of 1MB pages representing the system's address space.</p>";
+                }
+                if (lowerContent.includes("attrs = mmu_desc_bufferable")) {
+                    return "<p>This modifies the cache attributes for physical sections 30 & 31, where screen framebuffers are loaded. Setting these as bufferable but non-cacheable prevents cache thrashing: pixel copies go directly to RAM write buffers, avoiding cache line evictions during screen updates.</p>";
+                }
+                if (lowerContent.includes("mcr p15")) {
+                    return "<p>This assembly instruction configures the CP15 system co-processor. The MCR (Move to Coprocessor Register) instruction writes control registers to configure the Page Table address (TTBR0), enable Domain Access, and enable the MMU cache flags.</p>";
+                }
+            }
+            if (fileName === "scheduler.c") {
+                if (lowerContent.includes("sp =")) {
+                    return "<p>This registers the top-of-stack address for the new thread. In ARM architecture, stacks grow downwards, so we calculate the highest memory slot in the task's stack array. During a context switch, the CPU loads this value into the stack pointer (SP) register.</p>";
+                }
+                if (lowerContent.includes("lr =")) {
+                    return "<p>This preloads the Link Register (LR) with the address of 'task_exit'. If the task completes its main function and returns, the CPU branches to LR, routing the system to the exit cleanup loop to release task resources safely.</p>";
+                }
+                if (lowerContent.includes("cpsr = 0x13")) {
+                    return "<p>This preloads the Current Program Status Register (CPSR) value. The hex value 0x13 configures the processor mode to Supervisor (SVC) and clears the interrupt mask bits, ensuring interrupts are active when the scheduler transitions to this task.</p>";
+                }
+            }
+            if (fileName === "irq.c") {
+                if (lowerContent.includes("vicvectaddr")) {
+                    return "<p>This loads the active interrupt handler from the Vectored Interrupt Controller. In a vectored system, the VIC automatically resolves which hardware line triggered the interrupt and loads its corresponding C function pointer, bypassing manual device checks.</p>";
+                }
+                if (lowerContent.includes("vector_table")) {
+                    return "<p>This block copies the vector table to address 0x00000000. On hardware interrupts, the ARM CPU automatically branches to address 0x00000018. Since writing to address 0 in C is treated as undefined behavior (null pointer dereferencing) and deleted by compilers, T-OS uses assembly to force the copy.</p>";
+                }
+            }
+            return `<p>This line implements key operations for the <strong>${fileName}</strong> subsystem. It reads or writes data registers to update system state, configure hardware peripherals, or calculate resource mappings. Click other lines or enter a question in the chat for more details.</p>`;
+        }
+
+        function toggleLeftSidebar() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        }
+
+        function toggleRightSidebar() {
+            document.getElementById('rightPanel').classList.toggle('collapsed');
+            if (canvas && document.getElementById('simContainer')) {
+                // Trigger resize after animation completes to fix canvas aspect ratio
+                setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 300);
+            }
+        }
+
+        // 5.5 Dynamic AI Artifact Engine
+        let activeCustomArtifact = null;
+
+        function loadAIArtifact(codeStr) {
+            try {
+                // Execute the generated assignment to window.artifactConcept
+                new Function(codeStr)();
+
+                if (window.artifactConcept) {
+                    activeCustomArtifact = window.artifactConcept;
+                    activeCustomArtifact.rawCode = codeStr;
+
+                    if (simAnimationId) cancelAnimationFrame(simAnimationId);
+                    if (simInterval) clearInterval(simInterval);
+
+                    canvas = document.getElementById('simCanvas');
+                    ctx = canvas.getContext('2d');
+
+                    const container = document.getElementById('simContainer');
+                    canvas.width = container.clientWidth;
+                    canvas.height = container.clientHeight;
+
+                    // Update DOM
+                    document.getElementById('subsystemTitle').innerHTML = `
+                        ${window.artifactConcept.title || "<i class='fa-solid fa-bolt'></i> AI-Generated Visualization"}
+                        <button class="api-btn" id="saveConceptBtn" onclick="saveCustomConcept()" style="margin-left: 16px; padding: 4px 12px; font-size: 12px; background-color: var(--success); color: var(--primary-invert);"><i class="fa-solid fa-floppy-disk"></i> Save Concept</button>
+                    `;
+                    document.getElementById('subsystemDesc').innerText = window.artifactConcept.desc || "Dynamic Artifact";
+
+                    document.getElementById('simulatorControls').innerHTML = '<span class="ai-status-badge live" style="background: rgba(16, 163, 127, 0.1); border-color: var(--success); color: var(--success);">Custom Concept Module Active</span>';
+
+                    // Render custom quiz
+                    if (window.artifactConcept.quiz) {
+                        renderCustomQuiz(window.artifactConcept.quiz);
+                    }
+
+                    // Hook into render loop
+                    if (typeof window.artifactConcept.render === 'function') {
+                        subsystems[currentSubsystemIdx].customRender = window.artifactConcept.render;
+                        initVisualization("ai_artifact");
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load artifact", e);
+            }
+        }
+
+        function renderCustomQuiz(q) {
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = '';
+            if (!q) return;
+
+            const qDiv = document.createElement('div');
+            qDiv.className = 'quiz-question-box';
+            qDiv.innerHTML = `<div class="quiz-question">1. ${q.question}</div>`;
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'quiz-options';
+
+            const feedback = document.createElement('div');
+            feedback.style.display = 'none';
+            feedback.style.marginTop = '16px';
+            feedback.style.padding = '12px';
+            feedback.style.borderRadius = 'var(--radius)';
+
+            q.options.forEach((opt, optIdx) => {
+                const optBtn = document.createElement('button');
+                optBtn.className = 'quiz-option';
+                optBtn.innerHTML = `
+                    <span class="quiz-indicator">${String.fromCharCode(65 + optIdx)}</span>
+                    <span>${opt}</span>
+                `;
+                optBtn.onclick = () => {
+                    const buttons = optionsDiv.querySelectorAll('.quiz-option');
+                    buttons.forEach((btn, idx) => {
+                        btn.disabled = true;
+                        if (idx === q.answer) {
+                            btn.classList.add('correct');
+                        } else if (idx === optIdx) {
+                            btn.classList.add('incorrect');
+                        }
+                    });
+
+                    if (optIdx === q.answer) {
+                        feedback.className = 'quiz-feedback success';
+                        feedback.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Correct!</strong> ${q.explanation}`;
+                    } else {
+                        feedback.className = 'quiz-feedback danger';
+                        feedback.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Incorrect!</strong> ${q.explanation}`;
+                    }
+                    feedback.style.display = 'block';
+                };
+                optionsDiv.appendChild(optBtn);
+            });
+
+            qDiv.appendChild(optionsDiv);
+            qDiv.appendChild(feedback);
+            container.appendChild(qDiv);
+
+            // Hide the next quiz button for custom single quizzes
+            document.getElementById('nextQuizBtn').style.display = 'none';
+        }
+
+        function saveCustomConcept() {
+            if (!activeCustomArtifact) return;
+
+            const newConcept = {
+                title: activeCustomArtifact.title || "Custom Concept",
+                desc: activeCustomArtifact.desc || "Dynamic Custom Concept",
+                files: subsystems[currentSubsystemIdx].files, // Inherit files from the concept we were on
+                quizzes: [activeCustomArtifact.quiz],
+                simType: "custom_" + Date.now(),
+                customRender: activeCustomArtifact.render,
+                isCustom: true,
+                rawCode: activeCustomArtifact.rawCode
+            };
+
+            subsystems.push(newConcept);
+            renderConceptSidebar();
+
+            // Save to localStorage
+            const savedConcepts = JSON.parse(localStorage.getItem('tios_custom_concepts') || '[]');
+            savedConcepts.push({
+                title: newConcept.title,
+                desc: newConcept.desc,
+                quiz: newConcept.quizzes[0],
+                rawCode: newConcept.rawCode
+            });
+            localStorage.setItem('tios_custom_concepts', JSON.stringify(savedConcepts));
+
+            // Switch to it
+            selectSubsystem(subsystems.length - 1);
+            alert("Concept saved successfully!");
+        }
+
+        let autocompleteIndex = -1;
+        let autocompleteMatches = [];
+
+        function handleChatInput(e) {
+            const val = e.target.value;
+            const popup = document.getElementById('autocompletePopup');
+            if (val.startsWith('/open ')) {
+                const query = val.substring(6).toLowerCase();
+                autocompleteMatches = TIOS_FILES.filter(f => f.toLowerCase().includes(query)).slice(0, 10);
+                if (autocompleteMatches.length > 0) {
+                    popup.innerHTML = autocompleteMatches.map((f, i) => `<div class="autocomplete-item ${i === 0 ? 'selected' : ''}" onclick="selectAutocomplete('${f}')">${f}</div>`).join('');
+                    popup.style.display = 'block';
+                    autocompleteIndex = 0;
+                } else {
+                    popup.style.display = 'none';
+                }
+            } else {
+                popup.style.display = 'none';
+            }
+        }
+
+        function selectAutocomplete(path) {
+            const input = document.getElementById('aiChatInput');
+            input.value = '/open ' + path;
+            document.getElementById('autocompletePopup').style.display = 'none';
+            input.focus();
+        }
+
+        function handleChatKeydown(e) {
+            const popup = document.getElementById('autocompletePopup');
+            if (popup.style.display === 'block') {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    autocompleteIndex = (autocompleteIndex + 1) % autocompleteMatches.length;
+                    updateAutocompleteSelection();
+                    return;
+                }
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    autocompleteIndex = (autocompleteIndex - 1 + autocompleteMatches.length) % autocompleteMatches.length;
+                    updateAutocompleteSelection();
+                    return;
+                }
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    if (autocompleteMatches[autocompleteIndex]) {
+                        selectAutocomplete(autocompleteMatches[autocompleteIndex]);
+                    }
+                    return;
+                }
+                if (e.key === 'Escape') {
+                    popup.style.display = 'none';
+                    return;
+                }
+            } else {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    askAI();
+                }
+            }
+        }
+
+        function updateAutocompleteSelection() {
+            const items = document.querySelectorAll('.autocomplete-item');
+            items.forEach((item, i) => {
+                if (i === autocompleteIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        // 6. Custom Prompt Submission to AI Chat
+        async function askAI(event) {
+            if (event) event.preventDefault();
+            document.getElementById('autocompletePopup').style.display = 'none';
+            const inputEl = document.getElementById('aiChatInput');
+            const promptText = inputEl.value.trim();
+            if (!promptText) return;
+
+            inputEl.value = '';
+
+            const aiOutput = document.getElementById('aiOutput');
+            const userBubble = document.createElement('div');
+            userBubble.className = 'ai-chat-bubble';
+            userBubble.innerHTML = `
+                <div class="ai-avatar user" style="background-color: var(--border-color); color: #fff;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+                <div class="ai-message">${promptText}</div>
+            `;
+            aiOutput.appendChild(userBubble);
+
+            const botBubble = document.createElement('div');
+            botBubble.className = 'ai-chat-bubble';
+            botBubble.id = 'chat-bubble-' + Date.now();
+            botBubble.innerHTML = `
+                <div class="ai-avatar bot">
+                    <div style="width: 6px; height: 6px; background: var(--primary); border-radius: 50%;"></div>
+                </div>
+                <div class="ai-message" id="${botBubble.id}-msg">
+                    <div class="loading-dots"><span></span><span></span><span></span></div> <span id="${botBubble.id}-status">Thinking...</span>
+                </div>
+            `;
+            aiOutput.appendChild(botBubble);
+            aiOutput.scrollTop = aiOutput.scrollHeight;
+
+            let fileContext = "";
+            let localPath = "";
+
+            // Handle /open command locally
+            if (promptText.startsWith('/open ')) {
+                document.getElementById(botBubble.id + '-status').innerText = 'Loading local file...';
+                localPath = promptText.substring(6).trim();
+                try {
+                    const res = await fetch("../" + localPath);
+                    if (res.ok) {
+                        const fileContent = await res.text();
+                        fileContext = `The user has successfully loaded local file ${localPath} into their environment. The content is:\n\n\`\`\`c\n${fileContent}\n\`\`\`\n\nExplain this file briefly and visually to the user.`;
+
+                        // Dynamically update the code viewer!
+                        document.getElementById('codeTabs').innerHTML = `<div class="code-tab active">${localPath.split('/').pop()}</div>`;
+                        const codeViewer = document.getElementById('codeViewer');
+                        codeViewer.innerHTML = '';
+                        const lines = fileContent.split('\n');
+                        lines.forEach((line, idx) => {
+                            const lineEl = document.createElement('div');
+                            lineEl.className = 'code-line';
+                            lineEl.innerHTML = `<div class="line-num">${idx + 1}</div><div class="line-content">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+                            codeViewer.appendChild(lineEl);
+                        });
+
+                        // Show the Ask AI button
+                        const btn = document.getElementById('askAITopBtn');
+                        if (btn) {
+                            btn.style.display = 'inline-block';
+                            btn.setAttribute('data-path', localPath);
+                        }
+                    } else {
+                        fileContext = `The user tried to load ${localPath} but it was not found. Tell them the file does not exist.`;
+                    }
+                } catch (e) {
+                    fileContext = `The user tried to load ${localPath} but a fetch error occurred.`;
+                }
+                document.getElementById(botBubble.id + '-status').innerText = 'Analyzing code...';
+            }
+
+            const sub = subsystems[currentSubsystemIdx];
+            const title = sub.title;
+            if (!chatHistories[title]) chatHistories[title] = [];
+            
+            chatHistories[title].push({ role: 'user', content: promptText });
+            saveChatHistory();
+
+            const apiKey = localStorage.getItem('openrouter_api_key');
+
+            if (apiKey) {
+                try {
+                    const systemContext = `You are an expert systems programming tutor for the "${sub.title}" subsystem of T-OS (a bare-metal ARM kernel).
+                    Context: ${sub.desc}
+                    User Query: ${promptText}
+
+                    CRITICAL INSTRUCTION: If you are explaining a local file or complex mechanism, you MUST optionally create a complete Interactive Educational Module.
+                    Wrap the Javascript exactly like this:
+                    \`\`\`javascript
+                    // ARTIFACT_SKILL
+                    window.artifactConcept = {
+                        title: "Short Title Here",
+                        desc: "Clean, precise, and highly structured documentation explaining the core mechanism. Keep it strictly technical and concise.",
+                        quiz: {
+                            question: "Multiple choice question about the concept?",
+                            options: ["Option A", "Option B", "Option C", "Option D"],
+                            answer: 0,
+                            explanation: "Why this answer is correct."
+                        },
+                        render: function(ctx, canvas, time, dt) {
+                            // Use ctx to draw dynamic animations. 
+                            // Start by clearing: ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            // Use pure black backgrounds, #10a37f for accents, and #ffffff for primary text.
+                            // IMPORTANT RULES FOR UI/UX:
+                            // 1. DO NOT draw long paragraphs of text. Text WILL overlap. Keep labels under 4 words.
+                            // 2. The canvas is large (typically 800x400). Scale your drawing dynamically using canvas.width and canvas.height.
+                            // 3. Draw beautiful, minimalist geometric diagrams (boxes, arrows, glowing particles) representing the concept.
+                            // 4. Center your diagram dynamically: const cx = canvas.width / 2;
+                        }
+                    };
+                    \`\`\`
+                    Do not call the function, just define window.artifactConcept. Explain the concept clearly before the code block. Use markdown.`;
+
+                    let apiMessages = [];
+                    // Keep the last 10 messages for context (filtering out system intro messages)
+                    const recentHistory = chatHistories[title].filter(m => m.role !== 'system').slice(-10);
+                    for (let i = 0; i < recentHistory.length; i++) {
+                        apiMessages.push({ role: recentHistory[i].role, content: recentHistory[i].content });
+                    }
+
+                    // Inject system context into the very last user message
+                    if (apiMessages.length > 0 && apiMessages[apiMessages.length - 1].role === 'user') {
+                        let injectedContext = systemContext + "\n\n";
+                        if (fileContext) injectedContext += fileContext + "\n\n";
+                        apiMessages[apiMessages.length - 1].content = injectedContext + apiMessages[apiMessages.length - 1].content;
+                    }
+
+                    document.getElementById(botBubble.id + '-status').innerText = 'Connecting to OpenRouter...';
+
+                    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'HTTP-Referer': 'https://github.com/shadcy/TOS',
+                            'X-Title': 'T-OS Education',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            "model": "nex-agi/nex-n2-pro:free",
+                            "stream": true,
+                            "messages": apiMessages
+                        })
+                    });
+
+                    document.getElementById(botBubble.id + '-status').innerText = 'Waiting for AI response...';
+
+                    const msgDiv = document.getElementById(botBubble.id + '-msg');
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    let fullText = "";
+                    let jsonBuffer = "";
+
+                    // Push a placeholder for the assistant message so it exists in history immediately
+                    chatHistories[title].push({ role: 'assistant', content: "" });
+                    const msgIndex = chatHistories[title].length - 1;
+                    let lastSaveTime = Date.now();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            // Final save
+                            chatHistories[title][msgIndex].content = fullText;
+                            saveChatHistory();
+
+                            // Execution Phase: Check for Artifact Extraction
+                            const regex = /```(?:javascript)?\n\/\/ ARTIFACT_SKILL\n([\s\S]*?)```/;
+                            const match = fullText.match(regex);
+                            if (match && match[1]) {
+                                loadAIArtifact(match[1]);
+                            }
+                            break;
+                        }
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                                jsonBuffer = line.substring(6);
+                                try {
+                                    const parsed = JSON.parse(jsonBuffer);
+                                    if (parsed.choices[0].delta && parsed.choices[0].delta.content) {
+                                        fullText += parsed.choices[0].delta.content;
+                                        msgDiv.innerHTML = formatMarkdown(fullText);
+                                        aiOutput.scrollTop = aiOutput.scrollHeight;
+
+                                        // Periodically save history to prevent data loss on switch/refresh
+                                        chatHistories[title][msgIndex].content = fullText;
+                                        if (Date.now() - lastSaveTime > 1000) {
+                                            saveChatHistory();
+                                            lastSaveTime = Date.now();
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Incomplete JSON chunk, ignore and wait for next
+                                }
+                            }
+                        }
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById(botBubble.id + '-msg').innerHTML = `<strong>Error:</strong> Failed to fetch response from OpenRouter API.`;
+                }
+            } else {
+                setTimeout(() => {
+                    const offlineMsg = `
+                        <p><strong>Offline Mode Assistant:</strong></p>
+                        <p>I received your question: <em>"${promptText}"</em>.</p>
+                        ${fileContext ? '<p>You attempted to load a file. Please connect your API key to have me explain it!</p>' : ''}
+                        <p>To receive live answers directly from OpenRouter models, please enter your API Key in the top-left configuration panel.</p>
+                    `;
+                    document.getElementById(botBubble.id + '-msg').innerHTML = offlineMsg;
+                    chatHistories[title].push({ role: 'assistant', content: offlineMsg });
+                    saveChatHistory();
+                    aiOutput.scrollTop = aiOutput.scrollHeight;
+                }, 500);
+            }
+        }
+
+        // 7. Quiz Manager
+        function renderQuiz() {
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = '';
+
+            const sub = subsystems[currentSubsystemIdx];
+            const q = sub.quizzes[quizQuestionIdx];
+
+            if (!q) return;
+
+            const qDiv = document.createElement('div');
+            qDiv.className = 'quiz-question-box';
+            qDiv.innerHTML = `<div class="quiz-question">${quizQuestionIdx + 1}. ${q.question}</div>`;
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'quiz-options';
+
+            q.options.forEach((opt, optIdx) => {
+                const optBtn = document.createElement('button');
+                optBtn.className = 'quiz-option';
+                optBtn.innerHTML = `
+                    <span class="quiz-indicator">${String.fromCharCode(65 + optIdx)}</span>
+                    <span>${opt}</span>
+                `;
+                optBtn.onclick = () => checkQuizAnswer(optIdx, optBtn);
+                optionsDiv.appendChild(optBtn);
+            });
+
+            qDiv.appendChild(optionsDiv);
+
+            // Add Feedback Box
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.id = 'quizFeedback';
+            feedbackDiv.className = 'quiz-feedback';
+            qDiv.appendChild(feedbackDiv);
+
+            container.appendChild(qDiv);
+
+            // Hide Next Button initially
+            document.getElementById('nextQuizBtn').style.display = 'none';
+            updateQuizScore();
+        }
+
+        function checkQuizAnswer(selectedIdx, optionBtn) {
+            const sub = subsystems[currentSubsystemIdx];
+            const q = sub.quizzes[quizQuestionIdx];
+            const feedback = document.getElementById('quizFeedback');
+
+            // Disable further clicks
+            document.querySelectorAll('.quiz-option').forEach((btn, idx) => {
+                btn.onclick = null;
+                if (idx === q.answer) {
+                    btn.classList.add('correct');
+                } else if (idx === selectedIdx) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            totalAnswered++;
+            if (selectedIdx === q.answer) {
+                correctAnswers++;
+                feedback.className = 'quiz-feedback success';
+                feedback.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Correct!</strong> ${q.explanation}`;
+            } else {
+                feedback.className = 'quiz-feedback danger';
+                feedback.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Incorrect!</strong> ${q.explanation}`;
+            }
+            feedback.style.display = 'block';
+
+            updateQuizScore();
+
+            // Show Next Button or final evaluation
+            if (quizQuestionIdx < sub.quizzes.length - 1) {
+                document.getElementById('nextQuizBtn').style.display = 'inline-flex';
+            }
+        }
+
+        function nextQuizQuestion() {
+            quizQuestionIdx++;
+            renderQuiz();
+        }
+
+        function updateQuizScore() {
+            document.getElementById('quizScore').innerText = `Score: ${correctAnswers} / ${totalAnswered}`;
+        }
+
+
+        // =====================================================================
+        // 8. INTERACTIVE DYNAMIC SIMULATORS
+        // =====================================================================
+        let canvas = null;
+        let ctx = null;
+        let simInterval = null;
+
+        function initVisualization(simType) {
+            // Cancel previous loops
+            if (simAnimationId) cancelAnimationFrame(simAnimationId);
+            if (simInterval) clearInterval(simInterval);
+
+            canvas = document.getElementById('simCanvas');
+            ctx = canvas.getContext('2d');
+
+            // Adjust canvas sizing
+            const container = document.getElementById('simContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+
+            // Auto-resize listener
+            if (!window.simResizeListenerAttached) {
+                window.addEventListener('resize', () => {
+                    if (canvas && document.getElementById('simContainer')) {
+                        canvas.width = document.getElementById('simContainer').clientWidth;
+                        canvas.height = document.getElementById('simContainer').clientHeight;
+                    }
+                });
+                window.simResizeListenerAttached = true;
+            }
+
+            const controls = document.getElementById('simulatorControls');
+            controls.innerHTML = '';
+
+            // Route to specific visualizers
+            if (simType === "bootloader") drawBootloaderSim(controls);
+            else if (simType === "mmu") drawMMUSim(controls);
+            else if (simType === "scheduler") drawSchedulerSim(controls);
+            else if (simType === "interrupts") drawInterruptsSim(controls);
+            else if (simType === "drivers") drawDriversSim(controls);
+            else if (simType === "fat16") drawFAT16Sim(controls);
+            else if (simType === "wm") drawWMSim(controls);
+            else if (simType === "lwip") drawLwIPSim(controls);
+            else if (simType === "allocator") drawAllocatorSim(controls);
+            else if (simType === "ai_artifact" || simType.startsWith("custom_")) {
+                let renderFn = subsystems[currentSubsystemIdx].customRender;
+                if (!renderFn) return;
+
+                let time = 0;
+                let lastTime = performance.now();
+                function aiAnimate(t) {
+                    let dt = (t - lastTime) / 1000;
+                    lastTime = t;
+                    if (!t) dt = 0;
+                    if (dt > 0.1) dt = 0.016;
+                    time += dt;
+
+                    try {
+                        renderFn(ctx, canvas, time, dt);
+                    } catch (e) {
+                        ctx.fillStyle = "rgba(255,0,0,0.8)";
+                        ctx.font = "12px Inter";
+                        ctx.fillText("Artifact Rendering Error: " + e.message, 20, 30);
+                        return;
+                    }
+                    simAnimationId = requestAnimationFrame(aiAnimate);
+                }
+                aiAnimate(performance.now());
+            }
+        }
+
+        // A. Bootloader Visualizer
+        function drawBootloaderSim(controls) {
+            controls.innerHTML = `<button class="sim-btn" onclick="startBootloaderAnim()">Trigger Boot</button>`;
+
+            let stage = 0; // 0: Idle, 1: Reading SD, 2: Loading RAM, 3: Verifying, 4: Booted
+            let progress = 0;
+            let displayPulseX = 140;
+            let sectorsLoaded = [];
+
+            window.startBootloaderAnim = () => {
+                stage = 1;
+                progress = 0;
+                displayPulseX = 140;
+                sectorsLoaded = [];
+            };
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw SD Card (Left)
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.strokeStyle = '#2f2f2f';
+                ctx.lineWidth = 1;
+                roundRect(ctx, 40, 40, 100, 160, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#10a37f';
+                ctx.fillRect(55, 30, 12, 10);
+                ctx.fillRect(75, 30, 12, 10);
+                ctx.fillRect(95, 30, 12, 10);
+
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("SD CARD (PL181)", 50, 80);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText("KERNEL.BIN", 60, 120);
+
+                // Draw RAM (Right)
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                roundRect(ctx, canvas.width - 160, 40, 120, 160, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#a3a3a3';
+                ctx.fillText("PHYSICAL RAM", canvas.width - 140, 65);
+
+                // RAM addresses
+                ctx.fillStyle = '#4d4d4d';
+                ctx.font = '10px Fira Code, monospace';
+                ctx.fillText("0x00010000 [Loader]", canvas.width - 150, 95);
+                ctx.fillText("0x00100000 [Kernel]", canvas.width - 150, 140);
+
+                // Render transfer animation
+                if (stage === 1) {
+                    progress += 0.02;
+                    let targetX = 140 + progress * (canvas.width - 300);
+                    displayPulseX += (targetX - displayPulseX) * 0.15;
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(displayPulseX, 120, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (progress >= 1) {
+                        stage = 2;
+                        progress = 0;
+                    }
+                } else if (stage === 2) {
+                    progress += 0.05;
+                    if (progress >= 1) {
+                        sectorsLoaded.push(sectorsLoaded.length);
+                        progress = 0;
+                        if (sectorsLoaded.length >= 6) {
+                            stage = 3;
+                            progress = 0;
+                        }
+                    }
+                    ctx.fillStyle = '#10a37f';
+                    ctx.font = '11px Inter, sans-serif';
+                    ctx.fillText("Loading cluster...", canvas.width / 2 - 50, 120);
+                } else if (stage === 3) {
+                    progress += 0.02; // use progress as timer
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText("Verifying Magic...", canvas.width / 2 - 50, 120);
+                    if (progress >= 1) stage = 4;
+                } else if (stage === 4) {
+                    ctx.fillStyle = '#10a37f';
+                    ctx.fillText("Booting kernel...", canvas.width / 2 - 45, 110);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(canvas.width - 150, 145, 100, 30);
+                    ctx.fillStyle = '#000000';
+                    ctx.font = '11px Inter, sans-serif';
+                    ctx.fillText("RUNNING", canvas.width - 125, 163);
+                }
+
+                // Render blocks in RAM
+                for (let i = 0; i < sectorsLoaded.length; i++) {
+                    ctx.fillStyle = '#10a37f';
+                    ctx.fillRect(canvas.width - 150, 145 - (i * 8), 100, 6);
+                }
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // B. MMU Visualizer
+        function drawMMUSim(controls) {
+            controls.innerHTML = `
+                <select id="mmuAddrSelect" class="sim-btn" style="background: transparent; border: 1px solid #2f2f2f;" onchange="runMMUTranslation()">
+                    <option value="kernel">Virtual: 0x00100000 (Kernel)</option>
+                    <option value="framebuffer">Virtual: 0x01E00000 (Framebuffer)</option>
+                    <option value="uart">Virtual: 0x101F1000 (UART0)</option>
+                </select>
+                <button class="sim-btn" onclick="runMMUTranslation()">Translate</button>
+            `;
+
+            let animProgress = 0;
+            let currentMapping = "kernel";
+            let lastTime = performance.now();
+
+            window.runMMUTranslation = () => {
+                animProgress = 0;
+                currentMapping = document.getElementById('mmuAddrSelect').value;
+                lastTime = performance.now();
+            };
+
+            function animate(time) {
+                let dt = (time - lastTime) / 1000;
+                lastTime = time;
+                if (!time) dt = 0;
+                if (dt > 0.1) dt = 0.016; // clamp on tab switch
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Render translation line FIRST (Z-index behind boxes)
+                animProgress = Math.min(1, animProgress + dt * 2.0);
+                let easedProgress = 1 - Math.pow(1 - animProgress, 3); // easeOutCubic
+
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(190, 120);
+
+                let currentX = 190 + easedProgress * (canvas.width - 380);
+                ctx.lineTo(currentX, 120);
+                ctx.stroke();
+
+                // Tracing dot
+                ctx.fillStyle = '#10a37f';
+                ctx.beginPath();
+                ctx.arc(currentX, 120, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Left Panel: Virtual Address
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.strokeStyle = '#2f2f2f';
+                ctx.lineWidth = 1;
+                roundRect(ctx, 20, 40, 170, 160, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("VIRTUAL ADDRESS", 40, 65);
+
+                let virtAddr = "0x00100000";
+                let cachePolicy = "Cacheable + Bufferable";
+                let physAddr = "0x00100000 (RAM)";
+
+                if (currentMapping === "framebuffer") {
+                    virtAddr = "0x01E00000";
+                    cachePolicy = "Uncached (Bufferable)";
+                    physAddr = "0x01E00000 (Physical FB)";
+                } else if (currentMapping === "uart") {
+                    virtAddr = "0x101F1000";
+                    cachePolicy = "Strongly Ordered";
+                    physAddr = "0x101F1000 (UART IO)";
+                }
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '13px Fira Code, monospace';
+                ctx.fillText(virtAddr, 40, 110);
+
+                // Center Panel: Translation Table
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                roundRect(ctx, canvas.width / 2 - 85, 40, 170, 160, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("L1 PAGE TABLE (TTBR0)", canvas.width / 2 - 70, 65);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText("Entry lookup...", canvas.width / 2 - 40, 110);
+                ctx.fillStyle = '#10a37f';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.fillText("Policy: " + cachePolicy, canvas.width / 2 - 70, 140);
+
+                // Right Panel: Physical Address
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                roundRect(ctx, canvas.width - 190, 40, 170, 160, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("PHYSICAL MEMORY", canvas.width - 170, 65);
+                ctx.fillStyle = '#10a37f';
+                ctx.font = '12px Fira Code, monospace';
+                ctx.fillText(physAddr, canvas.width - 175, 110);
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // C. Scheduler Visualizer
+        function drawSchedulerSim(controls) {
+            controls.innerHTML = `
+                <button class="sim-btn" onclick="spawnSimTask()">Spawn Task</button>
+                <button class="sim-btn" onclick="toggleSchedulerPlay()"><span id="schedPlayLabel">Pause Scheduler</span></button>
+            `;
+
+            const colors = ['#ffffff', '#a3a3a3', '#10a37f', '#4d4d4d', '#ececec'];
+            let tasks = [
+                { name: "Idle Task", id: 0, state: "RUNNING", ticks: 10, color: colors[0] },
+                { name: "Doom", id: 1, state: "READY", ticks: 0, color: colors[1] },
+                { name: "File Manager", id: 2, state: "READY", ticks: 0, color: colors[2] }
+            ];
+            let activeIdx = 0;
+            let displayActiveIdx = 0; // Smooth pointer
+            let running = true;
+
+            window.spawnSimTask = () => {
+                const names = ["Snake", "Terminal", "Calculator", "System Info"];
+                const name = names[Math.floor(Math.random() * names.length)] + " " + tasks.length;
+                tasks.push({
+                    name: name,
+                    id: tasks.length,
+                    state: "READY",
+                    ticks: 0,
+                    color: colors[tasks.length % colors.length]
+                });
+            };
+
+            window.toggleSchedulerPlay = () => {
+                running = !running;
+                document.getElementById('schedPlayLabel').innerText = running ? "Pause Scheduler" : "Run Scheduler";
+            };
+
+            simInterval = setInterval(() => {
+                if (!running) return;
+
+                tasks[activeIdx].ticks--;
+                if (tasks[activeIdx].ticks <= 0) {
+                    tasks[activeIdx].state = "READY";
+                    activeIdx = (activeIdx + 1) % tasks.length;
+                    tasks[activeIdx].state = "RUNNING";
+                    tasks[activeIdx].ticks = 10;
+                }
+            }, 300);
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Smooth rotate pointer
+                let diff = activeIdx - displayActiveIdx;
+                if (Math.abs(diff) > tasks.length / 2) {
+                    if (diff > 0) displayActiveIdx += tasks.length;
+                    else displayActiveIdx -= tasks.length;
+                }
+                displayActiveIdx += (activeIdx - displayActiveIdx) * 0.15;
+
+                // Draw CPU Core (Center)
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.strokeStyle = '#2f2f2f';
+                ctx.lineWidth = 1;
+                roundRect(ctx, canvas.width / 2 - 60, 30, 120, 70, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("ARM926EJ-S CPU", canvas.width / 2 - 45, 50);
+
+                const activeTask = tasks[activeIdx];
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Inter, sans-serif';
+                ctx.fillText(activeTask.name, canvas.width / 2 - 45, 75);
+
+                // Draw Scheduler Ticks
+                ctx.fillStyle = '#10a37f';
+                ctx.font = '10px Fira Code, monospace';
+                ctx.fillText(`TimeSlice: ${activeTask.ticks}0ms`, canvas.width / 2 - 45, 92);
+
+                // Draw Circular Ready Queue
+                const radius = 70;
+                const centerX = canvas.width / 2;
+                const centerY = 185;
+
+                ctx.strokeStyle = '#2f2f2f';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Draw smooth rotating pointer
+                let pointerAngle = (displayActiveIdx / tasks.length) * Math.PI * 2;
+                ctx.strokeStyle = '#10a37f';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, pointerAngle - 0.2, pointerAngle + 0.2);
+                ctx.stroke();
+
+                tasks.forEach((t, index) => {
+                    const angle = (index / tasks.length) * Math.PI * 2;
+                    const tx = centerX + Math.cos(angle) * radius;
+                    const ty = centerY + Math.sin(angle) * radius;
+
+                    ctx.fillStyle = t.color;
+                    ctx.beginPath();
+                    ctx.arc(tx, ty, 10, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (index === activeIdx) {
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(tx, ty, 13, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '9px Inter, sans-serif';
+                    ctx.fillText(t.name.split(' ')[0], tx + 15, ty + 3);
+                });
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // D. Interrupts Visualizer
+        function drawInterruptsSim(controls) {
+            controls.innerHTML = `
+                <button class="sim-btn" onclick="triggerHardwareIRQ('timer')">Timer Tick</button>
+                <button class="sim-btn" onclick="triggerHardwareIRQ('key')">Key Press</button>
+            `;
+
+            let irqSource = null;
+            let progress = 0;
+            let handlerExecuting = false;
+            let lastTime = performance.now();
+
+            window.triggerHardwareIRQ = (src) => {
+                irqSource = src;
+                progress = 0;
+                handlerExecuting = false;
+                lastTime = performance.now();
+            };
+
+            function animate(time) {
+                let dt = (time - lastTime) / 1000;
+                lastTime = time;
+                if (!time) dt = 0;
+                if (dt > 0.1) dt = 0.016;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Devices (Left)
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.strokeStyle = '#2f2f2f';
+                ctx.lineWidth = 1;
+                roundRect(ctx, 20, 40, 100, 50, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("SP804 Timer", 35, 70);
+
+                roundRect(ctx, 20, 140, 100, 50, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#a3a3a3';
+                ctx.fillText("PL050 Keypad", 30, 170);
+
+                // VIC (Center)
+                roundRect(ctx, canvas.width / 2 - 60, 80, 120, 80, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("VIC CONTROLLER", canvas.width / 2 - 45, 110);
+                ctx.font = '10px Fira Code, monospace';
+                ctx.fillStyle = '#10a37f';
+                ctx.fillText("VICVECTADDR", canvas.width / 2 - 35, 135);
+
+                // CPU Vector (Right)
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                roundRect(ctx, canvas.width - 150, 80, 130, 80, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("CPU VECTOR TABLE", canvas.width - 140, 105);
+                ctx.fillStyle = '#10a37f';
+                ctx.font = '11px Fira Code, monospace';
+                ctx.fillText("irq_dispatch()", canvas.width - 130, 135);
+
+                // Draw connection pulses
+                if (irqSource) {
+                    progress += dt * 1.5;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+
+                    let startX = 120;
+                    let startY = irqSource === "timer" ? 65 : 165;
+                    let targetX = canvas.width / 2 - 60;
+                    let targetY = 120;
+
+                    // Trace path to VIC
+                    if (progress <= 0.5) {
+                        let currentX = startX + (progress * 2) * (targetX - startX);
+                        let currentY = startY + (progress * 2) * (targetY - startY);
+                        ctx.beginPath();
+                        ctx.moveTo(startX, startY);
+                        ctx.lineTo(currentX, currentY);
+                        ctx.stroke();
+                        ctx.fillStyle = '#10a37f';
+                        ctx.beginPath();
+                        ctx.arc(currentX, currentY, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (progress <= 1) {
+                        // Trace path to CPU Vector
+                        ctx.beginPath();
+                        ctx.moveTo(startX, startY);
+                        ctx.lineTo(targetX, targetY);
+                        ctx.stroke();
+
+                        let cpuX = canvas.width / 2 + 60;
+                        let cpuTarget = canvas.width - 150;
+                        let currentX = cpuX + ((progress - 0.5) * 2) * (cpuTarget - cpuX);
+
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.moveTo(cpuX, 120);
+                        ctx.lineTo(currentX, 120);
+                        ctx.stroke();
+                        ctx.fillStyle = '#10a37f';
+                        ctx.beginPath();
+                        ctx.arc(currentX, 120, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        handlerExecuting = true;
+                    }
+
+                    if (handlerExecuting) {
+                        ctx.fillStyle = 'rgba(16, 163, 127, 0.2)'; // Success glow
+                        ctx.fillRect(canvas.width - 150, 80, 130, 80);
+                        ctx.fillStyle = '#10a37f';
+                        ctx.font = '11px Inter, sans-serif';
+                        ctx.fillText("ISR EXECUTED!", canvas.width - 125, 155);
+
+                        setTimeout(() => { irqSource = null; handlerExecuting = false; }, 800);
+                    }
+                }
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // E. Drivers Visualizer
+        function drawDriversSim(controls) {
+            controls.innerHTML = `
+                <div style="font-size: 12px; color: #a3a3a3; font-family: Inter, sans-serif;">
+                    Type inside the input to simulate KMI_DATA MMIO register buffer:
+                </div>
+                <input type="text" id="driverKbInput" class="api-input" style="width: 200px" placeholder="Type here..." oninput="simulateDriverRegs()">
+            `;
+
+            let registers = {
+                KMI_CR: "0x00000004 (Enabled)",
+                KMI_STAT: "0x00000000 (Empty)",
+                KMI_DATA: "0x00000000"
+            };
+
+            window.simulateDriverRegs = () => {
+                const val = document.getElementById('driverKbInput').value;
+                if (val.length > 0) {
+                    const char = val[val.length - 1];
+                    const sc = char.charCodeAt(0).toString(16).toUpperCase();
+                    registers.KMI_STAT = "0x00000010 (RXFULL)";
+                    registers.KMI_DATA = `0x000000${sc} ('${char}')`;
+                } else {
+                    registers.KMI_STAT = "0x00000000 (Empty)";
+                    registers.KMI_DATA = "0x00000000";
+                }
+            };
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Display registers in MMIO Block
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.strokeStyle = '#2f2f2f';
+                ctx.lineWidth = 1;
+                roundRect(ctx, 40, 40, canvas.width - 80, 160, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillText("PL050 MEMORY-MAPPED REGISTERS (BASE: 0x10006000)", 60, 65);
+
+                ctx.font = '13px Fira Code, monospace';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`KMI_CR   [0x10006000] : ${registers.KMI_CR}`, 60, 105);
+                ctx.fillStyle = '#4d4d4d';
+                ctx.fillText(`KMI_STAT [0x10006004] : ${registers.KMI_STAT}`, 60, 135);
+                ctx.fillStyle = '#10a37f';
+                ctx.fillText(`KMI_DATA [0x10006008] : ${registers.KMI_DATA}`, 60, 165);
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // F. FAT16 Visualizer
+        function drawFAT16Sim(controls) {
+            controls.innerHTML = `<button class="sim-btn" onclick="simulateClusterChain()">Traversal Chain</button>`;
+
+            let activeNode = -1;
+            let displayActiveX = 40; // For smooth highlight moving
+
+            window.simulateClusterChain = () => {
+                activeNode = 0;
+                displayActiveX = 40;
+                let interval = setInterval(() => {
+                    activeNode++;
+                    if (activeNode >= 4) {
+                        clearInterval(interval);
+                        setTimeout(() => { activeNode = -1; }, 1000);
+                    }
+                }, 800);
+            };
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillStyle = '#a3a3a3';
+                ctx.fillText("FAT16 File Cluster Chains (BG.BMP: Size 614KB)", 40, 30);
+
+                // Clusters
+                const nodes = [
+                    { label: "Root Record", text: "BG.BMP: Clus 5" },
+                    { label: "Cluster 5", text: "Blocks [0-32KB]" },
+                    { label: "Cluster 6", text: "Blocks [32-64KB]" },
+                    { label: "Cluster 7", text: "End (0xFFFF)" }
+                ];
+
+                if (activeNode >= 0 && activeNode < 4) {
+                    let targetX = 40 + activeNode * (canvas.width - 120) / 3;
+                    displayActiveX += (targetX - displayActiveX) * 0.15;
+                    ctx.fillStyle = 'rgba(16, 163, 127, 0.2)'; // glowing highlight
+                    roundRect(ctx, displayActiveX - 5, 75, 110, 70, 6);
+                    ctx.fill();
+                }
+
+                nodes.forEach((n, idx) => {
+                    let x = 40 + idx * (canvas.width - 120) / 3;
+                    let y = 100;
+
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.strokeStyle = (activeNode === idx) ? '#10a37f' : '#2f2f2f';
+                    ctx.lineWidth = 1;
+                    roundRect(ctx, x, y - 20, 100, 60, 6);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 11px Inter, sans-serif';
+                    ctx.fillText(n.label, x + 8, y + 5);
+                    ctx.fillStyle = '#a3a3a3';
+                    ctx.font = '9px Fira Code, monospace';
+                    ctx.fillText(n.text, x + 8, y + 25);
+
+                    // Draw connecting arrows
+                    if (idx < nodes.length - 1) {
+                        ctx.strokeStyle = '#4d4d4d';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x + 100, y + 10);
+                        ctx.lineTo(x + (canvas.width - 120) / 3, y + 10);
+                        ctx.stroke();
+
+                        // Arrow head
+                        ctx.beginPath();
+                        ctx.moveTo(x + (canvas.width - 120) / 3, y + 10);
+                        ctx.lineTo(x + (canvas.width - 120) / 3 - 5, y + 5);
+                        ctx.lineTo(x + (canvas.width - 120) / 3 - 5, y + 15);
+                        ctx.fill();
+                    }
+                });
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // G. Window Manager Visualizer
+        function drawWMSim(controls) {
+            controls.innerHTML = `<span style="font-size: 11px; color: #a3a3a3; font-family: Inter, sans-serif;">Drag windows inside the simulated screen:</span>`;
+
+            let wins = [
+                { x: 30, y: 50, targetX: 30, targetY: 50, w: 120, h: 90, title: "DOOM" },
+                { x: 140, y: 90, targetX: 140, targetY: 90, w: 140, h: 100, title: "File Manager" },
+                { x: 220, y: 40, targetX: 220, targetY: 40, w: 130, h: 80, title: "Terminal" }
+            ];
+            let activeWin = null;
+            let dragOffset = { x: 0, y: 0 };
+
+            canvas.onmousedown = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+
+                for (let i = wins.length - 1; i >= 0; i--) {
+                    let w = wins[i];
+                    if (mx >= w.x && mx < w.x + w.w && my >= w.y && my < w.y + w.h) {
+                        activeWin = w;
+                        wins.splice(i, 1);
+                        wins.push(w);
+                        dragOffset.x = mx - w.targetX;
+                        dragOffset.y = my - w.targetY;
+                        break;
+                    }
+                }
+            };
+
+            canvas.onmousemove = (e) => {
+                if (!activeWin) return;
+                const rect = canvas.getBoundingClientRect();
+                activeWin.targetX = (e.clientX - rect.left) - dragOffset.x;
+                activeWin.targetY = (e.clientY - rect.top) - dragOffset.y;
+            };
+
+            canvas.onmouseup = () => { activeWin = null; };
+            canvas.onmouseleave = () => { activeWin = null; };
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw Windows
+                wins.forEach(w => {
+                    // Smooth spring interpolation
+                    w.x += (w.targetX - w.x) * 0.2;
+                    w.y += (w.targetY - w.y) * 0.2;
+
+                    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                    ctx.strokeStyle = '#2f2f2f';
+                    ctx.lineWidth = 1;
+
+                    // Add subtle shadow
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowOffsetY = 4;
+
+                    roundRect(ctx, w.x, w.y, w.w, w.h, 6);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // reset shadow
+                    ctx.shadowColor = 'transparent';
+
+                    // Title bar line
+                    ctx.strokeStyle = '#2f2f2f';
+                    ctx.beginPath();
+                    ctx.moveTo(w.x, w.y + 20);
+                    ctx.lineTo(w.x + w.w, w.y + 20);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '500 11px Inter, sans-serif';
+                    ctx.fillText(w.title, w.x + 8, w.y + 14);
+                });
+
+                ctx.fillStyle = 'rgba(16, 163, 127, 0.15)';
+                ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+                ctx.fillStyle = '#10a37f';
+                ctx.font = '10px Fira Code, monospace';
+                ctx.fillText("COMPOSITOR ACTIVE: z-list composited off-screen.", 20, canvas.height - 10);
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // H. lwIP Networking Visualizer
+        function drawLwIPSim(controls) {
+            controls.innerHTML = `<button class="sim-btn" onclick="startPacketTx()">Fetch HTTP</button>`;
+
+            let packetY = 50;
+            let displayPacketY = 50;
+            let packetActive = false;
+            let lastTime = performance.now();
+
+            window.startPacketTx = () => {
+                packetActive = true;
+                packetY = 50;
+                displayPacketY = 50;
+                lastTime = performance.now();
+            };
+
+            function animate(time) {
+                let dt = (time - lastTime) / 1000;
+                lastTime = time;
+                if (!time) dt = 0;
+                if (dt > 0.1) dt = 0.016;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw Stack Layers
+                const layers = [
+                    { name: "Application (HTTP API)", y: 50 },
+                    { name: "Transport (TCP Stack)", y: 100 },
+                    { name: "Network (IP Routing)", y: 150 },
+                    { name: "Link (SMC91C111 Driver)", y: 200 }
+                ];
+
+                layers.forEach(l => {
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.strokeStyle = '#2f2f2f';
+                    ctx.lineWidth = 1;
+                    roundRect(ctx, canvas.width / 2 - 120, l.y - 15, 240, 30, 6);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#a3a3a3';
+                    ctx.font = '11px Inter, sans-serif';
+                    ctx.fillText(l.name, canvas.width / 2 - 80, l.y + 4);
+                });
+
+                // Packet animation
+                if (packetActive) {
+                    packetY += dt * 150; // pixels per second
+                    displayPacketY += (packetY - displayPacketY) * 0.2; // smooth trailing
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2, displayPacketY, 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Glow
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2, displayPacketY, 10, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (displayPacketY >= 230) {
+                        packetActive = false;
+                    }
+                }
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // I. Allocator Visualizer
+        function drawAllocatorSim(controls) {
+            controls.innerHTML = `
+                <button class="sim-btn" onclick="simAllocate()">Allocate Memory</button>
+                <button class="sim-btn" onclick="simFree()">Free All (Reset)</button>
+            `;
+
+            let memoryBlocks = [];
+            let totalMemory = 800; // Visual units
+            let currentPointer = 0;
+            let displayPointer = 0;
+            const modernColors = ['#ffffff', '#a3a3a3', '#10a37f', '#4d4d4d', '#ececec'];
+
+            window.simAllocate = () => {
+                let size = Math.floor(Math.random() * 80) + 20; // 20 to 100
+                if (currentPointer + size > totalMemory) {
+                    alert("Out of Memory! (Kernel Panic)");
+                    return;
+                }
+                memoryBlocks.push({
+                    x: currentPointer,
+                    w: 0,
+                    targetW: size,
+                    color: modernColors[memoryBlocks.length % modernColors.length]
+                });
+                currentPointer += size;
+            };
+
+            window.simFree = () => {
+                memoryBlocks = [];
+                currentPointer = 0;
+            };
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                displayPointer += (currentPointer - displayPointer) * 0.15;
+
+                // Draw Heap Container
+                let padding = 40;
+                let heapWidth = canvas.width - (padding * 2);
+                let heapHeight = 60;
+                let heapY = 100;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.strokeStyle = '#2f2f2f';
+                ctx.lineWidth = 1;
+                roundRect(ctx, padding, heapY, heapWidth, heapHeight, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#a3a3a3';
+                ctx.font = '12px Inter, sans-serif';
+                ctx.fillText("SYSTEM HEAP (0x00200000 - 0x01E00000)", padding, heapY - 10);
+
+                // Draw Blocks
+                let visualRatio = heapWidth / totalMemory;
+
+                memoryBlocks.forEach(b => {
+                    b.w += (b.targetW - b.w) * 0.15; // Smooth interpolation
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(padding + (b.x * visualRatio), heapY + 1, b.w * visualRatio, heapHeight - 2);
+
+                    // Separator line
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(padding + (b.x * visualRatio) + (b.w * visualRatio), heapY + 1);
+                    ctx.lineTo(padding + (b.x * visualRatio) + (b.w * visualRatio), heapY + heapHeight - 1);
+                    ctx.stroke();
+                });
+
+                // Draw Bump Pointer
+                let ptrX = padding + (displayPointer * visualRatio);
+                ctx.strokeStyle = '#10a37f';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ptrX, heapY - 10);
+                ctx.lineTo(ptrX, heapY + heapHeight + 10);
+                ctx.stroke();
+
+                ctx.fillStyle = '#10a37f';
+                ctx.font = '11px Fira Code, monospace';
+                ctx.fillText("heap_ptr", ptrX - 25, heapY + heapHeight + 25);
+
+                simAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // Helper: drawing rounded rectangles in Canvas
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function varColor(varName) {
+            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        }
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+
+        function filterConcepts() {
+            const term = document.getElementById('conceptSearch').value.toLowerCase();
+            const nav = document.getElementById('conceptNav');
+            const btns = nav.getElementsByClassName('concept-btn');
+            for (let btn of btns) {
+                const text = btn.textContent.toLowerCase();
+                if (text.includes(term)) {
+                    btn.style.display = 'flex';
+                } else {
+                    btn.style.display = 'none';
+                }
+            }
+        }
+
+        function copyActiveCode() {
+            const activeTab = document.querySelector('.code-tab.active');
+            if (!activeTab) return;
+            const filename = activeTab.textContent.trim();
+
+            const currentSubsystem = subsystems.find(s => s.id === window.currentConceptId);
+            if (!currentSubsystem) return;
+
+            const file = currentSubsystem.files.find(f => f.name === filename);
+            if (!file) return;
+
+            navigator.clipboard.writeText(file.code).then(() => {
+                const btn = document.getElementById('copyCodeBtn');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                btn.style.backgroundColor = varColor('--success');
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.style.backgroundColor = '';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+
+</html>

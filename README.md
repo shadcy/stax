@@ -15,6 +15,11 @@
 
 ---
 
+> [!NOTE]
+> **T-OS turns abstract OS/CS concepts (memory management, scheduling, interrupts, drivers) into a real, runnable system students can explore — paired with an AI Concept Explorer that explains the underlying code in plain language.**
+>
+> Learn and explore with our interactive [AI Concept Explorer](education/index.html) (self-contained, opens directly in browser).
+
 Hey there! Welcome to T-OS.
 
 I started this project because I believe the best way to really understand computers isn't just to read textbook theory—it's to roll up your sleeves and build the layers yourself. T-OS is a custom, bare-metal operating system built entirely from scratch. What started as a simple terminal experiment to learn low-level systems, graphics, and memory management has evolved into something I'm really proud of. 
@@ -31,6 +36,22 @@ Lately, I've completely revamped the OS! It now features a proper **Compositing 
 - **Networking:** Experiments with lwIP for networking connectivity.
 
 ## Screenshots
+
+### T-OS AI Education Platform
+
+**Interactive Concept Dashboard**
+<br>
+![Education Platform - Task Scheduler](readme-assets/edu-1.png)
+
+**Dynamic Simulators & Live AI Tutors**
+<br>
+![Education Platform - FAT16](readme-assets/edu-2.png)
+<br>
+![Education Platform - Packet Flow](readme-assets/edu-3.png)
+<br>
+![Education Platform - Bootloader](readme-assets/edu-4.png)
+<br>
+![Education Platform - Live Explanations](readme-assets/edu-5.png)
 
 ### Desktop & Window Management
 ![Desktop Environment](readme-assets/desktop.png)

@@ -20,6 +20,7 @@ typedef struct {
 void command_init(void);
 void command_process(char *input);
 void command_show_help(void);
+int command_register(const char *name, const char *desc, cmd_func_t func);
 
 /* Individual command functions */
 void cmd_help(int argc, char *argv[]);

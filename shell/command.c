@@ -19,27 +19,28 @@
 /* External variables */
 extern volatile unsigned int tick_count;
 
-/* Command table */
-static const command_t commands[] = {
-    {"help",    "Show available commands",           cmd_help},
-    {"clear",   "Clear screen",                        cmd_clear},
-    {"status",  "Show system status",                  cmd_status},
-    {"tasks",   "Show task information",               cmd_tasks},
-    {"fs",      "Show filesystem information",          cmd_fs},
-    {"ls",      "List dir contents (use --size for showing size)", cmd_ls},
-    {"cd",      "Change dir", cmd_cd},
-    {"pwd",     "Print working dir", cmd_pwd},
-    {"touch",   "Create empty file", cmd_touch},
-    {"rm",      "Remove file or dir", cmd_rm},
-    {"cat",     "Print file contents", cmd_cat},
-    {"mkdir",   "Create dir", cmd_mkdir},
-    {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
-    {"game",    "Play a game (use --doom, --doom2, --snake, --slime)", cmd_game},
-    {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
-    {"read",    "Read info (use --mem, --img <img>)", cmd_read},
-    {"test",    "Run tests (use --fb, --game)", cmd_test},
-    {NULL,      NULL,                                NULL}
-};
+#define MAX_COMMANDS 64
+static command_t commands[MAX_COMMANDS];
+static int num_commands = 0;
+
+int command_register(const char *name, const char *desc, cmd_func_t func) {
+    if (num_commands >= MAX_COMMANDS) {
+        return -1; // Registry full
+    }
+    
+    // Check for duplicates
+    for (int i = 0; i < num_commands; i++) {
+        if (strcmp(commands[i].name, name) == 0) {
+            return -1; // Already registered
+        }
+    }
+    
+    commands[num_commands].name = name;
+    commands[num_commands].desc = desc;
+    commands[num_commands].func = func;
+    num_commands++;
+    return 0;
+}
 
 void cmd_game(int argc, char *argv[])
 {
@@ -131,7 +132,7 @@ void cmd_help(int argc, char *argv[])
     kputs("  COMMAND    | DESCRIPTION\n");
     kputs("------------------------------------------------\n");
     
-    for (int i = 0; commands[i].name != NULL; i++) {
+    for (int i = 0; i < num_commands; i++) {
         kputs("  ");
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
         kputs(commands[i].name);
@@ -444,7 +445,7 @@ void command_process(char *input)
     }
     
     /* Find and execute command */
-    for (int i = 0; commands[i].name != NULL; i++) {
+    for (int i = 0; i < num_commands; i++) {
         if (strcmp(argv[0], commands[i].name) == 0) {
             commands[i].func(argc, argv);
             return;
@@ -459,6 +460,24 @@ void command_process(char *input)
 
 void command_init(void)
 {
+    command_register("help",    "Show available commands",           cmd_help);
+    command_register("clear",   "Clear screen",                        cmd_clear);
+    command_register("status",  "Show system status",                  cmd_status);
+    command_register("tasks",   "Show task information",               cmd_tasks);
+    command_register("fs",      "Show filesystem information",          cmd_fs);
+    command_register("ls",      "List dir contents (use --size for showing size)", cmd_ls);
+    command_register("cd",      "Change dir", cmd_cd);
+    command_register("pwd",     "Print working dir", cmd_pwd);
+    command_register("touch",   "Create empty file", cmd_touch);
+    command_register("rm",      "Remove file or dir", cmd_rm);
+    command_register("cat",     "Print file contents", cmd_cat);
+    command_register("mkdir",   "Create dir", cmd_mkdir);
+    command_register("nano",    "Edit text file (ESC to save & quit)", cmd_nano);
+    command_register("game",    "Play a game (use --doom, --doom2, --snake, --slime)", cmd_game);
+    command_register("slime",   "Play Slime Escape (use --debug)", cmd_slime);
+    command_register("read",    "Read info (use --mem, --img <img>)", cmd_read);
+    command_register("test",    "Run tests (use --fb, --game)", cmd_test);
+
     kputs("Command system initialized\n");
 }
 

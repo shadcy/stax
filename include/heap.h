@@ -9,8 +9,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* MUST match `. += 65536` in linker.ld.in — keep both in sync */
-#define HEAP_SIZE  (64 * 1024)  /* 64 KB heap */
+/* MUST match `. += 1048576` in linker.ld.in — keep both in sync */
+#define HEAP_SIZE  1048576  /* 1 MB heap */
 
 typedef struct block {
     struct block *next;
