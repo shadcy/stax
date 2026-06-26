@@ -1,8 +1,8 @@
-# Graphical DOOM for TIOS
+# Graphical DOOM for STAX
 
 ## Overview
 
-TIOS now includes TWO versions of DOOM:
+STAX now includes TWO versions of DOOM:
 
 1. **ASCII DOOM** (`doom` command) - Text-based raycasting using ASCII characters
 2. **Graphical DOOM** (`doomgfx` command) - True pixel-based 3D rendering using the framebuffer
@@ -30,10 +30,10 @@ This will open a QEMU window with:
 
 ### Step 3: Launch Graphical DOOM
 
-At the TIOS prompt, type:
+At the STAX prompt, type:
 
 ```
-tios> doomgfx
+STAX> doomgfx
 ```
 
 ### Step 4: Play!
@@ -185,7 +185,7 @@ Projects like **doomgeneric** make this possible - they provide a minimal DOOM p
 - `DG_GetTicksMs()` - Get time
 - `DG_GetKey()` - Get input
 
-This could be a future project for TIOS!
+This could be a future project for STAX!
 
 ## References
 
@@ -198,4 +198,4 @@ This could be a future project for TIOS!
 
 - Original DOOM by id Software (1993)
 - Raycasting technique inspired by Wolfenstein 3D
-- Built for TIOS educational operating system
+- Built for STAX educational operating system

@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — doom_gfx.c
+ * STAX — doom_gfx.c
  * Graphical DOOM-like raycasting game using framebuffer
  * 
  * Controls:

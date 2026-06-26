@@ -369,7 +369,7 @@ void D_DoomLoop (void)
 
 void D_DoomStep (void)
 {
-    if (tios_doom_quit_requested)
+    if (stax_doom_quit_requested)
         return;
 
 	// frame syncronous IO operations
@@ -567,7 +567,7 @@ void IdentifyVersion (void)
 {
     int i;
 
-    /* IWAD path comes from argv (see tios_platform doom_engine_run). */
+    /* IWAD path comes from argv (see stax_platform doom_engine_run). */
     if (myargc >= 2)
 	D_AddFile (myargv[1]);
 

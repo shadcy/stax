@@ -23,7 +23,7 @@
 #ifndef __M_BBOX__
 #define __M_BBOX__
 
-/* values.h removed, provided by tios_compat.h */
+/* values.h removed, provided by stax_compat.h */
 
 #include "m_fixed.h"
 

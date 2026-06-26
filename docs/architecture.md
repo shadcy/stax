@@ -1,12 +1,12 @@
-# T-OS System Architecture
+# STAX System Architecture
 
-T-OS is a lightweight, bare-metal operating system built for the ARM926EJ-S architecture, specifically targeting the VersatilePB board (run via QEMU). 
+STAX is a lightweight, bare-metal operating system built for the ARM926EJ-S architecture, specifically targeting the VersatilePB board (run via QEMU). 
 
 Its design philosophy focuses on simplicity, precise memory management, and a robust boot flow utilizing a true FAT16 filesystem.
 
 ## 1. High-Level Boot Flow
 
-T-OS utilizes a two-stage boot sequence that avoids legacy x86 BIOS/MBR conventions, operating natively as an ARM payload:
+STAX utilizes a two-stage boot sequence that avoids legacy x86 BIOS/MBR conventions, operating natively as an ARM payload:
 
 1. **Stage 1 (QEMU Injection):** QEMU's `-kernel` flag directly injects `bootloader.bin` into physical RAM at `0x00010000` and passes execution control.
 2. **Stage 2 (FAT16 Bootloader):** The bootloader initializes the PL181 SD Card interface, reads the `os.bin` disk image, and parses its FAT16 filesystem. It searches the Root Directory for `KERNEL.BIN` and traces its cluster chain to load the kernel into memory at the 1MB mark (`0x00100000`).
@@ -15,7 +15,7 @@ T-OS utilizes a two-stage boot sequence that avoids legacy x86 BIOS/MBR conventi
 ```mermaid
 flowchart TD
     subgraph Booting["Boot Sequence"]
-        QEMU["Stage 1: QEMU Direct Boot<br/>(Injects Bootloader at 0x10000)"] --> BL["Stage 2: TIOS Bootloader<br/>(Parses FAT16 via PL181 SD)"]
+        QEMU["Stage 1: QEMU Direct Boot<br/>(Injects Bootloader at 0x10000)"] --> BL["Stage 2: STAX Bootloader<br/>(Parses FAT16 via PL181 SD)"]
         BL --> KERN["Stage 3: Kernel Execution<br/>(Loaded at 0x100000)"]
     end
 

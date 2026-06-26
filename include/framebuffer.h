@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — framebuffer.h
+ * STAX — framebuffer.h
  at this point we only limited to 640 x 480 16 bit color depth
 i guess we can increase this to 1280x720 16 bit color depth but obviously find need to make sys optimized for
 all the nedded stuff.

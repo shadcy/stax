@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — app_terminal.c
+ * STAX — app_terminal.c
  * Standalone per-window terminal — compact 32-row buffer so it fits in a
  * 64 KB heap alongside file-manager, editor, and window structs.
  * ============================================================================ */
@@ -64,7 +64,7 @@ static void term_init(terminal_state_t *st) {
             st->text[r][c]  = 0;
             st->color[r][c] = COLOR_WHITE;
         }
-    term_puts(st, "T-OS Terminal v1.0\n", rgb565(100, 220, 100));
+    term_puts(st, "STAX Terminal v1.0\n", rgb565(100, 220, 100));
     term_puts(st, "Commands: ls, mkdir, cat, help, cls ...\n", rgb565(180, 180, 180));
     term_puts(st, "Ctrl+S saves editor files.\n\n", rgb565(140, 140, 160));
 }
@@ -131,7 +131,7 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     fb_drawline(cx, bar_y, cx + cw - 1, bar_y, rgb565(50, 160, 50));
 
     /* Draw prompt + input */
-    const char *prompt = "tios:/> ";
+    const char *prompt = "STAX:/> ";
     int px = cx + 4, py2 = bar_y + 3;
     for (const char *p = prompt; *p; p++) {
         draw_glyph(fbuf, px, py2, *p, rgb565(80, 200, 80));
@@ -153,7 +153,7 @@ void terminal_key_event(struct window *win, char c) {
         st->input[st->input_pos] = '\0';
 
         /* Echo command into text buffer */
-        term_puts(st, "tios:/> ", rgb565(80, 200, 80));
+        term_puts(st, "STAX:/> ", rgb565(80, 200, 80));
         term_puts(st, st->input, COLOR_WHITE);
         term_putc(st, '\n', COLOR_WHITE);
 

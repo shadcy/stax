@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — timer.h
+ * STAX — timer.h
  * ARM SP804 Dual Timer driver interface (VersatilePB)
  *
  * Base address : 0x101E2000

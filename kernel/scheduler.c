@@ -1,6 +1,6 @@
 #include <stddef.h>
 /* ============================================================================
- * TIOS — scheduler.c
+ * STAX — scheduler.c
  * Minimal preemptive round-robin scheduler implementation
  * ============================================================================ */
 

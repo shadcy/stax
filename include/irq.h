@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — irq.h
+ * STAX — irq.h
  * High-level IRQ management layer
  *
  * irq_dispatch() is called from the assembly stub in irq.s.

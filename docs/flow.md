@@ -1,6 +1,6 @@
-# T-OS Complete System Flow
+# STAX Complete System Flow
 
-This document is a step-by-step walkthrough of every stage of T-OS — from typing `make qemu` to the interactive shell running in QEMU. Nothing is skipped.
+This document is a step-by-step walkthrough of every stage of STAX — from typing `make qemu` to the interactive shell running in QEMU. Nothing is skipped.
 
 ---
 
@@ -205,12 +205,12 @@ This loads the complete `KERNEL.BIN` into RAM starting at `0x100000`.
 
 #### Phase D: Kernel Integrity Verification
 
-Before jumping, the bootloader checks for the magic string `"TIOS"` at byte offset 4 in the loaded kernel binary (`0x100004`). This works because `kernel/startup.s` places `.ascii "TIOS"` at exactly offset 4 (right after the first 4-byte branch instruction `b reset_handler`):
+Before jumping, the bootloader checks for the magic string `"STAX"` at byte offset 4 in the loaded kernel binary (`0x100004`). This works because `kernel/startup.s` places `.ascii "STAX"` at exactly offset 4 (right after the first 4-byte branch instruction `b reset_handler`):
 
 ```asm
 _start:
     b reset_handler   @ 4 bytes: branch instruction
-    .ascii "TIOS"     @ 4 bytes: magic at 0x100004
+    .ascii "STAX"     @ 4 bytes: magic at 0x100004
 ```
 
 If the magic matches → prints `"OK"` and proceeds.  
@@ -236,7 +236,7 @@ Execution starts at `_start` in `startup.s`, which is placed at `0x100000` by th
 ```asm
 _start:
     b reset_handler    @ skip past magic
-    .ascii "TIOS"      @ magic at 0x100004 (used by bootloader)
+    .ascii "STAX"      @ magic at 0x100004 (used by bootloader)
 ```
 
 ### Step 2.2 — Set Kernel Stack Pointer
@@ -429,7 +429,7 @@ Back in `kernel_main()`, after all subsystems are initialized:
 command_init();   // prints "Command system initialized"
 
 while (1) {
-    kputs("tios> ");              // print prompt
+    kputs("STAX> ");              // print prompt
     char c = kgetc();            // poll UART RX register (non-blocking)
     if (c == '\r' || c == '\n')
         command_process(input);  // parse and dispatch
@@ -518,7 +518,7 @@ make qemu
      ├─ Read FAT Boot Sector (LBA 0) → parse BPB
      ├─ Scan Root Directory → find "KERNEL  BIN"
      ├─ Follow FAT cluster chain → load all clusters → 0x100000
-     ├─ Verify magic "TIOS" at 0x100004
+     ├─ Verify magic "STAX" at 0x100004
      └─ Jump to 0x100000
            │
            ▼

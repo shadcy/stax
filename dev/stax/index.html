@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>T-OS Developer Toolkit</title>
+    <title>STAX Developer Toolkit</title>
     <style>
         :root {
             --bg: #1a1b26;
@@ -123,14 +123,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>T-OS Developer Toolkit</h1>
-        <p>This toolkit contains everything you need to create compatible assets and UI components for T-OS.</p>
+        <h1>STAX Developer Toolkit</h1>
+        <p>This toolkit contains everything you need to create compatible assets and UI components for STAX.</p>
 
         <!-- 16-Bit BMP Maker -->
         <div class="card">
             <h2>1. 16-Bit BMP Image Converter</h2>
             <div class="info-box">
-                T-OS's `bmp.c` strictly requires 16-bit BMP files (RGB565 format). Use this tool to upload a standard PNG/JPG and convert it into a T-OS compatible `.BMP` binary file.
+                STAX's `bmp.c` strictly requires 16-bit BMP files (RGB565 format). Use this tool to upload a standard PNG/JPG and convert it into a STAX compatible `.BMP` binary file.
             </div>
             
             <label class="file-label">
@@ -150,7 +150,7 @@
         <div class="card">
             <h2>2. Game Engine Sprite Generator</h2>
             <div class="info-box">
-                Use this grid to draw 16x16 pixel-art sprites for games like Sokoban or Slime. T-OS uses string arrays for lightweight binary-free sprites (e.g. '@' for Hat, '#' for Eye, '.' for transparent).
+                Use this grid to draw 16x16 pixel-art sprites for games like Sokoban or Slime. STAX uses string arrays for lightweight binary-free sprites (e.g. '@' for Hat, '#' for Eye, '.' for transparent).
             </div>
             
             <div class="palette" id="paletteContainer">
@@ -167,7 +167,7 @@
 
         <!-- UI Instructions -->
         <div class="card">
-            <h2>3. T-OS UI Component Guidelines</h2>
+            <h2>3. STAX UI Component Guidelines</h2>
             <h3>Creating Windows</h3>
             <p>To register a new app inside the Window Manager (`wm.c`), use:</p>
             <pre>window_t *win = wm_add_window(100, 100, 400, 300, "My App", myapp_draw_window);
@@ -191,7 +191,7 @@ if (win) {
             
             <h3>Memory Safe Practices</h3>
             <div class="info-box">
-                Always check if `win->app_data` is initialized. If not, allocate it via `kmalloc()`. Since T-OS currently uses a Bump Allocator, do not repeatedly allocate large structures in update loops as `kfree()` may only reclaim memory effectively if it's the last block!
+                Always check if `win->app_data` is initialized. If not, allocate it via `kmalloc()`. Since STAX currently uses a Bump Allocator, do not repeatedly allocate large structures in update loops as `kfree()` may only reclaim memory effectively if it's the last block!
             </div>
         </div>
     </div>
@@ -275,9 +275,9 @@ if (win) {
                     
                     const color16 = rgb565(r, g, b);
                     // Standard 16-bit BMP on Windows expects 0RRRRRGGGGGBBBBB format (xRGB1555), 
-                    // BUT T-OS expects RGB565 format (RRRRRGGGGGGBBBBB) directly.
+                    // BUT STAX expects RGB565 format (RRRRRGGGGGGBBBBB) directly.
                     // The standard compression=0 16-bit BMP actually uses XRGB1555 usually,
-                    // However, we will write RGB565 and since T-OS directly dumps to fb, it works!
+                    // However, we will write RGB565 and since STAX directly dumps to fb, it works!
                     view.setUint16(offset + (x * 2), color16, true);
                 }
                 offset += rowSize; // padding is naturally skipped as we write strictly offset + rowSize

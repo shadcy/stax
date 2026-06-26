@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — command.c
+ * STAX — command.c
  * Interactive command system
  * ============================================================================ */
 
@@ -188,7 +188,7 @@ void cmd_status(int argc, char *argv[])
     (void)argc; (void)argv;
     kputs("System Status:\n");
     kputs("=============\n");
-    kputs("Kernel: TIOS Phase 6e\n");
+    kputs("Kernel: STAX Phase 6e\n");
     kputs("CPU: ARM926EJ-S\n");
     kputs("Board: VersatilePB\n");
     kputs("Uptime: ");
@@ -474,7 +474,7 @@ void cmd_snake(int argc, char *argv[])
     gfx_console_init();
     
     kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
+    kputs("  STAX Kernel - back in shell\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
 }
@@ -614,7 +614,7 @@ void cmd_viewimg(int argc, char *argv[])
     /* Re-initialize console to clear screen and restore the shell layout */
     gfx_console_init();
     kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
+    kputs("  STAX Kernel - back in shell\n");
     kputs("========================================\n");
     kputs("Type 'help' for available commands\n");
 }
@@ -966,7 +966,7 @@ void cmd_nano(int argc, char *argv[])
     
     gfx_clear();
     kputs("========================================\n");
-    kputs("  TIOS Kernel - back in shell\n");
+    kputs("  STAX Kernel - back in shell\n");
     kputs("========================================\n");
     if (res == FR_OK && bw == (UINT)len) {
         kputs("File saved successfully.\n");

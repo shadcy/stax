@@ -1,5 +1,5 @@
 # =============================================================================
-# TIOS — Makefile
+# STAX — Makefile
 # Builds the bootloader and kernel into a raw binary for QEMU or real hardware.
 # =============================================================================
 
@@ -131,7 +131,7 @@ KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 
 # em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
-# Filter out the original platform files, we use tios_platform.c instead
+# Filter out the original platform files, we use stax_platform.c instead
 DOOM_SRCS := $(filter-out %/i_main.c %/i_system.c %/i_sound.c %/i_video.c %/i_net.c, $(DOOM_SRCS))
 DOOM_OBJS := $(patsubst $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c, $(BUILD_DIR)/%.o, $(DOOM_SRCS))
 KERNEL_OBJS  += $(DOOM_OBJS)
@@ -243,9 +243,9 @@ $(BUILD_DIR)/%.o: $(SHELL_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(LIB_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# DOOM files need special flags and the tios_compat.h included
+# DOOM files need special flags and the stax_compat.h included
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -w -O2 -include $(GAMES_DIR)/em-doom/linuxdoom-1.10/tios_compat.h -c $< -o $@
+	$(CC) $(CFLAGS) -w -O2 -include $(GAMES_DIR)/em-doom/linuxdoom-1.10/stax_compat.h -c $< -o $@
 
 # ---------------------------------------------------------------------------
 # Kernel Linking
@@ -265,11 +265,11 @@ $(KERNEL_BIN): $(KERNEL_ELF)
 # Utilities
 # ---------------------------------------------------------------------------
 qemu: $(BOOT_BIN) $(OS_BIN)
-	@echo "Booting TIOS in QEMU (Ctrl-A X to quit)..."
+	@echo "Booting STAX in QEMU (Ctrl-A X to quit)..."
 	$(QEMU) $(QEMU_FLAGS)
 
 qemu-gfx: $(BOOT_BIN) $(OS_BIN)
-	@echo "Booting TIOS in QEMU with graphics (Ctrl-C to quit)..."
+	@echo "Booting STAX in QEMU with graphics (Ctrl-C to quit)..."
 	@echo "Use 'game --doom' command to run graphical DOOM"
 	$(QEMU) $(QEMU_GFX_FLAGS)
 

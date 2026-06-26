@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — app_file_manager.c
+ * STAX — app_file_manager.c
  * Windows-Explorer-style File Manager with real-time auto-refresh.
  *
  * Layout (inside client rect cx,cy,cw,ch):

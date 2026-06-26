@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — snake.c
+ * STAX — snake.c
  * Graphical Snake game rendered directly via Framebuffer and 8x16 font.
  * ============================================================================ */
 
@@ -103,7 +103,7 @@ static void draw_score(void)
 {
     /* Clear score area */
     fb_fillrect(0, 0, 640, 16, FB_BG);
-    draw_string(16, 0, "T-OS GRAPHICAL SNAKE", COLOR_CYAN);
+    draw_string(16, 0, "STAX GRAPHICAL SNAKE", COLOR_CYAN);
     draw_string(280, 0, "Score: ", COLOR_YELLOW);
     draw_uint(336, 0, (unsigned int)g_score, COLOR_GREEN);
     draw_string(450, 0, "WASD = Move | Q = Quit", COLOR_GRAY);

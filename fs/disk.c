@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — disk_pl181.c
+ * STAX — disk_pl181.c
  * PL181 MCI (SD/MMC) sector reader for QEMU VersatilePB
  *
  * VersatilePB PL181 base: 0x10005000

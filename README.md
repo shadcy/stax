@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>T-OS (Tios)</h1>
+  <h1>STAX (STAX)</h1>
   
   <p>
     <b>A lightweight, custom bare-metal operating system built from scratch for ARM devices.</b>
@@ -15,9 +15,9 @@
 
 ---
 
-**T-OS (Tios)** is a lightweight, bare-metal operating system built from scratch for the ARM architecture. Designed as an experimental systems programming project, T-OS implements foundational kernel mechanics without relying on existing third-party abstractions.
+**STAX (STAX)** is a lightweight, bare-metal operating system built from scratch for the ARM architecture. Designed as an experimental systems programming project, STAX implements foundational kernel mechanics without relying on existing third-party abstractions.
 
-The project demonstrates a complete vertical stack—from a custom assembly bootloader and low-level hardware drivers to a preemptive task scheduler, a page-based memory allocator, and a fully composited graphical window manager. T-OS enforces a clean architectural separation, decoupling hardware interfaces from core kernel logic and user-space applications.
+The project demonstrates a complete vertical stack—from a custom assembly bootloader and low-level hardware drivers to a preemptive task scheduler, a page-based memory allocator, and a fully composited graphical window manager. STAX enforces a clean architectural separation, decoupling hardware interfaces from core kernel logic and user-space applications.
 
 ## Core Architecture & Features
 
@@ -64,7 +64,7 @@ The project demonstrates a complete vertical stack—from a custom assembly boot
 
 ## Requirements
 
-To compile and execute T-OS locally, you will need the following tools installed on your system:
+To compile and execute STAX locally, you will need the following tools installed on your system:
 - **ARM GCC Toolchain:** `arm-none-eabi-gcc`, `arm-none-eabi-ld`, `arm-none-eabi-objcopy`
 - **QEMU:** `qemu-system-arm` (Specifically targeting the `versatilepb` machine profile)
 - **Make:** GNU Make for the build system.
@@ -103,4 +103,4 @@ Special thanks to Cursor Agent for assisting with the debugging of complex linke
 
 ## Repository
 
-[https://github.com/shadcy/TOS](https://github.com/shadcy/TOS)
+[https://github.com/shadcy/STAX](https://github.com/shadcy/STAX)

@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — wm_internal.h
+ * STAX — wm_internal.h
  * Internal definitions for the Window Manager
  * ============================================================================ */
 #ifndef WM_INTERNAL_H

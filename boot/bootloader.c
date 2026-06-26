@@ -240,7 +240,7 @@ static void sd_read_sector(uint32_t lba, uint8_t *buf) {
 void bootloader_main(void) {
     uart_init();
     uart_puts("--------------------------------------------------\n");
-    uart_puts("  TIOS Bootloader v0.3 [Bare-Metal PL181 SD]\n");
+    uart_puts("  STAX Bootloader v0.3 [Bare-Metal PL181 SD]\n");
     uart_puts("--------------------------------------------------\n");
     
     uart_puts("Initializing PL181 SD Card Controller...\n");
@@ -322,7 +322,7 @@ void bootloader_main(void) {
      * ------------------------------------------------------------------------- */
     uart_puts("Verifying kernel integrity... ");
     
-    /* The magic number "TIOS" is at offset 4 of the kernel binary */
+    /* The magic number "STAX" is at offset 4 of the kernel binary */
     const char *kernel_magic = (const char *)(KERNEL_EXEC_ADDR + 4);
     
     if (kernel_magic[0] == 'T' && kernel_magic[1] == 'I' && 
@@ -330,7 +330,7 @@ void bootloader_main(void) {
         uart_puts("OK\n");
     } else {
         uart_puts("FAILED!\n");
-        uart_puts("Error: Kernel magic number mismatch. Expected 'TIOS'.\n");
+        uart_puts("Error: Kernel magic number mismatch. Expected 'STAX'.\n");
         uart_puts("Possible reasons: SD card not mapped, incorrect KERNEL_LBA, or build failure.\n");
         while (1); /* Halt here; do NOT jump to an invalid kernel */
     }

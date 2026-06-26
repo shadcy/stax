@@ -1,13 +1,13 @@
 /* ============================================================================
- * tios_compat.h — POSIX compatibility shim for linuxdoom on T-OS
+ * stax_compat.h — POSIX compatibility shim for linuxdoom on STAX
  *
- * Force-included by the compiler (-include tios_compat.h) so DOOM sources
- * see T-OS primitives instead of glibc/Linux headers.
+ * Force-included by the compiler (-include stax_compat.h) so DOOM sources
+ * see STAX primitives instead of glibc/Linux headers.
  * ============================================================================ */
-#ifndef TIOS_COMPAT_H
-#define TIOS_COMPAT_H
+#ifndef STAX_COMPAT_H
+#define STAX_COMPAT_H
 
-#define TIOS 1
+#define STAX 1
 #define NORMALUNIX 1
 
 /* ---- Prevent ALL POSIX headers from being included ---- */
@@ -64,7 +64,7 @@ typedef signed int     int32_t_alt;
 typedef int            mode_t;
 
 /* ---- POSIX file descriptor emulation ---- */
-#include "tios_wad_io.h"
+#include "stax_wad_io.h"
 
 /* ---- va_list support ---- */
 typedef __builtin_va_list va_list;
@@ -81,45 +81,45 @@ typedef struct _FILE FILE;
 #define fopen(name, mode) ((FILE*)0)
 
 /* ---- String functions ---- */
-void  *tios_memset(void *s, int c, size_t n);
-void  *tios_memcpy(void *d, const void *s, size_t n);
-int    tios_memcmp(const void *s1, const void *s2, size_t n);
-size_t tios_strlen(const char *s);
-char  *tios_strncpy(char *d, const char *s, size_t n);
-int    tios_strncmp(const char *s1, const char *s2, size_t n);
-int    tios_strcasecmp(const char *s1, const char *s2);
-char  *tios_strchr(const char *s, int c);
-int    tios_atoi(const char *s);
-int    tios_sprintf(char *buf, const char *fmt, ...);
-int    tios_vsprintf(char *buf, const char *fmt, va_list args);
+void  *stax_memset(void *s, int c, size_t n);
+void  *stax_memcpy(void *d, const void *s, size_t n);
+int    stax_memcmp(const void *s1, const void *s2, size_t n);
+size_t stax_strlen(const char *s);
+char  *stax_strncpy(char *d, const char *s, size_t n);
+int    stax_strncmp(const char *s1, const char *s2, size_t n);
+int    stax_strcasecmp(const char *s1, const char *s2);
+char  *stax_strchr(const char *s, int c);
+int    stax_atoi(const char *s);
+int    stax_sprintf(char *buf, const char *fmt, ...);
+int    stax_vsprintf(char *buf, const char *fmt, va_list args);
 
-#define memset   tios_memset
-#define memcpy   tios_memcpy
-#define memcmp   tios_memcmp
-#define strlen   tios_strlen
-#define strncpy  tios_strncpy
-#define strncmp  tios_strncmp
-#define strcasecmp tios_strcasecmp
-#define strcmpi  tios_strcasecmp
-#define strchr   tios_strchr
-#define atoi     tios_atoi
-#define sprintf  tios_sprintf
-#define vsprintf tios_vsprintf
-#define fprintf(f, ...) tios_kprintf(__VA_ARGS__)
-#define printf(...)     tios_kprintf(__VA_ARGS__)
-#define vfprintf(f, fmt, args) tios_vsprintf((char*)0, fmt, args)
+#define memset   stax_memset
+#define memcpy   stax_memcpy
+#define memcmp   stax_memcmp
+#define strlen   stax_strlen
+#define strncpy  stax_strncpy
+#define strncmp  stax_strncmp
+#define strcasecmp stax_strcasecmp
+#define strcmpi  stax_strcasecmp
+#define strchr   stax_strchr
+#define atoi     stax_atoi
+#define sprintf  stax_sprintf
+#define vsprintf stax_vsprintf
+#define fprintf(f, ...) stax_kprintf(__VA_ARGS__)
+#define printf(...)     stax_kprintf(__VA_ARGS__)
+#define vfprintf(f, fmt, args) stax_vsprintf((char*)0, fmt, args)
 
 /* toupper/tolower */
-static inline int tios_toupper(int c) {
+static inline int stax_toupper(int c) {
     if (c >= 'a' && c <= 'z') return c - 32;
     return c;
 }
-static inline int tios_tolower(int c) {
+static inline int stax_tolower(int c) {
     if (c >= 'A' && c <= 'Z') return c + 32;
     return c;
 }
-#define toupper tios_toupper
-#define tolower tios_tolower
+#define toupper stax_toupper
+#define tolower stax_tolower
 #define isspace(c) ((c)==' '||(c)=='\t'||(c)=='\n'||(c)=='\r')
 #define isdigit(c) ((c)>='0'&&(c)<='9')
 #define isupper(c) ((c)>='A'&&(c)<='Z')
@@ -127,52 +127,52 @@ static inline int tios_tolower(int c) {
 #define isalpha(c) (isupper(c)||islower(c))
 
 /* ---- Memory allocation ---- */
-void *tios_doom_malloc(size_t size);
-void  tios_doom_free(void *ptr);
-void *tios_doom_realloc(void *ptr, size_t newsize);
-void *tios_doom_alloca(size_t size);
+void *stax_doom_malloc(size_t size);
+void  stax_doom_free(void *ptr);
+void *stax_doom_realloc(void *ptr, size_t newsize);
+void *stax_doom_alloca(size_t size);
 
-#define malloc(n)      tios_doom_malloc(n)
-#define free(p)        tios_doom_free(p)
-#define realloc(p,n)   tios_doom_realloc(p,n)
-#define alloca(n)      tios_doom_alloca(n)
+#define malloc(n)      stax_doom_malloc(n)
+#define free(p)        stax_doom_free(p)
+#define realloc(p,n)   stax_doom_realloc(p,n)
+#define alloca(n)      stax_doom_alloca(n)
 
 /* ---- Process control ---- */
-extern volatile int tios_doom_quit_requested;  /* set to exit D_DoomLoop / I_Error */
-static inline void tios_exit(int code) { (void)code; tios_doom_quit_requested = 1; while(1) { __asm__ volatile("nop"); } }
-#define exit(c)  tios_exit(c)
-#define abort()  tios_exit(-1)
+extern volatile int stax_doom_quit_requested;  /* set to exit D_DoomLoop / I_Error */
+static inline void stax_exit(int code) { (void)code; stax_doom_quit_requested = 1; while(1) { __asm__ volatile("nop"); } }
+#define exit(c)  stax_exit(c)
+#define abort()  stax_exit(-1)
 
 /* ---- Signal stubs ---- */
 #define SIG_DFL ((void(*)(int))0)
 #define SIGINT  2
-static inline void *tios_signal(int sig, void *handler) { (void)sig; (void)handler; return (void*)0; }
-#define signal(s,h) tios_signal(s,h)
+static inline void *stax_signal(int sig, void *handler) { (void)sig; (void)handler; return (void*)0; }
+#define signal(s,h) stax_signal(s,h)
 
 /* ---- errno ---- */
-extern int tios_errno;
-#define errno tios_errno
+extern int stax_errno;
+#define errno stax_errno
 #define ENOENT 2
 
 /* ---- Math (integers only, no floats in DOOM logic) ---- */
-static inline int tios_abs(int x) { return x < 0 ? -x : x; }
-#define abs(x) tios_abs(x)
+static inline int stax_abs(int x) { return x < 0 ? -x : x; }
+#define abs(x) stax_abs(x)
 
 /* ---- usleep / sleep ---- */
-static inline void tios_usleep(unsigned int us) {
+static inline void stax_usleep(unsigned int us) {
     volatile unsigned int n = us * 20;
     while (n--) __asm__ volatile("nop");
 }
-#define usleep(n) tios_usleep(n)
-#define sleep(n)  tios_usleep((n)*1000000)
+#define usleep(n) stax_usleep(n)
+#define sleep(n)  stax_usleep((n)*1000000)
 
 /* ---- getenv ---- */
-static inline char *tios_getenv(const char *name) { (void)name; return (char*)0; }
-#define getenv(n) tios_getenv(n)
+static inline char *stax_getenv(const char *name) { (void)name; return (char*)0; }
+#define getenv(n) stax_getenv(n)
 
 /* ---- uid ---- */
-static inline int tios_getuid(void) { return 0; }
-#define getuid() tios_getuid()
+static inline int stax_getuid(void) { return 0; }
+#define getuid() stax_getuid()
 
 /* ---- values.h emulation ---- */
 #define _VALUES_H 1
@@ -181,18 +181,18 @@ static inline int tios_getuid(void) { return 0; }
 
 /* ---- access / mkdir / write ---- */
 #define R_OK 4
-int tios_access(const char *pathname, int mode);
-#define access(p, m) tios_access(p, m)
+int stax_access(const char *pathname, int mode);
+#define access(p, m) stax_access(p, m)
 #define mkdir(p, m) (-1)
 #define write(fd, buf, count) (-1)
 
 /* ---- stdio additions ---- */
 #define setbuf(f, b) ((void)0)
 extern char kgetc(void);
-static inline int tios_getchar(void) { return (int)kgetc(); }
-#define getchar() tios_getchar()
+static inline int stax_getchar(void) { return (int)kgetc(); }
+#define getchar() stax_getchar()
 
 /* ---- DOOM's own printf helper ---- */
-void tios_kprintf(const char *fmt, ...);
+void stax_kprintf(const char *fmt, ...);
 
-#endif /* TIOS_COMPAT_H */
+#endif /* STAX_COMPAT_H */

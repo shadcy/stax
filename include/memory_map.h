@@ -2,7 +2,7 @@
 #define MEMORY_MAP_H
 
 /* ============================================================================
- * TIOS — memory_map.h
+ * STAX — memory_map.h
  * Centralized memory addresses and sizes for the bare-metal boot flow.
  * ============================================================================ */
 

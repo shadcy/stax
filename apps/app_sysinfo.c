@@ -35,9 +35,9 @@ void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     
     /* Header */
     fb_fillrect(cx + 10, cy + 10, 64, 64, rgb565(0, 128, 128));
-    draw_text(cx + 20, cy + 34, "T-OS", COLOR_WHITE);
+    draw_text(cx + 20, cy + 34, "STAX", COLOR_WHITE);
     
-    draw_text(cx + 90, cy + 20, "T-OS Version 1.0.0", COLOR_BLACK);
+    draw_text(cx + 90, cy + 20, "STAX Version 1.0.0", COLOR_BLACK);
     draw_text(cx + 90, cy + 40, "Advanced Agentic Edition", COLOR_BLACK);
     
     fb_drawline(cx + 10, cy + 85, cx + cw - 10, cy + 85, rgb565(180, 180, 180));

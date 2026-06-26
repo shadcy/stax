@@ -14,9 +14,9 @@
    ```
 
 3. **Launch DOOM**:
-   At the TIOS prompt, type:
+   At the STAX prompt, type:
    ```
-   tios> doom
+   STAX> doom
    ```
 
 4. **Play**:
@@ -89,7 +89,7 @@ DOOM | W/S:Move A/D:Turn Q:Quit
 
 ## Exit
 
-Press `Q` at any time to quit the game and return to the TIOS shell.
+Press `Q` at any time to quit the game and return to the STAX shell.
 
 ## Technical Notes
 

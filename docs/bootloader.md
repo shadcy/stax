@@ -1,10 +1,10 @@
-# TIOS Bare-Metal ARM Bootloader Documentation
+# STAX Bare-Metal ARM Bootloader Documentation
 
-This document describes the design, implementation, and hardware-readiness audit of the TIOS bootloader for the ARM VersatilePB platform.
+This document describes the design, implementation, and hardware-readiness audit of the STAX bootloader for the ARM VersatilePB platform.
 
 ## 1. Overview
 
-The TIOS bootloader is a bare-metal First Stage Bootloader (FSBL) designed to    initialize the PL181 SD Card Controller, load the kernel from a raw sector offset on an SD card into RAM, and transfer execution to the kernel.
+The STAX bootloader is a bare-metal First Stage Bootloader (FSBL) designed to    initialize the PL181 SD Card Controller, load the kernel from a raw sector offset on an SD card into RAM, and transfer execution to the kernel.
 
 ## 2. Boot Flow
 
@@ -34,13 +34,13 @@ The boot sequence follows these exact steps:
 
 ### Phase 4: Kernel Verification
 1. **Magic Number Check**: The bootloader inspects the memory at `0x100004` (offset 4 of the loaded kernel).
-2. **Validation**: Compares the 4 bytes against the string `"TIOS"`.
+2. **Validation**: Compares the 4 bytes against the string `"STAX"`.
 3. **Safety**: If the magic number does not match, the bootloader prints an error and halts execution to prevent jumping into garbage memory.
 
 ### Phase 5: Kernel Handoff
 1. **Jump**: Performs an absolute branch to `0x100000`.
 2. **Kernel Startup (`startup.s`)**:
-    - **Header**: The kernel starts with a branch instruction followed by the `"TIOS"` magic number.
+    - **Header**: The kernel starts with a branch instruction followed by the `"STAX"` magic number.
     - **Vector Table Remap**: **CRITICAL** Copies the exception vector table from `0x100000` to `0x00000000` so that interrupts (Timer, UART) can function on real hardware.
     - **Mode Stacks**: Initializes separate stacks for IRQ, FIQ, and SVC modes.
     - **Kernel Main**: Jumps to `kernel_main()`.
@@ -73,7 +73,7 @@ A thorough audit was performed to ensure the simulation matches physical ARM Ver
 2. **Stack/Heap Safety**: Corrected a linker script error where the stack and heap overlapped. They are now explicitly separated.
 3. **SDHC Support**: Added logic to detect `OCR[30]` (CCS bit). This ensures the bootloader works on both old SD cards (<2GB) and modern SDHC/SDXC cards.
 4. **BSS Integrity**: Ensured both bootloader and kernel zero their BSS sections before executing C code.
-5. **Kernel Verification**: Added a magic number check (`"TIOS"`) to ensure the kernel is correctly loaded before execution.
+5. **Kernel Verification**: Added a magic number check (`"STAX"`) to ensure the kernel is correctly loaded before execution.
 
 ### 4.3 Simulation vs Reality
 - **QEMU `-kernel`**: On real hardware, the First Stage Bootloader would be loaded from ROM or an internal SRAM by the SoC's BootROM. In our setup, QEMU acts as the BootROM.

@@ -1,5 +1,5 @@
 /* ============================================================================
- * tios_platform.c — T-OS platform layer for linuxdoom-1.10
+ * stax_platform.c — STAX platform layer for linuxdoom-1.10
  *this is the most  shitty thing youll ever encounter my friend trust me
  * Implements:
  *   - i_system   : timer, memory zone, error, quit
@@ -10,7 +10,7 @@
  *   - String/mem : memcpy, memset, strlen, sprintf, etc.
  * ============================================================================ */
 
-/* Pull in T-OS includes BEFORE tios_compat.h redefines everything */
+/* Pull in STAX includes BEFORE stax_compat.h redefines everything */
 #include "../../../include/framebuffer.h"
 #include "../../../include/keyboard.h"
 #include "../../../include/font8x16.h"
@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* Now include DOOM headers (after T-OS includes to avoid conflicts) */
+/* Now include DOOM headers (after STAX includes to avoid conflicts) */
 #include "doomdef.h"
 #include "doomtype.h"
 #include "doomstat.h"
@@ -40,7 +40,7 @@
 #include "m_argv.h"
 
 /* ============================================================================
- * External T-OS symbols
+ * External STAX symbols
  * ============================================================================ */
 extern volatile unsigned int tick_count;  /* 1000 Hz kernel timer */
 
@@ -54,13 +54,13 @@ extern void  kput_uint(unsigned int n);
 /* ============================================================================
  * Global quit flag
  * ============================================================================ */
-volatile int tios_doom_quit_requested = 0;
-int          tios_errno = 0;
+volatile int stax_doom_quit_requested = 0;
+int          stax_errno = 0;
 
 /* ============================================================================
  * String / memory functions (replaces glibc)
  * ============================================================================ */
-void *tios_memset(void *s, int c, size_t n)
+void *stax_memset(void *s, int c, size_t n)
 {
     unsigned char *p = (unsigned char *)s;
     while (n--) *p++ = (unsigned char)c;
@@ -78,10 +78,10 @@ void *memcpy(void *d, const void *s, size_t n)
     return d;
 }
 
-void *tios_memcpy(void *d, const void *s, size_t n) { return memcpy(d, s, n); }
+void *stax_memcpy(void *d, const void *s, size_t n) { return memcpy(d, s, n); }
 
 
-int tios_memcmp(const void *s1, const void *s2, size_t n)
+int stax_memcmp(const void *s1, const void *s2, size_t n)
 {
     const unsigned char *a = (const unsigned char *)s1;
     const unsigned char *b = (const unsigned char *)s2;
@@ -92,14 +92,14 @@ int tios_memcmp(const void *s1, const void *s2, size_t n)
     return 0;
 }
 
-size_t tios_strlen(const char *s)
+size_t stax_strlen(const char *s)
 {
     size_t n = 0;
     while (*s++) n++;
     return n;
 }
 
-char *tios_strncpy(char *d, const char *s, size_t n)
+char *stax_strncpy(char *d, const char *s, size_t n)
 {
     char *dst = d;
     while (n && *s) { *dst++ = *s++; n--; }
@@ -107,7 +107,7 @@ char *tios_strncpy(char *d, const char *s, size_t n)
     return d;
 }
 
-int tios_strncmp(const char *s1, const char *s2, size_t n)
+int stax_strncmp(const char *s1, const char *s2, size_t n)
 {
     while (n && *s1 && *s1 == *s2) { s1++; s2++; n--; }
     if (!n) return 0;
@@ -148,7 +148,7 @@ int strncasecmp(const char *s1, const char *s2, size_t n)
     return a - b;
 }
 
-int tios_strcasecmp(const char *s1, const char *s2)
+int stax_strcasecmp(const char *s1, const char *s2)
 {
     while (*s1 && *s2) {
         int a = (*s1 >= 'a' && *s1 <= 'z') ? *s1 - 32 : *s1;
@@ -159,13 +159,13 @@ int tios_strcasecmp(const char *s1, const char *s2)
     return *(const unsigned char *)s1 - *(const unsigned char *)s2;
 }
 
-char *tios_strchr(const char *s, int c)
+char *stax_strchr(const char *s, int c)
 {
     while (*s) { if (*s == c) return (char *)s; s++; }
     return (c == 0) ? (char *)s : (char *)0;
 }
 
-int tios_atoi(const char *s)
+int stax_atoi(const char *s)
 {
     int result = 0, neg = 0;
     while (*s == ' ' || *s == '\t') s++;
@@ -222,7 +222,7 @@ static void emit_uint(char *out, char **cursor, unsigned int v, int base, int wi
         emit_char(out, cursor, tmp[i]);
 }
 
-int tios_vsprintf(char *buf, const char *fmt, va_list args)
+int stax_vsprintf(char *buf, const char *fmt, va_list args)
 {
     char *out = buf;
     char *cursor = buf;
@@ -295,11 +295,11 @@ int tios_vsprintf(char *buf, const char *fmt, va_list args)
     return out ? (int)(cursor - buf) : 0;
 }
 
-int tios_sprintf(char *buf, const char *fmt, ...)
+int stax_sprintf(char *buf, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    int n = tios_vsprintf(buf, fmt, args);
+    int n = stax_vsprintf(buf, fmt, args);
     va_end(args);
     return n;
 }
@@ -321,11 +321,11 @@ static void doom_loading_pump(void)
     wm_render();
 }
 
-void tios_kprintf(const char *fmt, ...)
+void stax_kprintf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    tios_vsprintf((char*)0, fmt, args);
+    stax_vsprintf((char*)0, fmt, args);
     va_end(args);
     if (doom_loading && (++doom_printf_pump % 2) == 0)
         doom_loading_pump();
@@ -344,7 +344,7 @@ static unsigned char doom_slab_buf[SLAB_SIZE] __attribute__((aligned(8)));
 static unsigned int  doom_slab_pos = 0;
 
 /* Tiny bump allocator for DOOM's internal malloc calls (lumpinfo, lumpcache, etc.) */
-void *tios_doom_malloc(size_t size)
+void *stax_doom_malloc(size_t size)
 {
     if (size == 0) return (void*)0;
     size = (size + 7) & ~7;   /* 8-byte align */
@@ -358,19 +358,19 @@ void *tios_doom_malloc(size_t size)
 }
 
 /* Realloc: allocate new, copy, abandon old (bump allocator — no free) */
-void *tios_doom_realloc(void *ptr, size_t newsize)
+void *stax_doom_realloc(void *ptr, size_t newsize)
 {
-    void *p = tios_doom_malloc(newsize);
-    if (p && ptr) tios_memcpy(p, ptr, newsize);
+    void *p = stax_doom_malloc(newsize);
+    if (p && ptr) stax_memcpy(p, ptr, newsize);
     return p;
 }
 
-void tios_doom_free(void *ptr) { (void)ptr; /* bump allocator: no-op */ }
+void stax_doom_free(void *ptr) { (void)ptr; /* bump allocator: no-op */ }
 
 /* Stack-style alloca using the slab */
-void *tios_doom_alloca(size_t size)
+void *stax_doom_alloca(size_t size)
 {
-    return tios_doom_malloc(size);
+    return stax_doom_malloc(size);
 }
 
 /* ============================================================================
@@ -412,8 +412,8 @@ static void doom_spawn_task(void);
 void I_Quit(void)
 {
     doom_running = 0;
-    tios_doom_quit_requested = 1;
-    /* D_DoomLoop checks tios_doom_quit_requested and returns here */
+    stax_doom_quit_requested = 1;
+    /* D_DoomLoop checks stax_doom_quit_requested and returns here */
 }
 
 void I_WaitVBL(int count) { (void)count; }
@@ -422,7 +422,7 @@ void I_EndRead(void) {}
 
 byte *I_AllocLow(int length)
 {
-    return (byte *)tios_doom_malloc(length);
+    return (byte *)stax_doom_malloc(length);
 }
 
 void I_Tactile(int on, int off, int total) { (void)on; (void)off; (void)total; }
@@ -439,11 +439,11 @@ void I_Error(char *error, ...)
     va_list args;
     kputs("[DOOM ERROR] ");
     va_start(args, error);
-    tios_vsprintf((char*)0, error, args);
+    stax_vsprintf((char*)0, error, args);
     va_end(args);
     kputc('\n');
     doom_running = 0;
-    tios_doom_quit_requested = 1;
+    stax_doom_quit_requested = 1;
     /* Hang to prevent Data Aborts from callers expecting us not to return */
     while (1) { __asm__ volatile("nop"); }
 }
@@ -509,19 +509,19 @@ static byte doom_front_buffer[320 * 200];
 void I_FinishUpdate(void)
 {
     /* Double-buffering: Copy the finished backbuffer to the front buffer.
-     * The T-OS Window Manager reads from doom_front_buffer, eliminating tearing. */
+     * The STAX Window Manager reads from doom_front_buffer, eliminating tearing. */
     if (screens[0]) {
-        tios_memcpy(doom_front_buffer, screens[0], 320 * 200);
+        stax_memcpy(doom_front_buffer, screens[0], 320 * 200);
     }
 
-    extern void tios_kprintf(const char *fmt, ...);
+    extern void stax_kprintf(const char *fmt, ...);
     static int frame_count = 0;
-    if (frame_count++ % 35 == 0) tios_kprintf("DOOM rendered 35 frames\n");
+    if (frame_count++ % 35 == 0) stax_kprintf("DOOM rendered 35 frames\n");
 }
 
 void I_ReadScreen(byte *scr)
 {
-    tios_memcpy(scr, screens[0], DOOM_W * DOOM_H);
+    stax_memcpy(scr, screens[0], DOOM_W * DOOM_H);
 }
 
 void I_SetPalette(byte *palette)
@@ -564,10 +564,10 @@ void I_SetMusicVolume(int volume)         { (void)volume; }
  * ============================================================================ */
 void I_InitNetwork(void)
 {
-    doomcom = (doomcom_t *)tios_doom_malloc(sizeof(doomcom_t));
+    doomcom = (doomcom_t *)stax_doom_malloc(sizeof(doomcom_t));
     if (!doomcom)
 	I_Error("I_InitNetwork: out of memory");
-    tios_memset(doomcom, 0, sizeof(*doomcom));
+    stax_memset(doomcom, 0, sizeof(*doomcom));
 
     netgame = false;
     doomcom->id = DOOMCOM_ID;
@@ -655,16 +655,16 @@ void I_StartTic(void)
 /* ============================================================================
  * FAT-backed POSIX file descriptor emulation for W_AddFile / W_ReadLump
  * ============================================================================ */
-#define TIOS_MAX_FD 4
+#define STAX_MAX_FD 4
 
 typedef struct {
     fat_file_t *ff;
     int         pos;
     int         size;
     int         used;
-} tios_fd_t;
+} stax_fd_t;
 
-static tios_fd_t fd_table[TIOS_MAX_FD];
+static stax_fd_t fd_table[STAX_MAX_FD];
 
 /* Convert a DOOM path like "doom.wad" → FAT 8.3 uppercase name */
 static void path_to_fat(const char *path, char *out)
@@ -674,11 +674,11 @@ static void path_to_fat(const char *path, char *out)
     for (const char *q = path; *q; q++)
         if (*q == '/' || *q == '\\') p = q + 1;
     int i = 0;
-    while (*p && i < 11) { out[i++] = (char)tios_toupper(*p++); }
+    while (*p && i < 11) { out[i++] = (char)stax_toupper(*p++); }
     out[i] = '\0';
 }
 
-int tios_access(const char *pathname, int mode)
+int stax_access(const char *pathname, int mode)
 {
     (void)mode;
     char fatname[12];
@@ -690,13 +690,13 @@ int tios_access(const char *pathname, int mode)
     return -1;
 }
 
-int tios_open(const char *path, int flags, ...)
+int stax_open(const char *path, int flags, ...)
 {
     (void)flags;
     char fatname[12];
     path_to_fat(path, fatname);
 
-    for (int i = 0; i < TIOS_MAX_FD; i++) {
+    for (int i = 0; i < STAX_MAX_FD; i++) {
         if (!fd_table[i].used) {
             fat_file_t *ff = fat_open(fatname);
             if (!ff) { kputs("[DOOM] open failed: "); kputs(fatname); kputc('\n'); return -1; }
@@ -706,28 +706,28 @@ int tios_open(const char *path, int flags, ...)
             fd_table[i].size = (int)fat_file_size(ff);
             fd_table[i].used = 1;
             kputs("[DOOM] opened "); kputs(fatname); kputc('\n');
-            return TIOS_FD_OFFSET + i;
+            return STAX_FD_OFFSET + i;
         }
     }
     kputs("[DOOM] no free fd\n");
     return -1;
 }
 
-int tios_read(int fd, void *buf, int count)
+int stax_read(int fd, void *buf, int count)
 {
-    int idx = fd - TIOS_FD_OFFSET;
-    if (idx < 0 || idx >= TIOS_MAX_FD || !fd_table[idx].used) return -1;
-    tios_fd_t *t = &fd_table[idx];
+    int idx = fd - STAX_FD_OFFSET;
+    if (idx < 0 || idx >= STAX_MAX_FD || !fd_table[idx].used) return -1;
+    stax_fd_t *t = &fd_table[idx];
     int n = fat_read(t->ff, buf, count);
     if (n > 0) t->pos += n;
     return n;
 }
 
-int tios_lseek(int fd, int offset, int whence)
+int stax_lseek(int fd, int offset, int whence)
 {
-    int idx = fd - TIOS_FD_OFFSET;
-    if (idx < 0 || idx >= TIOS_MAX_FD || !fd_table[idx].used) return -1;
-    tios_fd_t *t = &fd_table[idx];
+    int idx = fd - STAX_FD_OFFSET;
+    if (idx < 0 || idx >= STAX_MAX_FD || !fd_table[idx].used) return -1;
+    stax_fd_t *t = &fd_table[idx];
     int target;
     switch (whence) {
         case 0: target = offset; break;                      /* SEEK_SET */
@@ -742,19 +742,19 @@ int tios_lseek(int fd, int offset, int whence)
     return target;
 }
 
-int tios_close(int fd)
+int stax_close(int fd)
 {
-    int idx = fd - TIOS_FD_OFFSET;
-    if (idx < 0 || idx >= TIOS_MAX_FD || !fd_table[idx].used) return -1;
+    int idx = fd - STAX_FD_OFFSET;
+    if (idx < 0 || idx >= STAX_MAX_FD || !fd_table[idx].used) return -1;
     fat_close(fd_table[idx].ff);
     fd_table[idx].used = 0;
     return 0;
 }
 
-int tios_fstat(int fd, void *statbuf)
+int stax_fstat(int fd, void *statbuf)
 {
-    int idx = fd - TIOS_FD_OFFSET;
-    if (idx < 0 || idx >= TIOS_MAX_FD || !fd_table[idx].used) return -1;
+    int idx = fd - STAX_FD_OFFSET;
+    if (idx < 0 || idx >= STAX_MAX_FD || !fd_table[idx].used) return -1;
     struct { int st_size; int st_mode; int st_uid; } *sb = statbuf;
     sb->st_size = fd_table[idx].size;
     sb->st_mode = 0;
@@ -763,7 +763,7 @@ int tios_fstat(int fd, void *statbuf)
 }
 
 /* ============================================================================
- * Entry point called from T-OS command.c
+ * Entry point called from STAX command.c
  * ============================================================================ */
 /* DOOM's real entry */
 extern void D_DoomMain(void);
@@ -791,11 +791,11 @@ void doom_engine_run_wad(const char* wadname)
 
     /* Reset slab allocator for a fresh run */
     doom_slab_pos = 0;
-    tios_doom_quit_requested = 0;
+    stax_doom_quit_requested = 0;
     doom_cleanup_done = 0;
 
     /* Wipe fd table & close leaked handles from previous run */
-    for (int i = 0; i < TIOS_MAX_FD; i++) {
+    for (int i = 0; i < STAX_MAX_FD; i++) {
         if (fd_table[i].used) {
             fat_close(fd_table[i].ff);
             fd_table[i].used = 0;
@@ -803,7 +803,7 @@ void doom_engine_run_wad(const char* wadname)
     }
 
     /* Build argv */
-    doom_argv[0] = (char *)"tios-doom";
+    doom_argv[0] = (char *)"STAX-doom";
     doom_argv[1] = (char *)wadname;
     doom_argv[2] = (char *)doom_nomus;
     doom_argv[3] = (char *)doom_nosnd;
@@ -951,13 +951,13 @@ static void doom_synth_keyboard(void)
 
 static void doom_process_task(void)
 {
-    while (doom_running && !tios_doom_quit_requested && !doom_cleanup_done) {
+    while (doom_running && !stax_doom_quit_requested && !doom_cleanup_done) {
         doom_synth_keyboard();
         static int last_t = 0;
         int t = I_GetTime();
         if (t != last_t) {
-            extern void tios_kprintf(const char *fmt, ...);
-            tios_kprintf("I_GetTime() = %d\n", t);
+            extern void stax_kprintf(const char *fmt, ...);
+            stax_kprintf("I_GetTime() = %d\n", t);
             last_t = t;
         }
         D_DoomStep();
@@ -1006,7 +1006,7 @@ static void doom_cleanup(void)
 
 void doom_force_cleanup(void)
 {
-    tios_doom_quit_requested = 1;
+    stax_doom_quit_requested = 1;
     doom_running = 0;
     doom_cleanup();
 }
@@ -1023,7 +1023,7 @@ int doom_is_loading(void)
 
 void doom_request_quit(void)
 {
-    tios_doom_quit_requested = 1;
+    stax_doom_quit_requested = 1;
     doom_running = 0;
 }
 
@@ -1039,7 +1039,7 @@ static void doom_update_window(struct window *win, int dt_ms) {
         return;
     }
 
-    if (doom_running && !tios_doom_quit_requested)
+    if (doom_running && !stax_doom_quit_requested)
         return;
 
     if (!doom_cleanup_done)

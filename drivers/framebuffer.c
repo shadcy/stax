@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — framebuffer.c
+ * STAX — framebuffer.c
  * PL110 CLCD driver for QEMU VersatilePB — proven timing values
  * ============================================================================ */
 

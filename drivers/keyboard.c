@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — keyboard.c
+ * STAX — keyboard.c
  * PL050 KMI PS/2 keyboard driver (polling, scan-code set 2)
  *
  * VersatilePB keyboard KMI base: 0x10006000

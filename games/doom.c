@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — doom.c
+ * STAX — doom.c
  * Bare minimum ASCII DOOM-like raycasting game
  * 
  * Controls:

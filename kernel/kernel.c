@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — kernel.c
+ * STAX — kernel.c
  * Phase 6e — FAT filesystem driver added + Graphical console
  * ============================================================================ */
 
@@ -50,14 +50,14 @@ void print_prompt(void) {
     char cwd[128];
     if (f_getcwd(cwd, sizeof(cwd)) == FR_OK) {
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
-        kputs("tios:");
+        kputs("STAX:");
         gfx_set_color(COLOR_CYAN); kputs("\x1b[36m");
         kputs(cwd);
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
         kputs("> ");
     } else {
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
-        kputs("tios> ");
+        kputs("STAX> ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
     }
 }
@@ -105,7 +105,7 @@ void kernel_main(void)
     irq_enable();
 
     kputs("========================================\n");
-    kputs("  TIOS Kernel - Graphical Mode\n");
+    kputs("  STAX Kernel - Graphical Mode\n");
     kputs("========================================\n");
     kputs("Status : running\n");
     kputs("IRQs   : enabled\n");
@@ -125,7 +125,7 @@ void kernel_main(void)
 
     kputs("System initialized.\n");
 
-    kputs("tios> Interactive command interface ready\n");
+    kputs("STAX> Interactive command interface ready\n");
 
     /* ---- Command history ---- */
 #define HIST_MAX  8

@@ -1,4 +1,4 @@
-# T-OS Version Information
+# STAX Version Information
 
 ## Current Version
 **Version:** Phase 6e

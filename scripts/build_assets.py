@@ -8,7 +8,7 @@ except ImportError:
     print("Error: Pillow required. pip install Pillow")
     sys.exit(1)
 
-# Generate the same palette as T-OS
+# Generate the same palette as STAX
 palette = [(0,0,0)] * 256
 for i in range(1, 16): palette[i] = (i*16, i*16, i*16)
 for i in range(16, 32): palette[i] = (0, (i-16)*16, 0)
@@ -83,7 +83,7 @@ def main():
     if os.path.exists(slime_path):
         c_code += process_image(slime_path, "spr_slime", target_size=(16, 16)) + "\n"
         
-    tos_path = os.path.join(docs_img_dir, "tos-engine.png")
+    tos_path = os.path.join(docs_img_dir, "STAX-engine.png")
     if os.path.exists(tos_path):
         c_code += process_image(tos_path, "spr_tos_engine") + "\n"
         

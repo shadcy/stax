@@ -1,5 +1,5 @@
 /* ============================================================================
- * TIOS — vic.h
+ * STAX — vic.h
  * Versatile Interrupt Controller (VIC) driver interface
  *
  * The VIC on the ARM VersatilePB sits at base address 0x10140000.
