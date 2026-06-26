@@ -40,8 +40,9 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -nostartfiles       \
             -Wall               \
             -Wextra             \
-            -O2                 \
-            -g                  \
+            -O3                 \
+            -ffunction-sections \
+            -fdata-sections     \
             -I$(INC_DIR)        \
             -I$(FS_DIR)         \
             -I$(ENGINE_DIR)     \
@@ -109,7 +110,7 @@ KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
                 $(BUILD_DIR)/ffunicode.o \
                 $(BUILD_DIR)/ffsystem.o
 
-# tasks.o was added in previous git commits but was not in makefile. I'll add it.
+# tasks.o
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 
 # Software rendering subsystem
@@ -230,7 +231,7 @@ $(BUILD_DIR)/%.o: $(ENGINE_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(GFX_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -O2 -ffast-math -c $< -o $@
+	$(CC) $(CFLAGS) -ffast-math -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(APPS_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@

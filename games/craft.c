@@ -3,10 +3,8 @@
 #include "framebuffer.h"
 #include "keyboard.h"
 #include "font8x16.h"
-#include "console.h"
 #include "string.h"
 #include "math_fixed.h"
-#include "timer.h"
 
 /* World size */
 #define MAP_W 32
@@ -38,12 +36,14 @@ static int mouse_sens = 5;
 static uint8_t active_block = B_WOOD;
 static int menu_active = 0; /* 0 = game, 1 = settings */
 
-/* Rendering state */
+/* Rendering constants */
 #define SCREEN_W 320
 #define SCREEN_H 200
-#define FOV 256 /* pixels to projection plane */
+#define FOV      256
 
-static int c_state = 0; /* 0 = running, 1 = pause */
+/* Precomputed sky/floor colors (constant, no per-frame call overhead) */
+#define COLOR_SKY   ((uint16_t)((135 >> 3) << 11 | (206 >> 2) << 5 | (235 >> 3)))
+#define COLOR_FLOOR ((uint16_t)((60 >> 3) << 11  | (60 >> 2) << 5  | (60 >> 3)))
 
 static void craft_init(void) {
     /* Generate a simple terrain */
@@ -97,12 +97,14 @@ static void craft_draw(void) {
     
     static uint16_t buffer_cols[SCREEN_W][SCREEN_H];
     
-    /* Draw sky and ground (flat shading) */
+    /* Draw sky and ground — hoist horizon out, use precomputed colors */
+    int horizon = SCREEN_H/2 + player_pitch;
+    if (horizon < 0) horizon = 0;
+    if (horizon > SCREEN_H) horizon = SCREEN_H;
     for (int x = 0; x < SCREEN_W; x++) {
-        int horizon = SCREEN_H/2 + player_pitch;
-        for (int y = 0; y < SCREEN_H; y++) {
-            buffer_cols[x][y] = (y < horizon) ? rgb565(135, 206, 235) : rgb565(60, 60, 60);
-        }
+        uint16_t *col = buffer_cols[x];
+        for (int y = 0; y < horizon; y++)  col[y] = COLOR_SKY;
+        for (int y = horizon; y < SCREEN_H; y++) col[y] = COLOR_FLOOR;
     }
     
     /* Raycaster for 3D grid */
@@ -325,7 +327,7 @@ static int is_solid(int x, int y, int z) {
 
 static void craft_update(int dt_ms) {
     (void)dt_ms;
-    if (c_state == 1 || menu_active) return;
+    if (menu_active) return;
     
     int speed = TO_FIX(1) / 4; 
     int r_cos = fix_cos_table[player_angle];
