@@ -88,13 +88,13 @@ static void craft_draw(void) {
     /* Use gfx_backbuffer as a 16-bit intermediate buffer, wait, gfx_backbuffer is 8-bit!
        We'll render directly to 16-bit window space using the window drawing context later, 
        but for performance and proper scaling, let's render to a local 320x200 array. */
-    static uint16_t buffer320[SCREEN_W * SCREEN_H];
+    static uint16_t buffer_cols[SCREEN_W][SCREEN_H];
     
     /* Draw sky and ground (flat shading) */
-    for (int y = 0; y < SCREEN_H; y++) {
-        uint16_t color = (y < SCREEN_H/2 + player_pitch) ? rgb565(135, 206, 235) : rgb565(60, 60, 60);
-        for (int x = 0; x < SCREEN_W; x++) {
-            buffer320[y * SCREEN_W + x] = color;
+    for (int x = 0; x < SCREEN_W; x++) {
+        int horizon = SCREEN_H/2 + player_pitch;
+        for (int y = 0; y < SCREEN_H; y++) {
+            buffer_cols[x][y] = (y < horizon) ? rgb565(135, 206, 235) : rgb565(60, 60, 60);
         }
     }
     
@@ -167,6 +167,9 @@ static void craft_draw(void) {
             int perp_dist = fix_mul(dist, fix_cos_table[ca]);
             if (perp_dist <= 0) perp_dist = 1;
             
+            /* OPTIMIZATION: Compute inverted distance once per ray to avoid costly divisions */
+            int inv_perp_dist = fix_div(TO_FIX(1), perp_dist);
+            
             /* Check blocks in this column from top to bottom */
             for (int y = MAP_H - 1; y >= 0; y--) {
                 uint8_t block = world[map_x][y][map_z];
@@ -175,8 +178,8 @@ static void craft_draw(void) {
                     int block_top = TO_FIX(y + 1);
                     int block_bot = TO_FIX(y);
                     
-                    int h_top = fix_div(block_top - player_y, perp_dist);
-                    int h_bot = fix_div(block_bot - player_y, perp_dist);
+                    int h_top = fix_mul(block_top - player_y, inv_perp_dist);
+                    int h_bot = fix_mul(block_bot - player_y, inv_perp_dist);
                     
                     int draw_y_top = (SCREEN_H / 2) + player_pitch - FROM_FIX(h_top * FOV);
                     int draw_y_bot = (SCREEN_H / 2) + player_pitch - FROM_FIX(h_bot * FOV);
@@ -189,11 +192,12 @@ static void craft_draw(void) {
                     
                     uint16_t color = get_block_color(block, side);
                     
-                    /* Draw vertical span */
-                    for (int dy = draw_y_top; dy <= draw_y_bot; dy++) {
-                        if (dy >= y_bottom_limit && dy < y_top_limit) {
-                            buffer320[dy * SCREEN_W + x] = color;
-                        }
+                    /* Draw vertical span optimized (contiguous memory in column-major array) */
+                    int draw_start = (draw_y_top > y_bottom_limit) ? draw_y_top : y_bottom_limit;
+                    int draw_end = (draw_y_bot < y_top_limit - 1) ? draw_y_bot : y_top_limit - 1;
+                    
+                    for (int dy = draw_start; dy <= draw_end; dy++) {
+                        buffer_cols[x][dy] = color;
                     }
                     
                     /* Update limits */
@@ -235,7 +239,7 @@ static void craft_draw(void) {
                 int dest_x2 = dest_x1 + 1;
                 if (dest_x1 >= 640) continue;
                 
-                uint16_t c = buffer320[y * SCREEN_W + x];
+                uint16_t c = buffer_cols[x][y];
                 row1[dest_x1] = c; row1[dest_x2] = c;
                 row2[dest_x1] = c; row2[dest_x2] = c;
             }
@@ -298,11 +302,19 @@ static void craft_update(int dt_ms) {
         player_x -= fix_mul(speed, r_sin);
         player_z += fix_mul(speed, r_cos);
     }
-    if (kb_is_pressed(0x4F)) { /* Right arrow */
+    if (kb_is_pressed(KB_RIGHT)) { /* Right arrow */
         player_angle = (player_angle + 5) % 360;
     }
-    if (kb_is_pressed(0x50)) { /* Left arrow */
+    if (kb_is_pressed(KB_LEFT)) { /* Left arrow */
         player_angle = (player_angle - 5 + 360) % 360;
+    }
+    if (kb_is_pressed(KB_UP)) { /* Look Up */
+        player_pitch += 10;
+        if (player_pitch > 100) player_pitch = 100;
+    }
+    if (kb_is_pressed(KB_DOWN)) { /* Look Down */
+        player_pitch -= 10;
+        if (player_pitch < -100) player_pitch = -100;
     }
     
     /* Basic bounds check */
