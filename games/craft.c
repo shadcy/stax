@@ -26,6 +26,17 @@ static uint8_t world[MAP_W][MAP_H][MAP_D];
 static int player_x, player_y, player_z; /* 16.16 fixed point */
 static int player_angle; /* 0 to 359 */
 static int player_pitch; /* -100 to 100 */
+static int player_vel_y = 0;
+static int is_grounded = 0;
+
+/* Mouse state */
+static int last_mx = -1;
+static int last_my = -1;
+
+/* Settings & Features */
+static int mouse_sens = 5;
+static uint8_t active_block = B_WOOD;
+static int menu_active = 0; /* 0 = game, 1 = settings */
 
 /* Rendering state */
 #define SCREEN_W 320
@@ -33,7 +44,6 @@ static int player_pitch; /* -100 to 100 */
 #define FOV 256 /* pixels to projection plane */
 
 static int c_state = 0; /* 0 = running, 1 = pause */
-static int last_time = 0;
 
 static void craft_init(void) {
     /* Generate a simple terrain */
@@ -59,6 +69,7 @@ static void craft_init(void) {
     player_y = TO_FIX(5) + TO_FIX(1)/2; /* Head height */
     player_angle = 90;
     player_pitch = 0;
+    menu_active = 0;
 }
 
 static uint16_t get_block_color(uint8_t type, int side) {
@@ -83,11 +94,7 @@ static void craft_draw_text(int x_pos, int y_pos, const char *str, uint16_t colo
 /* Render a single frame using 2.5D raycasting */
 static void craft_draw(void) {
     extern uint16_t* fb_get_buffer(void);
-    extern uint8_t gfx_backbuffer[];
     
-    /* Use gfx_backbuffer as a 16-bit intermediate buffer, wait, gfx_backbuffer is 8-bit!
-       We'll render directly to 16-bit window space using the window drawing context later, 
-       but for performance and proper scaling, let's render to a local 320x200 array. */
     static uint16_t buffer_cols[SCREEN_W][SCREEN_H];
     
     /* Draw sky and ground (flat shading) */
@@ -100,7 +107,6 @@ static void craft_draw(void) {
     
     /* Raycaster for 3D grid */
     for (int x = 0; x < SCREEN_W; x++) {
-        /* Screen x mapped to angle */
         int a_offset = (x - (SCREEN_W / 2)) * 60 / SCREEN_W; /* ~60 deg FOV */
         int ray_angle = (player_angle + a_offset) % 360;
         if (ray_angle < 0) ray_angle += 360;
@@ -108,7 +114,6 @@ static void craft_draw(void) {
         int r_cos = fix_cos_table[ray_angle];
         int r_sin = fix_sin_table[ray_angle];
         
-        /* DDA variables */
         int map_x = FROM_FIX(player_x);
         int map_z = FROM_FIX(player_z);
         
@@ -138,11 +143,10 @@ static void craft_draw(void) {
         int side = 0;
         int dist = 0;
         
-        /* Keep track of occlusion (Y limits) to prevent overdraw */
         int y_top_limit = SCREEN_H;
         int y_bottom_limit = 0;
         
-        while (hit < 16) { /* max steps */
+        while (hit < 16) { 
             if (side_dist_x < side_dist_z) {
                 side_dist_x += delta_dist_x;
                 map_x += step_x;
@@ -155,26 +159,21 @@ static void craft_draw(void) {
             
             if (map_x < 0 || map_x >= MAP_W || map_z < 0 || map_z >= MAP_D) break;
             
-            /* Calculate distance to this cell */
             if (side == 0) dist = side_dist_x - delta_dist_x;
             else           dist = side_dist_z - delta_dist_z;
             
             if (dist <= 0) dist = 1;
             
-            /* Fix fisheye */
             int ca = (ray_angle - player_angle) % 360;
             if (ca < 0) ca += 360;
             int perp_dist = fix_mul(dist, fix_cos_table[ca]);
             if (perp_dist <= 0) perp_dist = 1;
             
-            /* OPTIMIZATION: Compute inverted distance once per ray to avoid costly divisions */
             int inv_perp_dist = fix_div(TO_FIX(1), perp_dist);
             
-            /* Check blocks in this column from top to bottom */
             for (int y = MAP_H - 1; y >= 0; y--) {
                 uint8_t block = world[map_x][y][map_z];
                 if (block != B_AIR) {
-                    /* Project top and bottom of the block */
                     int block_top = TO_FIX(y + 1);
                     int block_bot = TO_FIX(y);
                     
@@ -187,12 +186,10 @@ static void craft_draw(void) {
                     if (draw_y_top < 0) draw_y_top = 0;
                     if (draw_y_bot >= SCREEN_H) draw_y_bot = SCREEN_H - 1;
                     
-                    /* Occlusion culling */
                     if (draw_y_bot < y_bottom_limit || draw_y_top > y_top_limit) continue;
                     
                     uint16_t color = get_block_color(block, side);
                     
-                    /* Draw vertical span optimized (contiguous memory in column-major array) */
                     int draw_start = (draw_y_top > y_bottom_limit) ? draw_y_top : y_bottom_limit;
                     int draw_end = (draw_y_bot < y_top_limit - 1) ? draw_y_bot : y_top_limit - 1;
                     
@@ -200,10 +197,7 @@ static void craft_draw(void) {
                         buffer_cols[x][dy] = color;
                     }
                     
-                    /* Update limits */
                     if (draw_y_top < y_top_limit) y_top_limit = draw_y_top;
-                    
-                    /* If we hit a block that occludes everything below, we stop down-casting */
                     if (y_top_limit <= y_bottom_limit) break;
                 }
             }
@@ -211,7 +205,15 @@ static void craft_draw(void) {
         }
     }
     
-    /* Now scale buffer320 to the actual window */
+    /* Draw Crosshair (in buffer320 space before upscaling) */
+    int cx_screen = SCREEN_W / 2;
+    int cy_screen = SCREEN_H / 2;
+    for (int i = -3; i <= 3; i++) {
+        if (cx_screen + i >= 0 && cx_screen + i < SCREEN_W) buffer_cols[cx_screen + i][cy_screen] = 65535;
+        if (cy_screen + i >= 0 && cy_screen + i < SCREEN_H) buffer_cols[cx_screen][cy_screen + i] = 65535;
+    }
+    
+    /* Now scale buffer_cols to the actual window */
     extern window_t *window_list;
     window_t *curr = window_list;
     int cx = 0, cy = 0;
@@ -244,11 +246,49 @@ static void craft_draw(void) {
                 row2[dest_x1] = c; row2[dest_x2] = c;
             }
         }
+        
+        /* Draw Settings overlay if active */
+        if (menu_active) {
+            /* Dim screen slightly by drawing semi-transparent black boxes, or just a big rectangle */
+            for (int y = 0; y < 150; y++) {
+                int draw_y = cy + 24 + 50 + y;
+                if (draw_y >= 480) break;
+                for (int x = 0; x < 200; x++) {
+                    int draw_x = cx + 220 + x;
+                    if (draw_x >= 640) continue;
+                    vram[draw_y * 640 + draw_x] = 0x0000;
+                }
+            }
+        }
     }
     
-    extern void font8x16_draw_string(int x, int y, const char *str, uint16_t color);
-    craft_draw_text(cx + 10, cy + 30, "STAX Craft", 65535);
-    craft_draw_text(cx + 10, cy + 50, "[W/A/S/D] Move | [< >] Rotate | [Space] Place | [Shift] Break", 65535);
+    if (menu_active) {
+        craft_draw_text(cx + 230, cy + 24 + 60, "--- SETTINGS ---", 65535);
+        char buf[64];
+        buf[0] = 'S'; buf[1] = 'e'; buf[2] = 'n'; buf[3] = 's'; buf[4] = ':'; buf[5] = ' ';
+        buf[6] = (mouse_sens / 10) + '0';
+        buf[7] = (mouse_sens % 10) + '0';
+        buf[8] = '\0';
+        craft_draw_text(cx + 230, cy + 24 + 90, buf, 65535);
+        craft_draw_text(cx + 230, cy + 24 + 110, "[+] Increase", rgb565(0,255,0));
+        craft_draw_text(cx + 230, cy + 24 + 130, "[-] Decrease", rgb565(255,0,0));
+        craft_draw_text(cx + 230, cy + 24 + 160, "[ESC] Resume", 65535);
+    } else {
+        craft_draw_text(cx + 10, cy + 30, "STAX Craft", 65535);
+        const char *bname = "Wood";
+        if (active_block == B_GRASS) bname = "Grass";
+        if (active_block == B_DIRT) bname = "Dirt";
+        if (active_block == B_STONE) bname = "Stone";
+        char buf[64];
+        buf[0] = 'B'; buf[1] = 'l'; buf[2] = 'o'; buf[3] = 'c'; buf[4] = 'k'; buf[5] = ':'; buf[6] = ' '; buf[7] = '\0';
+        char *d = buf + 7;
+        while (*bname) *d++ = *bname++;
+        *d = '\0';
+        
+        craft_draw_text(cx + 10, cy + 50, buf, 65535);
+        craft_draw_text(cx + 10, cy + 70, "[Drag] Look | [L/R Click] Build", rgb565(200, 200, 200));
+        craft_draw_text(cx + 10, cy + 90, "[Space] Jump | [1-4] Select | [ESC] Menu", rgb565(200, 200, 200));
+    }
 }
 
 static void craft_draw_text(int x_pos, int y_pos, const char *str, uint16_t color) {
@@ -277,30 +317,38 @@ static void craft_draw_text(int x_pos, int y_pos, const char *str, uint16_t colo
     }
 }
 
+/* Collision Check */
+static int is_solid(int x, int y, int z) {
+    if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H || z < 0 || z >= MAP_D) return 1; /* Boundaries are solid */
+    return world[x][y][z] != B_AIR;
+}
 
 static void craft_update(int dt_ms) {
     (void)dt_ms;
-    if (c_state == 1) return;
+    if (c_state == 1 || menu_active) return;
     
     int speed = TO_FIX(1) / 4; 
     int r_cos = fix_cos_table[player_angle];
     int r_sin = fix_sin_table[player_angle];
     
+    int next_x = player_x;
+    int next_z = player_z;
+    
     if (kb_is_pressed('w')) {
-        player_x += fix_mul(speed, r_cos);
-        player_z += fix_mul(speed, r_sin);
+        next_x += fix_mul(speed, r_cos);
+        next_z += fix_mul(speed, r_sin);
     }
     if (kb_is_pressed('s')) {
-        player_x -= fix_mul(speed, r_cos);
-        player_z -= fix_mul(speed, r_sin);
+        next_x -= fix_mul(speed, r_cos);
+        next_z -= fix_mul(speed, r_sin);
     }
     if (kb_is_pressed('a')) {
-        player_x += fix_mul(speed, r_sin);
-        player_z -= fix_mul(speed, r_cos);
+        next_x += fix_mul(speed, r_sin);
+        next_z -= fix_mul(speed, r_cos);
     }
     if (kb_is_pressed('d')) {
-        player_x -= fix_mul(speed, r_sin);
-        player_z += fix_mul(speed, r_cos);
+        next_x -= fix_mul(speed, r_sin);
+        next_z += fix_mul(speed, r_cos);
     }
     if (kb_is_pressed(KB_RIGHT)) { /* Right arrow */
         player_angle = (player_angle + 5) % 360;
@@ -317,13 +365,52 @@ static void craft_update(int dt_ms) {
         if (player_pitch < -100) player_pitch = -100;
     }
     
-    /* Basic bounds check */
-    int px = FROM_FIX(player_x);
-    int pz = FROM_FIX(player_z);
-    if (px < 1) player_x = TO_FIX(1);
-    if (px >= MAP_W - 1) player_x = TO_FIX(MAP_W - 2);
-    if (pz < 1) player_z = TO_FIX(1);
-    if (pz >= MAP_D - 1) player_z = TO_FIX(MAP_D - 2);
+    /* Jump */
+    if (kb_is_pressed(' ') && is_grounded) {
+        player_vel_y = TO_FIX(1) / 3; /* Jump strength */
+        is_grounded = 0;
+    }
+    
+    /* Gravity */
+    player_vel_y -= TO_FIX(1) / 30; /* Gravity */
+    if (player_vel_y < -TO_FIX(1)) player_vel_y = -TO_FIX(1); /* Terminal velocity */
+    
+    int next_y = player_y + player_vel_y;
+    
+    /* XZ Collision */
+    int px = FROM_FIX(next_x);
+    int pz = FROM_FIX(next_z);
+    int py = FROM_FIX(player_y);
+    int py_feet = FROM_FIX(player_y - TO_FIX(1)/2);
+    
+    if (!is_solid(px, py, pz) && !is_solid(px, py_feet, pz)) {
+        player_x = next_x;
+        player_z = next_z;
+    }
+    
+    /* Y Collision */
+    px = FROM_FIX(player_x);
+    pz = FROM_FIX(player_z);
+    int ny_head = FROM_FIX(next_y + TO_FIX(1)/4);
+    int ny_feet = FROM_FIX(next_y - TO_FIX(1)/2);
+    
+    if (player_vel_y <= 0) { /* Falling or grounded */
+        if (is_solid(px, ny_feet, pz)) {
+            player_y = TO_FIX(ny_feet + 1) + TO_FIX(1)/2;
+            player_vel_y = 0;
+            is_grounded = 1;
+        } else {
+            player_y = next_y;
+            is_grounded = 0;
+        }
+    } else if (player_vel_y > 0) { /* Jumping */
+        if (is_solid(px, ny_head, pz)) {
+            player_y = TO_FIX(ny_head) - TO_FIX(1)/4;
+            player_vel_y = 0;
+        } else {
+            player_y = next_y;
+        }
+    }
 }
 
 void craft_update_window(struct window *win, int dt_ms) {
@@ -338,18 +425,78 @@ static void craft_draw_window_cb(struct window *win, int cx, int cy, int cw, int
 
 static void craft_key_event(struct window *win, char c) {
     (void)win;
-    /* Interact with blocks (simple raycast to find block ahead) */
-    if (c == ' ' || c == 'R') {
-        /* Simple place block */
-        int map_x = FROM_FIX(player_x + fix_mul(TO_FIX(2), fix_cos_table[player_angle]));
-        int map_z = FROM_FIX(player_z + fix_mul(TO_FIX(2), fix_sin_table[player_angle]));
-        int map_y = FROM_FIX(player_y);
-        
-        if (map_x >= 0 && map_x < MAP_W && map_z >= 0 && map_z < MAP_D && map_y >= 0 && map_y < MAP_H) {
-            if (c == ' ') world[map_x][map_y][map_z] = B_WOOD; /* Place */
-            if (c == 'R' || c == 'r') world[map_x][map_y][map_z] = B_AIR; /* Break */
-        }
+    if (c == 27) { /* ESC */
+        menu_active = !menu_active;
+        if (menu_active) last_mx = -1; /* reset mouse on pause */
     }
+    
+    if (menu_active) {
+        if (c == '=' || c == '+') {
+            mouse_sens++;
+            if (mouse_sens > 20) mouse_sens = 20;
+        }
+        if (c == '-' || c == '_') {
+            mouse_sens--;
+            if (mouse_sens < 1) mouse_sens = 1;
+        }
+        return;
+    }
+    
+    if (c == '1') active_block = B_WOOD;
+    if (c == '2') active_block = B_STONE;
+    if (c == '3') active_block = B_DIRT;
+    if (c == '4') active_block = B_GRASS;
+}
+
+/* Mouse click to place/break */
+static void craft_mouse_click(struct window *win, int mx, int my, int button) {
+    (void)win; (void)mx; (void)my;
+    if (menu_active) return;
+    
+    /* Raycast to find block ahead */
+    int map_x = FROM_FIX(player_x + fix_mul(TO_FIX(2), fix_cos_table[player_angle]));
+    int map_z = FROM_FIX(player_z + fix_mul(TO_FIX(2), fix_sin_table[player_angle]));
+    int map_y = FROM_FIX(player_y);
+    
+    if (map_x >= 0 && map_x < MAP_W && map_z >= 0 && map_z < MAP_D && map_y >= 0 && map_y < MAP_H) {
+        if (button == 1) world[map_x][map_y][map_z] = B_AIR; /* Left click -> Break */
+        if (button == 2) world[map_x][map_y][map_z] = active_block; /* Right click -> Place */
+    }
+}
+
+/* Mouse drag to look around */
+static void craft_mouse_drag(struct window *win, int mx, int my) {
+    (void)win;
+    if (menu_active) return;
+    
+    if (last_mx == -1) {
+        last_mx = mx;
+        last_my = my;
+        return;
+    }
+    
+    int dx = mx - last_mx;
+    int dy = my - last_my;
+    
+    if (iabs(dx) > 100 || iabs(dy) > 100) {
+        last_mx = mx;
+        last_my = my;
+        return;
+    }
+    
+    /* Map delta to rotation */
+    int yaw_change = (dx * mouse_sens) / 2;
+    int pitch_change = (dy * mouse_sens) / 2;
+    
+    player_angle = (player_angle + yaw_change) % 360;
+    if (player_angle < 0) player_angle += 360;
+    
+    player_pitch -= pitch_change; /* Inverted Y look */
+    if (player_pitch > 100) player_pitch = 100;
+    if (player_pitch < -100) player_pitch = -100;
+    
+    last_mx = mx;
+    last_my = my;
 }
 
 void cmd_craft(int argc, char **argv) {
@@ -371,5 +518,7 @@ void cmd_craft(int argc, char **argv) {
     if (win) {
         win->update_client = craft_update_window;
         win->key_event = craft_key_event;
+        win->mouse_click = craft_mouse_click;
+        win->mouse_drag = craft_mouse_drag;
     }
 }
