@@ -128,6 +128,7 @@ KERNEL_OBJS  += $(BUILD_DIR)/sokoban.o
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
 KERNEL_OBJS  += $(BUILD_DIR)/slime.o
+KERNEL_OBJS  += $(BUILD_DIR)/craft.o
 
 # em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)

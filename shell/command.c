@@ -15,6 +15,7 @@
 #include "bmp.h"
 #include "gfx_console.h"
 #include "string.h"
+#include "craft.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
@@ -36,6 +37,7 @@ static const command_t commands[] = {
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
     {"game",    "Play a game (use --doom, --doom2, --snake, --slime)", cmd_game},
     {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
+    {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
     {"test",    "Run tests (use --fb, --game)", cmd_test},
     {NULL,      NULL,                                NULL}
