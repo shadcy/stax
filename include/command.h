@@ -47,5 +47,12 @@ void cmd_nano(int argc, char *argv[]);
 void cmd_game(int argc, char *argv[]);
 void cmd_test_game(int argc, char *argv[]);
 void cmd_slime(int argc, char *argv[]);
+void cmd_craft(int argc, char *argv[]);
+
+/* Benchmark / diagnostic commands */
+void cmd_bench(int argc, char *argv[]);
+void cmd_stress(int argc, char *argv[]);
+void cmd_ps(int argc, char *argv[]);
+void cmd_uptime(int argc, char *argv[]);
 
 #endif

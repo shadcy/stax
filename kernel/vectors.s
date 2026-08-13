@@ -249,57 +249,129 @@ sched_return:
     ldmfd   sp!, {pc}
 
 /* ============================================================================
- * Dummy handlers for exceptions we do not expect in normal operation.
+ * Improved exception handlers.
+ * Each handler:
+ *  1. Saves the faulting LR to a global variable (for GDB inspection)
+ *  2. Prints a multi-character diagnostic to UART0
+ *  3. Loops forever (cannot recover from these exceptions without a handler)
+ *
+ * To inspect after a fault in GDB:
+ *   (gdb) x /1wx &stax_fault_lr
+ *   (gdb) x /1wx &stax_fault_pc
  * ============================================================================ */
+
+    .section .data
+    .global stax_fault_lr
+    .global stax_fault_pc
+    .global stax_fault_cpsr
+stax_fault_lr:   .word 0
+stax_fault_pc:   .word 0
+stax_fault_cpsr: .word 0
+
+    .section .text
+
+/* Macro: print a null-terminated string literal to UART0 */
+.macro UART_PUTS str_label
+    ldr r0, =0x101F1000
+    ldr r1, =\str_label
+1:  ldrb r2, [r1], #1
+    cmp r2, #0
+    beq 9f
+2:  ldr r3, [r0, #0x18]
+    tst r3, #0x20
+    bne 2b
+    str r2, [r0]
+    b   1b
+9:
+.endm
+
+/* Macro: print a 32-bit hex value in r2 to UART0 */
+.macro UART_HEX
+    ldr r0, =0x101F1000
+    mov r3, #28          @ shift counter (7 nibbles * 4, start at bit 28)
+10: mov r4, r2, lsr r3
+    and r4, r4, #0xF
+    cmp r4, #10
+    addlt r4, r4, #'0'
+    addge r4, r4, #('A' - 10)
+11: ldr r5, [r0, #0x18]
+    tst r5, #0x20
+    bne 11b
+    str r4, [r0]
+    subs r3, r3, #4
+    bge 10b
+.endm
 
 reset_handler:
     b _start
 
+    .section .rodata
+stax_msg_undef:    .asciz "\r\n[STAX FAULT] Undefined Instruction\r\n  LR="
+stax_msg_svc:      .asciz "\r\n[STAX FAULT] Unexpected SVC (syscall not implemented)\r\n  LR="
+stax_msg_prefetch: .asciz "\r\n[STAX FAULT] Prefetch Abort (bad instruction fetch)\r\n  LR="
+stax_msg_data:     .asciz "\r\n[STAX FAULT] Data Abort (bad memory access)\r\n  LR="
+stax_msg_reserved: .asciz "\r\n[STAX FAULT] Reserved Exception\r\n  LR="
+stax_msg_hang:     .asciz "\r\n  System halted. Attach GDB: make gdb\r\n"
+
+    .section .text
+
 undef_handler:
-    ldr r0, =0x101F1000
-1:  ldr r1, [r0, #0x18]
-    tst r1, #0x20
-    bne 1b
-    mov r1, #'U'
+    /* Save fault context */
+    ldr r0, =stax_fault_lr
+    str lr, [r0]
+    mrs r1, cpsr
+    ldr r0, =stax_fault_cpsr
     str r1, [r0]
+    /* Print message */
+    UART_PUTS stax_msg_undef
+    mov r2, lr
+    UART_HEX
+    UART_PUTS stax_msg_hang
     b .
 
 svc_handler:
-    ldr r0, =0x101F1000
-1:  ldr r1, [r0, #0x18]
-    tst r1, #0x20
-    bne 1b
-    mov r1, #'S'
-    str r1, [r0]
+    ldr r0, =stax_fault_lr
+    str lr, [r0]
+    UART_PUTS stax_msg_svc
+    mov r2, lr
+    UART_HEX
+    UART_PUTS stax_msg_hang
     b .
 
 prefetch_handler:
-    ldr r0, =0x101F1000
-1:  ldr r1, [r0, #0x18]
-    tst r1, #0x20
-    bne 1b
-    mov r1, #'P'
+    ldr r0, =stax_fault_lr
+    /* LR in abort mode points to fault + 4 */
+    sub r1, lr, #4
     str r1, [r0]
+    ldr r0, =stax_fault_pc
+    str r1, [r0]
+    UART_PUTS stax_msg_prefetch
+    mov r2, r1
+    UART_HEX
+    UART_PUTS stax_msg_hang
     b .
 
 data_handler:
-    ldr r0, =0x101F1000
-1:  ldr r1, [r0, #0x18]
-    tst r1, #0x20
-    bne 1b
-    mov r1, #'D'
+    /* In data abort mode, LR = faulting instruction + 8 */
+    sub r1, lr, #8
+    ldr r0, =stax_fault_pc
     str r1, [r0]
+    ldr r0, =stax_fault_lr
+    str lr, [r0]
+    UART_PUTS stax_msg_data
+    mov r2, r1
+    UART_HEX
+    UART_PUTS stax_msg_hang
     b .
 
 reserved_handler:
-    ldr r0, =0x101F1000
-1:  ldr r1, [r0, #0x18]
-    tst r1, #0x20
-    bne 1b
-    mov r1, #'R'
-    str r1, [r0]
+    ldr r0, =stax_fault_lr
+    str lr, [r0]
+    UART_PUTS stax_msg_reserved
+    mov r2, lr
+    UART_HEX
+    UART_PUTS stax_msg_hang
     b .
 
 fiq_handler:
-    subs pc, lr, #4
     subs pc, lr, #4

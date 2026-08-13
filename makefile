@@ -29,6 +29,7 @@ APPS_DIR    := apps
 UI_DIR      := ui
 SHELL_DIR   := shell
 LIB_DIR     := lib
+BENCH_DIR   := bench
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
@@ -49,7 +50,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -I$(APPS_DIR)       \
             -I$(UI_DIR)         \
             -I$(SHELL_DIR)      \
-            -I$(LIB_DIR)
+            -I$(LIB_DIR)        \
+            -I$(BENCH_DIR)
 
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
 
@@ -130,6 +132,17 @@ KERNEL_OBJS  += $(BUILD_DIR)/doom.o
 KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 KERNEL_OBJS  += $(BUILD_DIR)/craft.o
 
+# Benchmark infrastructure
+KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
+                 $(BUILD_DIR)/bench_main.o \
+                 $(BUILD_DIR)/bench_memory.o \
+                 $(BUILD_DIR)/bench_vm.o \
+                 $(BUILD_DIR)/bench_scheduler.o \
+                 $(BUILD_DIR)/bench_fs.o \
+                 $(BUILD_DIR)/bench_gfx.o \
+                 $(BUILD_DIR)/bench_stress.o \
+                 $(BUILD_DIR)/bench_kernel_test.o
+
 # em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
 # Filter out the original platform files, we use stax_platform.c instead
@@ -154,7 +167,7 @@ QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),i
 # =============================================================================
 # Rules
 # =============================================================================
-.PHONY: all clean qemu qemu-gfx debug gdb dump size
+.PHONY: all clean qemu qemu-gfx debug gdb dump size bench bench-memory bench-vm bench-scheduler bench-fs bench-gfx stress test bench-compare
 
 all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 
@@ -244,6 +257,9 @@ $(BUILD_DIR)/%.o: $(SHELL_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(LIB_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/%.o: $(BENCH_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # DOOM files need special flags and the stax_compat.h included
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -w -O2 -include $(GAMES_DIR)/em-doom/linuxdoom-1.10/stax_compat.h -c $< -o $@
@@ -294,3 +310,66 @@ clean:
 clean-all: clean
 	rm -f $(OS_BIN)
 	@echo "Cleaned everything, including os.bin."
+
+# ---------------------------------------------------------------------------
+# Benchmark targets — build + run in QEMU, capture output
+# ---------------------------------------------------------------------------
+# USAGE: make bench         → full benchmark suite
+#        make bench-memory  → memory sub-bench
+#        make bench-vm      → VM/page sub-bench
+#        make bench-scheduler → scheduler sub-bench
+#        make bench-fs      → filesystem sub-bench
+#        make bench-gfx     → graphics sub-bench
+#        make stress        → stress tests
+#        make test          → automated test suite
+#        make bench-compare → compare bench/baseline.csv with last run
+#
+# Results are captured to bench/results.csv (BENCH: prefixed lines)
+# ---------------------------------------------------------------------------
+bench: $(BOOT_BIN) $(OS_BIN)
+	@echo "Running STAX benchmark suite in QEMU..."
+	@echo "(Type 'bench' at the STAX prompt, then Ctrl-A X to exit)"
+	@echo "Capturing BENCH: CSV lines to bench/results.csv"
+	@mkdir -p bench
+	$(QEMU) $(QEMU_FLAGS) 2>&1 | tee /tmp/stax_bench_raw.txt | grep '^BENCH:' > bench/results.csv || true
+	@echo ""
+	@echo "Benchmark CSV saved to bench/results.csv"
+	@wc -l bench/results.csv 2>/dev/null && echo "benchmark data points" || echo "(no CSV output captured)"
+
+bench-memory: $(BOOT_BIN) $(OS_BIN)
+	@echo "Run 'bench --memory' at the STAX prompt"
+	$(QEMU) $(QEMU_FLAGS)
+
+bench-vm: $(BOOT_BIN) $(OS_BIN)
+	@echo "Run 'bench --vm' at the STAX prompt"
+	$(QEMU) $(QEMU_FLAGS)
+
+bench-scheduler: $(BOOT_BIN) $(OS_BIN)
+	@echo "Run 'bench --scheduler' at the STAX prompt"
+	$(QEMU) $(QEMU_FLAGS)
+
+bench-fs: $(BOOT_BIN) $(OS_BIN)
+	@echo "Run 'bench --fs' at the STAX prompt"
+	$(QEMU) $(QEMU_FLAGS)
+
+bench-gfx: $(BOOT_BIN) $(OS_BIN)
+	@echo "Run 'bench --gfx' at the STAX prompt"
+	$(QEMU) $(QEMU_FLAGS)
+
+stress: $(BOOT_BIN) $(OS_BIN)
+	@echo "Run 'stress' at the STAX prompt"
+	$(QEMU) $(QEMU_FLAGS)
+
+test: $(BOOT_BIN) $(OS_BIN)
+	@echo "Run 'test' at the STAX prompt for automated [PASS]/[FAIL] output"
+	$(QEMU) $(QEMU_FLAGS)
+
+# Compare two benchmark result CSV files
+# Usage: make bench-compare OLD=bench/baseline.csv NEW=bench/results.csv
+bench-compare:
+	@OLD=$${OLD:-bench/baseline.csv}; NEW=$${NEW:-bench/results.csv}; \
+	if [ ! -f "$$OLD" ]; then echo "No baseline: $$OLD. Run bench first and cp bench/results.csv bench/baseline.csv"; exit 1; fi; \
+	if [ ! -f "$$NEW" ]; then echo "No current results: $$NEW. Run bench first."; exit 1; fi; \
+	echo "Comparing $$OLD vs $$NEW"; \
+	echo "Name,Old_mean,New_mean,Delta%"; \
+	awk -F, 'NR==FNR{old[$$1]=$$5; next} { if(old[$$1]>0) { delta=int(($$5-old[$$1])*100/old[$$1]); print $$1 "," old[$$1] "," $$5 "," delta "%" } }' "$$OLD" "$$NEW"

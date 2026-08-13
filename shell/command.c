@@ -16,6 +16,8 @@
 #include "gfx_console.h"
 #include "string.h"
 #include "craft.h"
+#include "bench.h"
+#include "page.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
@@ -39,7 +41,11 @@ static const command_t commands[] = {
     {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
     {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
-    {"test",    "Run tests (use --fb, --game)", cmd_test},
+    {"test",    "Run tests ([--mem] [--fs] [--all])", cmd_test},
+    {"bench",   "Run benchmarks ([--memory] [--vm] [--scheduler] [--fs] [--gfx] [--all])", cmd_bench},
+    {"stress",  "Run stress tests", cmd_stress},
+    {"ps",      "Show process/task list", cmd_ps},
+    {"uptime",  "Show system uptime", cmd_uptime},
     {NULL,      NULL,                                NULL}
 };
 
@@ -976,4 +982,138 @@ void cmd_nano(int argc, char *argv[])
         kputs("Failed to save file completely.\n");
     }
     kputs("Type 'help' for available commands\n");
+}
+
+/* ============================================================================
+ * cmd_bench — run benchmark suite
+ * Usage: bench [--memory|--vm|--scheduler|--fs|--gfx|--all]
+ * ============================================================================ */
+extern void bench_run_all(void);
+extern void bench_run_sub(const char *name);
+
+void cmd_bench(int argc, char *argv[])
+{
+    if (argc < 2 || strcmp(argv[1], "--all") == 0) {
+        kputs("Running full STAX benchmark suite...\n");
+        kputs("(This takes 30-60 seconds. BENCH: lines = CSV output)\n\n");
+        bench_run_all();
+        return;
+    }
+
+    const char *sub = argv[1];
+    /* Strip leading -- */
+    if (sub[0] == '-' && sub[1] == '-') sub += 2;
+
+    kputs("Running benchmark: ");
+    kputs(sub);
+    kputs("\n");
+    bench_run_sub(sub);
+}
+
+/* ============================================================================
+ * cmd_stress — run stress tests
+ * ============================================================================ */
+extern void bench_stress_run(void);
+
+void cmd_stress(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("Running STAX stress tests...\n");
+    kputs("(Memory, Scheduler, Filesystem, Graphics)\n\n");
+    bench_timer_init();
+    bench_stress_run();
+}
+
+/* ============================================================================
+ * cmd_ps — show task/process list
+ * ============================================================================ */
+void cmd_ps(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+
+    kputs("Process/Task List:\n");
+    kputs("==================\n");
+    kputs("  PID  STATE       NAME\n");
+    kputs("  ---- ----------- ----------------\n");
+
+    /* We can access task_table via the current_task pointer and walking the
+     * circular linked list. We don't have direct access to task_table here,
+     * so we walk through current_task->next chain. */
+    extern task_t *current_task;
+    if (!current_task) {
+        kputs("  (scheduler not initialized)\n");
+        return;
+    }
+
+    task_t *t = current_task;
+    int pid = 0;
+    int max_walk = 8; /* safety limit */
+
+    do {
+        kputs("  ");
+        /* PID */
+        kput_uint((uint32_t)pid);
+        if (pid < 10) kputc(' ');
+        kputs("   ");
+
+        /* STATE */
+        const char *state_str;
+        switch (t->state) {
+            case 0:  state_str = "READY      "; break;
+            case 1:  state_str = "RUNNING    "; break;
+            case 2:  state_str = "BLOCKED    "; break;
+            case -1: state_str = "DEAD       "; break;
+            default: state_str = "UNKNOWN    "; break;
+        }
+        kputs(state_str);
+
+        /* Name — we don't track task names in the TCB, so use pid-based labels */
+        if (pid == 0) kputs("kernel_main");
+        else { kputs("task_"); kput_uint((uint32_t)pid); }
+        kputs("\n");
+
+        t = t->next;
+        pid++;
+        max_walk--;
+    } while (t != current_task && max_walk > 0);
+
+    kputs("\n");
+    kputs("  Scheduler: Preemptive round-robin\n");
+    kputs("  Quantum  : 10 ms (every 10 timer ticks)\n");
+    kputs("  MAX_TASKS: 4\n");
+}
+
+/* ============================================================================
+ * cmd_uptime — show system uptime
+ * ============================================================================ */
+void cmd_uptime(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+
+    unsigned int t = tick_count;
+    unsigned int total_sec = t / 1000;
+    unsigned int ms        = t % 1000;
+    unsigned int hours     = total_sec / 3600;
+    unsigned int minutes   = (total_sec % 3600) / 60;
+    unsigned int seconds   = total_sec % 60;
+
+    kputs("System Uptime:\n");
+    kputs("==============\n");
+    kputs("  Ticks     : "); kput_uint(t);          kputs(" (1ms/tick)\n");
+    kputs("  Uptime    : ");
+    kput_uint(hours);   kputs("h ");
+    kput_uint(minutes); kputs("m ");
+    kput_uint(seconds); kputs(".");
+    if (ms < 100) kputc('0');
+    if (ms < 10)  kputc('0');
+    kput_uint(ms);      kputs("s\n");
+
+    /* Page allocator state */
+    int free_mem  = get_free_memory();
+    int total_mem = get_total_memory();
+    kputs("  Free RAM  : "); kput_uint((uint32_t)(free_mem / 1024));
+    kputs(" KB / "); kput_uint((uint32_t)(total_mem / 1024)); kputs(" KB\n");
+
+    /* Heap free list */
+    kputs("  Heap free : "); kput_uint(heap_get_free()); kputs(" bytes\n");
 }
