@@ -26,7 +26,6 @@ The project demonstrates a complete vertical stack—from a custom assembly boot
 - **Interrupts & Task Scheduling:** Utilizes the PL190 Vectored Interrupt Controller (VIC) and SP804 Timer to drive a preemptive, multi-tasking scheduler. The kernel can manage concurrent processes, yielding and distributing CPU cycles dynamically.
 - **Hardware Drivers:** Bare-metal, from-scratch driver implementations for the ARM VersatilePB board, interfacing directly with memory-mapped I/O registers for the PL050 (Keyboard/Mouse interface) and PL110 (Color Framebuffer).
 - **Storage & Filesystem:** Integrates the FAT16 filesystem layer on top of a PL181 SD card block driver. This allows the OS to persist user data, read game assets, and manage file I/O operations reliably.
-- **Networking:** Foundational integration with the lwIP networking stack for Ethernet frame transmission, packet handling, and DHCP IP assignment.
 - **Windowing System:** A lightweight, compositing Window Manager built directly on the kernel's framebuffer abstraction. It features double-buffering to prevent tearing and provides a clean API for user-space applications to draw to the screen.
 
 ## Performance & Benchmarking
@@ -99,7 +98,6 @@ make qemu-gfx
 - **C:** Core kernel logic, memory management, and user-space applications.
 - **ARM Assembly:** Bootloader, hardware initialization, and low-level context switching.
 - **QEMU:** Emulation and hardware virtualization.
-- **lwIP:** TCP/IP stack for networking.
 - **FATFS:** Filesystem abstraction.
 
 ## Thanks
