@@ -79,9 +79,9 @@ void mouse_poll(void) {
                 mouse_y -= (rel_y * 2); /* PS/2 y is up */
                 
                 if (mouse_x < 0) mouse_x = 0;
-                if (mouse_x >= FB_WIDTH) mouse_x = FB_WIDTH - 1;
+                if (mouse_x >= (int)FB_WIDTH) mouse_x = FB_WIDTH - 1;
                 if (mouse_y < 0) mouse_y = 0;
-                if (mouse_y >= FB_HEIGHT) mouse_y = FB_HEIGHT - 1;
+                if (mouse_y >= (int)FB_HEIGHT) mouse_y = FB_HEIGHT - 1;
                 
                 mouse_buttons = mouse_byte[0] & 0x07;
                 mouse_changed = 1;

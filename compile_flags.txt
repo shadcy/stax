@@ -1,0 +1,14 @@
+-Iinclude
+-Ifs
+-Iengine
+-Igfx
+-Iapps
+-Iui
+-Ishell
+-Ilib
+-Wall
+-Wextra
+-mcpu=arm926ej-s
+-ffreestanding
+-nostdlib
+-nostartfiles
