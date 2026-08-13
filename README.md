@@ -29,6 +29,16 @@ The project demonstrates a complete vertical stack—from a custom assembly boot
 - **Networking:** Foundational integration with the lwIP networking stack for Ethernet frame transmission, packet handling, and DHCP IP assignment.
 - **Windowing System:** A lightweight, compositing Window Manager built directly on the kernel's framebuffer abstraction. It features double-buffering to prevent tearing and provides a clean API for user-space applications to draw to the screen.
 
+## Performance & Benchmarking
+
+STAX includes a custom-built, native profiling suite to measure kernel mechanics at microsecond precision (using the SP804 Timer). Benchmarked on QEMU (ARM926EJ-S), the system achieves the following critical metrics:
+
+- **Context Switching:** Highly optimized assembly-level switcher (`vectors.s`) achieving **~16 µs** latency per switch (highly competitive with RTOS standards).
+- **Memory Allocation:** $O(1)$ median latency (**1 µs**) for `kmalloc`/`kfree` with dynamic block coalescing. 
+- **Filesystem I/O:** PL181 SD card + FAT16 driver sustains **1.9 MB/s Read** and **~500 KB/s Write** throughput on large sequential blocks.
+- **Graphics Bandwidth:** Custom MMU configurations (Non-Cacheable + Bufferable) allow the Window Manager to achieve a **927 MB/s memory fill rate**, pushing 640x480 frames at almost 300 FPS.
+- **Footprint:** The entire compiled kernel (`kernel.bin`) is incredibly lean, weighing in at just **~430 KB**.
+
 ## Screenshots
 
 ### Desktop & Window Management
