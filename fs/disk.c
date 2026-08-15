@@ -185,6 +185,17 @@ int pl181_disk_read(uint32_t lba, uint8_t *buf)
 
 int pl181_disk_write(uint32_t lba, const uint8_t *buf)
 {
+#ifdef FAULT_INJECTION
+    extern void kputs(const char *s);
+    kputs("FI_HOOK_WRITE\n");
+    uint32_t rx;
+    do { rx = *(volatile uint32_t*)0x101f1018; } while (rx & (1 << 4)); // UART0_FR RXFE
+    char c = *(volatile uint32_t*)0x101f1000 & 0xFF; // UART0_DR
+    if (c == 'K') {
+        kputs("FI_POWER_LOSS\n");
+        while(1);
+    }
+#endif
     MCI_CLEAR      = 0x1DC07FF;
     MCI_DATATIMER  = 0xFFFFFFFFu;
     MCI_DATALENGTH = 512;

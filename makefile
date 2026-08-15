@@ -13,6 +13,12 @@ SIZE    := $(CROSS)-size
 GDB     := gdb-multiarch
 
 # ---------------------------------------------------------------------------
+# Configuration Flags
+# ---------------------------------------------------------------------------
+ENABLE_BENCH ?= 0
+# //adding this in case i dont want to include benching to the kernel
+
+# ---------------------------------------------------------------------------
 # Directories
 # ---------------------------------------------------------------------------
 BUILD_DIR   := build
@@ -53,7 +59,12 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -I$(LIB_DIR)        \
             -I$(BENCH_DIR)
 
+ifeq ($(ENABLE_BENCH), 1)
+CFLAGS += -DENABLE_BENCH
+endif
+
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
+
 
 LDFLAGS := -nostdlib --gc-sections
 LIBGCC := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
@@ -64,7 +75,9 @@ LIBGCC := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 # Bootloader targets
 BOOT_STARTUP := $(BOOT_DIR)/boot_startup.s
 BOOT_SRC     := $(BOOT_DIR)/bootloader.c
-BOOT_OBJS    := $(BUILD_DIR)/boot_startup.o $(BUILD_DIR)/bootloader.o
+BOOT_OBJS    := $(BUILD_DIR)/boot_startup.o $(BUILD_DIR)/bootloader.o \
+                $(BUILD_DIR)/sha256.o $(BUILD_DIR)/crc32.o $(BUILD_DIR)/monocypher.o \
+                $(BUILD_DIR)/firmware_format.o
 BOOT_LD_IN   := $(BOOT_DIR)/bootloader.ld.in
 BOOT_LD      := $(BUILD_DIR)/bootloader.ld
 BOOT_ELF     := $(BUILD_DIR)/bootloader.elf
@@ -98,6 +111,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/app_sysinfo.o \
                 $(BUILD_DIR)/app_image_viewer.o \
                 $(BUILD_DIR)/app_memview.o \
+                $(BUILD_DIR)/app_firmware_viewer.o \
                 $(BUILD_DIR)/framebuffer.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
@@ -131,8 +145,11 @@ KERNEL_OBJS  += $(BUILD_DIR)/snake.o
 KERNEL_OBJS  += $(BUILD_DIR)/doom.o
 KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 KERNEL_OBJS  += $(BUILD_DIR)/craft.o
+KERNEL_OBJS  += $(BUILD_DIR)/firmware_update.o
+KERNEL_OBJS  += $(BUILD_DIR)/crc32.o
 
 # Benchmark infrastructure
+ifeq ($(ENABLE_BENCH), 1)
 KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
                  $(BUILD_DIR)/bench_main.o \
                  $(BUILD_DIR)/bench_memory.o \
@@ -142,6 +159,7 @@ KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
                  $(BUILD_DIR)/bench_gfx.o \
                  $(BUILD_DIR)/bench_stress.o \
                  $(BUILD_DIR)/bench_kernel_test.o
+endif
 
 # em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
@@ -174,24 +192,34 @@ all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(OS_BIN): $(KERNEL_BIN)
+$(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) tools/stax-sign/stax-sign scripts/create_mbr.py
 	@echo ""
 	@if [ ! -f $@ ]; then \
-		echo "Creating new FAT16 OS Image → $@"; \
+		echo "Creating new Flash Image → $@"; \
 		dd if=/dev/zero of=$@ bs=1M count=32 2>/dev/null; \
-		mkfs.vfat -F 16 $@; \
-		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
-		if [ -f $(GAMES_DIR)/em-doom/doom1.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom1.wad ::/DOOM1.WAD; fi; \
-		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@ $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
-		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@ /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
-	else \
-		echo "Updating KERNEL.BIN in existing OS Image → $@"; \
+		python3 scripts/create_mbr.py 4099 60000; \
+		dd if=mbr.bin of=$@ bs=512 conv=notrunc 2>/dev/null; \
+		rm mbr.bin; \
+		echo "Formatting FAT16 partition..."; \
+		dd if=/dev/zero of=fat.bin bs=512 count=60000 2>/dev/null; \
+		mkfs.vfat -F 16 fat.bin; \
+		dd if=fat.bin of=$@ bs=512 seek=4099 conv=notrunc 2>/dev/null; \
+		rm fat.bin; \
+		if [ ! -f stax_key.priv ]; then \
+			./tools/stax-sign/stax-sign --gen-key stax_key; \
+		fi; \
+		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
+		if [ -f $(GAMES_DIR)/em-doom/doom1.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom1.wad ::/DOOM1.WAD; fi; \
+		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
+		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@@@2098688 /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
 	fi
-	@mcopy -o -i $@ build/kernel.bin ::/KERNEL.BIN
-	# =========================================================================
-	# [USER CUSTOMIZATION]: IMPORT IMAGES HERE
-	@if [ -f BG.BMP ]; then mcopy -o -i $@ BG.BMP ::/BG.BMP; fi
-	# =========================================================================
+	@echo "Signing KERNEL.BIN as Firmware v1..."
+	@if [ ! -f stax_key.priv ]; then ./tools/stax-sign/stax-sign --gen-key stax_key; fi
+	@./tools/stax-sign/stax-sign --sign $(KERNEL_BIN) --version 1 --key stax_key.priv --output $(BUILD_DIR)/firmware.stax
+	@echo "Flashing Firmware to Slot A..."
+	@dd if=$(BUILD_DIR)/firmware.stax of=$@ bs=512 seek=3 conv=notrunc 2>/dev/null
+	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
+	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -251,14 +279,36 @@ $(BUILD_DIR)/%.o: $(APPS_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(UI_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/%.o: crypto/sha256/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: crypto/crc32/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: crypto/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: firmware/image_format/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD_DIR)/%.o: $(SHELL_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(LIB_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/%.o: firmware/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: boot/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD_DIR)/%.o: $(BENCH_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+tools/stax-sign/stax-sign: tools/stax-sign/stax-sign.c firmware/image_format/firmware_format.c crypto/sha256/sha256.c crypto/crc32/crc32.c crypto/monocypher.c
+	gcc -O2 -Iinclude tools/stax-sign/stax-sign.c firmware/image_format/firmware_format.c crypto/sha256/sha256.c crypto/crc32/crc32.c crypto/monocypher.c -o tools/stax-sign/stax-sign
+
 
 # DOOM files need special flags and the stax_compat.h included
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)

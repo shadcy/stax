@@ -54,5 +54,7 @@ void cmd_bench(int argc, char *argv[]);
 void cmd_stress(int argc, char *argv[]);
 void cmd_ps(int argc, char *argv[]);
 void cmd_uptime(int argc, char *argv[]);
+void cmd_fwupdate(int argc, char *argv[]);
+void cmd_fwconfirm(int argc, char *argv[]);
 
 #endif

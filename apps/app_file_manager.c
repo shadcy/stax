@@ -78,6 +78,13 @@ static int is_txt(const char *name) {
     return (a=='T'||a=='t') && (b=='X'||b=='x') && (c=='T'||c=='t');
 }
 
+static int is_stax(const char *name) {
+    int n=0; while(name[n]) n++;
+    if (n<4) return 0;
+    char a=name[n-4],b=name[n-3],c=name[n-2],d=name[n-1];
+    return (a=='S'||a=='s') && (b=='T'||b=='t') && (c=='A'||c=='a') && (d=='X'||d=='x');
+}
+
 /* Build full path: win->path + "/" + name  (root: just name) */
 static void build_path(struct window *win, const char *name, char *out, int sz) {
     int i=0, j=0;
@@ -324,6 +331,17 @@ static void open_txt(struct window *win, const char *full) {
     int k=0; while(full[k]) { nw->path[k]=full[k]; k++; } nw->path[k]='\0';
 }
 
+static void open_stax(struct window *win, const char *full) {
+    extern window_t *wm_add_window(int x, int y, int w, int h, const char *title,
+                                   void (*draw_cb)(window_t*, int, int, int, int));
+    extern void fwviewer_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+    window_t *nw = wm_add_window(win->x+60, win->y+60, 400, 300,
+                                  "Firmware Viewer", fwviewer_draw_window);
+    if (!nw) return;
+    int k=0; while(full[k]) { nw->path[k]=full[k]; k++; } nw->path[k]='\0';
+}
+
+
 void file_manager_click(struct window *win, int mx, int my, int button) {
     fm_state_t *st = (fm_state_t *)win->app_data;
     if (!st || !st->is_loaded) return;
@@ -344,6 +362,7 @@ void file_manager_click(struct window *win, int mx, int my, int button) {
                     /* Open */
                     if (st->file_list[idx].is_dir) open_dir(win, full);
                     else if (is_txt(st->file_list[idx].name)) open_txt(win, full);
+                    else if (is_stax(st->file_list[idx].name)) open_stax(win, full);
                 } else if (ry < 44) {
                     /* Rename */
                     st->rename_active=1; st->rename_idx=idx;
@@ -358,6 +377,9 @@ void file_manager_click(struct window *win, int mx, int my, int button) {
                     if (!st->file_list[idx].is_dir && is_txt(st->file_list[idx].name)) {
                         char fp[64]; build_path(win, st->file_list[idx].name, fp, 64);
                         open_txt(win, fp);
+                    } else if (!st->file_list[idx].is_dir && is_stax(st->file_list[idx].name)) {
+                        char fp[64]; build_path(win, st->file_list[idx].name, fp, 64);
+                        open_stax(win, fp);
                     }
                 } else {
                     /* Delete */
@@ -411,6 +433,8 @@ void file_manager_click(struct window *win, int mx, int my, int button) {
         open_dir(win, full);
     else if (is_txt(st->file_list[idx].name))
         open_txt(win, full);
+    else if (is_stax(st->file_list[idx].name))
+        open_stax(win, full);
 }
 
 /* ================================================================ rename */

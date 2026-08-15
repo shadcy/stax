@@ -17,7 +17,7 @@
 
 **STAX (STAX)** is a lightweight, bare-metal operating system built from scratch for the ARM architecture. Designed as an experimental systems programming project, STAX implements foundational kernel mechanics without relying on existing third-party abstractions.
 
-The project demonstrates a complete vertical stack—from a custom assembly bootloader and low-level hardware drivers to a preemptive task scheduler, a page-based memory allocator, and a fully composited graphical window manager. STAX enforces a clean architectural separation, decoupling hardware interfaces from core kernel logic and user-space applications.
+The project demonstrates a complete vertical stack—from a custom assembly bootloader and low-level hardware drivers to a preemptive task scheduler, a page-based memory allocator, a fully composited graphical window manager, and a production-grade **Secure Firmware Update** system. STAX enforces a clean architectural separation, decoupling hardware interfaces from core kernel logic and user-space applications.
 
 ## Core Architecture & Features
 
@@ -27,6 +27,7 @@ The project demonstrates a complete vertical stack—from a custom assembly boot
 - **Hardware Drivers:** Bare-metal, from-scratch driver implementations for the ARM VersatilePB board, interfacing directly with memory-mapped I/O registers for the PL050 (Keyboard/Mouse interface) and PL110 (Color Framebuffer).
 - **Storage & Filesystem:** Integrates the FAT16 filesystem layer on top of a PL181 SD card block driver. This allows the OS to persist user data, read game assets, and manage file I/O operations reliably.
 - **Windowing System:** A lightweight, compositing Window Manager built directly on the kernel's framebuffer abstraction. It features double-buffering to prevent tearing and provides a clean API for user-space applications to draw to the screen.
+- **Secure Firmware Updates:** A highly resilient A/B dual-slot firmware lifecycle platform. Firmware payloads (`.stax`) are cryptographically verified using **Ed25519** signatures and SHA-256 hashing. It features monotonic version rollback protection, atomic metadata syncing, and a built-in boot watchdog that automatically recovers from corrupted OTA updates or simulated power-loss events.
 
 ## Performance & Benchmarking
 
@@ -60,6 +61,10 @@ STAX includes a custom-built, native profiling suite to measure kernel mechanics
 **Calculator**
 <br>
 ![Calculator](readme-assets/apps-calc.png)
+
+**Secure Firmware Viewer**
+<br>
+A built-in utility to inspect and cryptographically verify `.stax` OTA payloads directly from the graphical UI before installation.
 
 ### Engine Execution (DOOM)
 

@@ -96,6 +96,11 @@ void kernel_main(void)
 
     /* ---- Phase 6e: FAT filesystem ---- */
     fat_init();
+    
+    /* Initialize Firmware Subsystem */
+    extern void stax_firmware_init(void);
+    stax_firmware_init();
+
     wm_load_background("BG.BMP");
 
     /* ---- Phase 6b: Timer ---- */
