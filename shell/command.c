@@ -42,10 +42,14 @@ static const command_t commands[] = {
     {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
     {"test",    "Run tests ([--mem] [--fs] [--all])", cmd_test},
+#ifdef ENABLE_BENCH
     {"bench",   "Run benchmarks ([--memory] [--vm] [--scheduler] [--fs] [--gfx] [--all])", cmd_bench},
     {"stress",  "Run stress tests", cmd_stress},
+#endif
     {"ps",      "Show process/task list", cmd_ps},
     {"uptime",  "Show system uptime", cmd_uptime},
+    {"fwupdate","Update system firmware (e.g. fwupdate /fw.stax)", cmd_fwupdate},
+    {"fwconfirm","Confirm active firmware to prevent rollback", cmd_fwconfirm},
     {NULL,      NULL,                                NULL}
 };
 
@@ -984,6 +988,7 @@ void cmd_nano(int argc, char *argv[])
     kputs("Type 'help' for available commands\n");
 }
 
+#ifdef ENABLE_BENCH
 /* ============================================================================
  * cmd_bench — run benchmark suite
  * Usage: bench [--memory|--vm|--scheduler|--fs|--gfx|--all]
@@ -1014,6 +1019,7 @@ void cmd_bench(int argc, char *argv[])
  * cmd_stress — run stress tests
  * ============================================================================ */
 extern void bench_stress_run(void);
+extern void bench_timer_init(void);
 
 void cmd_stress(int argc, char *argv[])
 {
@@ -1023,6 +1029,8 @@ void cmd_stress(int argc, char *argv[])
     bench_timer_init();
     bench_stress_run();
 }
+#endif
+
 
 /* ============================================================================
  * cmd_ps — show task/process list
@@ -1116,4 +1124,27 @@ void cmd_uptime(int argc, char *argv[])
 
     /* Heap free list */
     kputs("  Heap free : "); kput_uint(heap_get_free()); kputs(" bytes\n");
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_fwupdate — update firmware
+ * --------------------------------------------------------------------------- */
+void cmd_fwupdate(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: fwupdate <file.stax>\n");
+        return;
+    }
+    extern int stax_firmware_update(const char *file_path);
+    stax_firmware_update(argv[1]);
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_fwconfirm — confirm firmware
+ * --------------------------------------------------------------------------- */
+void cmd_fwconfirm(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    extern int stax_firmware_confirm(void);
+    stax_firmware_confirm();
 }
