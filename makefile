@@ -111,6 +111,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/app_sysinfo.o \
                 $(BUILD_DIR)/app_image_viewer.o \
                 $(BUILD_DIR)/app_memview.o \
+                $(BUILD_DIR)/app_firmware_viewer.o \
                 $(BUILD_DIR)/framebuffer.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
