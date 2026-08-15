@@ -218,6 +218,7 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) tools/stax-sign/stax-sign scripts/create_mb
 	@echo "Flashing Firmware to Slot A..."
 	@dd if=$(BUILD_DIR)/firmware.stax of=$@ bs=512 seek=3 conv=notrunc 2>/dev/null
 	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
+	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"

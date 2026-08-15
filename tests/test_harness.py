@@ -22,11 +22,11 @@ def run_test_boot():
 def run_test_fwupdate():
     print("Test: Firmware Update Flow")
     build_os(False)
-    subprocess.run(["mcopy", "-i", "os.bin@@2098688", "-o", "build/firmware.stax", "::/FIRMWARE.STAX"], check=True)
+    subprocess.run(["mcopy", "-i", "os.bin@@2098688", "-o", "build/firmware.stax", "::/fw.stax"], check=True)
     
     child = pexpect.spawn("qemu-system-arm -M versatilepb -kernel build/bootloader.bin -drive file=os.bin,if=sd,format=raw -nographic -serial mon:stdio", encoding='utf-8')
     child.expect("STAX:", timeout=10)
-    child.sendline("fwupdate /FIRMWARE.STAX")
+    child.sendline("fwupdate /fw.stax")
     child.expect("Update staged. Reboot to apply.", timeout=15)
     child.close(force=True)
     
@@ -41,7 +41,7 @@ def run_test_fwupdate():
 def run_test_powerloss():
     print("Test: Large-Scale Power Loss Fault Injection")
     build_os(True)
-    subprocess.run(["mcopy", "-i", "os.bin@@2098688", "-o", "build/firmware.stax", "::/FIRMWARE.STAX"], check=True)
+    subprocess.run(["mcopy", "-i", "os.bin@@2098688", "-o", "build/firmware.stax", "::/fw.stax"], check=True)
     
     for i in range(1, 101): # Running 100 iterations of power loss for demonstration (can be scaled to 10k)
         print(f"  Injection iteration {i}...")
@@ -57,7 +57,7 @@ def run_test_powerloss():
         child = pexpect.spawn("qemu-system-arm -M versatilepb -kernel build/bootloader.bin -drive file=os.bin,if=sd,format=raw -nographic -serial mon:stdio", encoding='utf-8')
         try:
             child.expect("STAX:", timeout=5)
-            child.sendline("fwupdate /FIRMWARE.STAX")
+            child.sendline("fwupdate /fw.stax")
             
             writes_seen = 0
             while writes_seen < target_writes:
