@@ -13,6 +13,12 @@ SIZE    := $(CROSS)-size
 GDB     := gdb-multiarch
 
 # ---------------------------------------------------------------------------
+# Configuration Flags
+# ---------------------------------------------------------------------------
+ENABLE_BENCH ?= 0
+# //adding this in case i dont want to include benching to the kernel
+
+# ---------------------------------------------------------------------------
 # Directories
 # ---------------------------------------------------------------------------
 BUILD_DIR   := build
@@ -53,7 +59,12 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -I$(LIB_DIR)        \
             -I$(BENCH_DIR)
 
+ifeq ($(ENABLE_BENCH), 1)
+CFLAGS += -DENABLE_BENCH
+endif
+
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
+
 
 LDFLAGS := -nostdlib --gc-sections
 LIBGCC := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
@@ -133,6 +144,7 @@ KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 KERNEL_OBJS  += $(BUILD_DIR)/craft.o
 
 # Benchmark infrastructure
+ifeq ($(ENABLE_BENCH), 1)
 KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
                  $(BUILD_DIR)/bench_main.o \
                  $(BUILD_DIR)/bench_memory.o \
@@ -142,6 +154,7 @@ KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
                  $(BUILD_DIR)/bench_gfx.o \
                  $(BUILD_DIR)/bench_stress.o \
                  $(BUILD_DIR)/bench_kernel_test.o
+endif
 
 # em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)

@@ -38,3 +38,8 @@ Thumbs.db
 
 # Local development files
 *.local
+*.priv
+keys.*
+build/
+*.stax
+test.txt
