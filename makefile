@@ -146,7 +146,10 @@ KERNEL_OBJS  += $(BUILD_DIR)/doom.o
 KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 KERNEL_OBJS  += $(BUILD_DIR)/craft.o
 KERNEL_OBJS  += $(BUILD_DIR)/firmware_update.o
-KERNEL_OBJS  += $(BUILD_DIR)/crc32.o
+KERNEL_OBJS  += $(BUILD_DIR)/crc32.o \
+                $(BUILD_DIR)/sha256.o \
+                $(BUILD_DIR)/monocypher.o \
+                $(BUILD_DIR)/firmware_format.o
 
 # Benchmark infrastructure
 ifeq ($(ENABLE_BENCH), 1)
@@ -158,7 +161,15 @@ KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
                  $(BUILD_DIR)/bench_fs.o \
                  $(BUILD_DIR)/bench_gfx.o \
                  $(BUILD_DIR)/bench_stress.o \
-                 $(BUILD_DIR)/bench_kernel_test.o
+                 $(BUILD_DIR)/bench_kernel_test.o \
+                 $(BUILD_DIR)/firmware_bench.o \
+                 $(BUILD_DIR)/secure_boot_bench.o \
+                 $(BUILD_DIR)/update_bench.o \
+                 $(BUILD_DIR)/fault_injection.o \
+                 $(BUILD_DIR)/metadata_test.o \
+                 $(BUILD_DIR)/image_test.o \
+                 $(BUILD_DIR)/rollback_test.o \
+                $(BUILD_DIR)/fault_campaign.o
 endif
 
 # em-doom objects
@@ -304,6 +315,9 @@ $(BUILD_DIR)/%.o: boot/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(BENCH_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(BENCH_DIR)/firmware/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 tools/stax-sign/stax-sign: tools/stax-sign/stax-sign.c firmware/image_format/firmware_format.c crypto/sha256/sha256.c crypto/crc32/crc32.c crypto/monocypher.c

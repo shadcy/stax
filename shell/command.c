@@ -43,7 +43,7 @@ static const command_t commands[] = {
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
     {"test",    "Run tests ([--mem] [--fs] [--all])", cmd_test},
 #ifdef ENABLE_BENCH
-    {"bench",   "Run benchmarks ([--memory] [--vm] [--scheduler] [--fs] [--gfx] [--all])", cmd_bench},
+    {"bench",   "Run benchmarks ([--memory] [--vm] [--scheduler] [--fs] [--gfx] [--firmware] [--all])", cmd_bench},
     {"stress",  "Run stress tests", cmd_stress},
 #endif
     {"ps",      "Show process/task list", cmd_ps},
@@ -991,7 +991,7 @@ void cmd_nano(int argc, char *argv[])
 #ifdef ENABLE_BENCH
 /* ============================================================================
  * cmd_bench — run benchmark suite
- * Usage: bench [--memory|--vm|--scheduler|--fs|--gfx|--all]
+ * Usage: bench [--memory|--vm|--scheduler|--fs|--gfx|--firmware|--all]
  * ============================================================================ */
 extern void bench_run_all(void);
 extern void bench_run_sub(const char *name);

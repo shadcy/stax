@@ -18,6 +18,7 @@ void bench_fs_run(void);
 void bench_gfx_run(void);
 void bench_stress_run(void);
 void bench_kernel_test_run(void);
+void bench_firmware_run(void);
 
 /* ============================================================================
  * bench_run_all — run every benchmark suite in sequence
@@ -37,6 +38,7 @@ void bench_run_all(void)
     bench_scheduler_run();
     bench_fs_run();
     bench_gfx_run();
+    bench_firmware_run();
 
     /* Final summary */
     bench_section("BENCHMARK SUITE COMPLETE");
@@ -50,7 +52,7 @@ void bench_run_all(void)
 
 /* ============================================================================
  * bench_run_sub — run a single named benchmark suite
- * name: "memory", "vm", "scheduler", "fs", "gfx", "stress", "test"
+ * name: "memory", "vm", "scheduler", "fs", "gfx", "stress", "test", "firmware"
  * ============================================================================ */
 void bench_run_sub(const char *name)
 {
@@ -104,12 +106,18 @@ void bench_run_sub(const char *name)
         while (*a && *b && *a == *b) { a++; b++; }
         if (*a == '\0' && *b == '\0') { bench_kernel_test_run(); matched = 1; }
     }
+    /* firmware */
+    if (!matched) {
+        const char *a = name, *b = "firmware";
+        while (*a && *b && *a == *b) { a++; b++; }
+        if (*a == '\0' && *b == '\0') { bench_firmware_run(); matched = 1; }
+    }
 #undef STREQ
 
     if (!matched) {
         kputs("Unknown benchmark: ");
         kputs(name);
-        kputs("\nAvailable: memory, vm, scheduler, fs, gfx, stress, test\n");
+        kputs("\nAvailable: memory, vm, scheduler, fs, gfx, stress, test, firmware\n");
     }
 }
 
