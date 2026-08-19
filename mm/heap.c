@@ -16,7 +16,7 @@ static block_t *free_list = NULL;
 
 void heap_init(void) {
     free_list = NULL;
-    kputs("Heap Allocator: Initialized (backed by MMU paging).\n");
+    kputs("Heap Allocator: Initialized (backed by physical page allocator).\n");
 }
 
 static void add_to_free_list(block_t *block) {
