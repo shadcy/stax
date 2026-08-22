@@ -42,4 +42,4 @@ Thumbs.db
 keys.*
 build/
 *.stax
-test.txt
+tools/stax-sign/stax-sign
