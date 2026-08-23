@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include "irq.h"
 /* ============================================================================
  * STAX — scheduler.c
  * Minimal preemptive round-robin scheduler implementation
@@ -58,10 +59,14 @@ int task_create(void (*entry)(void))
     int i;
     task_t *t;
 
+    irq_disable();
     for (i = 1; i < MAX_TASKS; i++) {
         if (task_table[i].state == -1) break;
     }
-    if (i >= MAX_TASKS) return -1;
+    if (i >= MAX_TASKS) {
+        irq_enable();
+        return -1;
+    }
 
     t = &task_table[i];
     t->r4 = t->r5 = t->r6 = t->r7 = 0;
@@ -77,6 +82,7 @@ int task_create(void (*entry)(void))
     current_task->next = t;
 
     num_tasks++;
+    irq_enable();
     return i;
 }
 
@@ -85,10 +91,14 @@ int task_spawn(void (*entry)(void), uint32_t *stack_top)
     int i;
     task_t *t;
 
+    irq_disable();
     for (i = 1; i < MAX_TASKS; i++) {
         if (task_table[i].state == -1) break;
     }
-    if (i >= MAX_TASKS) return -1;
+    if (i >= MAX_TASKS) {
+        irq_enable();
+        return -1;
+    }
 
     t = &task_table[i];
     t->r4 = t->r5 = t->r6 = t->r7 = 0;
@@ -104,6 +114,7 @@ int task_spawn(void (*entry)(void), uint32_t *stack_top)
     current_task->next = t;
 
     num_tasks++;
+    irq_enable();
     return i;
 }
 
@@ -111,11 +122,14 @@ void task_kill(int task_id)
 {
     if (task_id < 1 || task_id >= MAX_TASKS)
         return;
-    if (task_table[task_id].state == -1)
+    
+    irq_disable();
+    if (task_table[task_id].state == -1) {
+        irq_enable();
         return;
+    }
 
     task_t *victim = &task_table[task_id];
-    victim->state = TASK_STATE_BLOCKED;
 
     /* Unlink victim from the circular list so the scheduler never
      * wastes a timeslice trying to switch to a dead task.            */
@@ -126,5 +140,9 @@ void task_kill(int task_id)
     }
     if (prev->next == victim)
         prev->next = victim->next;
+    
+    victim->state = -1; /* mark slot as free */
     victim->next = victim;           /* self-loop (harmless sentinel) */
+    num_tasks--;
+    irq_enable();
 }

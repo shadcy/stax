@@ -33,7 +33,6 @@ static int player_pitch; /* -100 to 100 */
 #define FOV 256 /* pixels to projection plane */
 
 static int c_state = 0; /* 0 = running, 1 = pause */
-static int last_time = 0;
 
 static void craft_init(void) {
     /* Generate a simple terrain */
@@ -83,7 +82,6 @@ static void craft_draw_text(int x_pos, int y_pos, const char *str, uint16_t colo
 /* Render a single frame using 2.5D raycasting */
 static void craft_draw(void) {
     extern uint16_t* fb_get_buffer(void);
-    extern uint8_t gfx_backbuffer[];
     
     /* Use gfx_backbuffer as a 16-bit intermediate buffer, wait, gfx_backbuffer is 8-bit!
        We'll render directly to 16-bit window space using the window drawing context later, 

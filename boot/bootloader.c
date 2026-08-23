@@ -291,7 +291,7 @@ static int boot_slot(uint32_t start_lba, uint32_t min_version) {
     sd_read_sector(start_lba, sector_buf);
     
     firmware_header_t header_copy;
-    for(int i=0; i<sizeof(firmware_header_t); i++) {
+    for(uint32_t i=0; i<sizeof(firmware_header_t); i++) {
         ((uint8_t*)&header_copy)[i] = sector_buf[i];
     }
     firmware_header_t *hdr = &header_copy;
@@ -421,19 +421,20 @@ void bootloader_main(void) {
     
     // Evaluate active slot
     uint32_t slot = active_meta.active_slot;
-    uint32_t *state = (slot == 0) ? &active_meta.slot_a_state : &active_meta.slot_b_state;
-    uint32_t *attempts = (slot == 0) ? &active_meta.slot_a_boot_attempts : &active_meta.slot_b_boot_attempts;
+    uint32_t original_slot = slot;
+    uint32_t state = (slot == 0) ? active_meta.slot_a_state : active_meta.slot_b_state;
+    uint32_t attempts = (slot == 0) ? active_meta.slot_a_boot_attempts : active_meta.slot_b_boot_attempts;
     uint32_t slot_lba = (slot == 0) ? 3 : 2051;
 
-    if (*state == SLOT_STATE_PENDING) {
-        *state = SLOT_STATE_BOOTING;
-        *attempts = 1;
+    if (state == SLOT_STATE_PENDING) {
+        state = SLOT_STATE_BOOTING;
+        attempts = 1;
         state_changed = 1;
-    } else if (*state == SLOT_STATE_BOOTING) {
-        (*attempts)++;
-        if (*attempts > 3) {
+    } else if (state == SLOT_STATE_BOOTING) {
+        attempts++;
+        if (attempts > 3) {
             uart_puts("Watchdog triggered: Boot attempts exceeded limit.\n");
-            *state = SLOT_STATE_FAILED;
+            state = SLOT_STATE_FAILED;
             // Rollback to other slot
             active_meta.active_slot = (slot == 0) ? 1 : 0;
             slot = active_meta.active_slot;
@@ -444,18 +445,28 @@ void bootloader_main(void) {
             state_changed = 1;
         }
     }
+    
+    if (state_changed) {
+        if (original_slot == 0) {
+            active_meta.slot_a_state = state;
+            active_meta.slot_a_boot_attempts = attempts;
+        } else {
+            active_meta.slot_b_state = state;
+            active_meta.slot_b_boot_attempts = attempts;
+        }
+    }
 
     if (state_changed) {
         active_meta.generation++;
         active_meta.crc32 = crc32((const uint8_t *)&active_meta, sizeof(boot_metadata_t) - 4);
         static uint8_t write_buf[512];
         memset(write_buf, 0, 512);
-        for(int i=0; i<sizeof(boot_metadata_t); i++) write_buf[i] = ((uint8_t*)&active_meta)[i];
+        for(uint32_t i=0; i<sizeof(boot_metadata_t); i++) write_buf[i] = ((uint8_t*)&active_meta)[i];
         sd_write_sector(1, write_buf);
         sd_write_sector(2, write_buf);
     }
     uint32_t min_version = 0;
-    if (*state == SLOT_STATE_PENDING || *state == SLOT_STATE_BOOTING) {
+    if (state == SLOT_STATE_PENDING || state == SLOT_STATE_BOOTING) {
         if (slot == 0) {
             if (active_meta.slot_b_state == SLOT_STATE_CONFIRMED) min_version = active_meta.slot_b_version;
         } else {
@@ -474,7 +485,7 @@ void bootloader_main(void) {
         active_meta.crc32 = crc32((const uint8_t *)&active_meta, sizeof(boot_metadata_t) - 4);
         static uint8_t write_buf2[512];
         memset(write_buf2, 0, 512);
-        for(int i=0; i<sizeof(boot_metadata_t); i++) write_buf2[i] = ((uint8_t*)&active_meta)[i];
+        for(uint32_t i=0; i<sizeof(boot_metadata_t); i++) write_buf2[i] = ((uint8_t*)&active_meta)[i];
         sd_write_sector(1, write_buf2);
         sd_write_sector(2, write_buf2);
 

@@ -74,11 +74,11 @@ void bmp_load_and_draw(const char *filename, int x_offset, int y_offset) {
     }
     
     for (int y = ih.height - 1; y >= 0; y--) {
-        if (fat_read(file, row_buf, row_size) != (uint32_t)row_size) break;
+        if (fat_read(file, row_buf, row_size) != row_size) break;
         for (int x = 0; x < ih.width; x++) {
             uint16_t pixel = *(uint16_t *)(&row_buf[x * 2]);
             /* Plot pixel only if within FB bounds */
-            if ((x + x_offset) < FB_WIDTH && (y + y_offset) < FB_HEIGHT &&
+            if ((x + x_offset) < (int)FB_WIDTH && (y + y_offset) < (int)FB_HEIGHT &&
                 (x + x_offset) >= 0 && (y + y_offset) >= 0) {
                 fb_putpixel(x + x_offset, y + y_offset, pixel);
             }
@@ -127,7 +127,7 @@ uint16_t *bmp_load(const char *filename, int *out_w, int *out_h) {
     }
     
     for (int y = h - 1; y >= 0; y--) {
-        if (fat_read(file, row_buf, row_size) != (uint32_t)row_size) break;
+        if (fat_read(file, row_buf, row_size) != row_size) break;
         for (int x = 0; x < w; x++) {
             img_buf[y * w + x] = *(uint16_t *)(&row_buf[x * 2]);
         }

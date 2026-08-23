@@ -10619,7 +10619,6 @@ static WCHAR uni2oem_dbcs (	/* Returns in OEM code, zero on error */
 	WORD cp					/* Code page */
 )
 {
-	BYTE hb = (WORD)uni >> 8, lb = uni & 0xFF;
 	UINT i;
 	WCHAR oem = 0;
 #if FF_CODE_PAGE == 932 || FF_CODE_PAGE == 949 || FF_CODE_PAGE == 0

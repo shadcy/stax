@@ -1,6 +1,7 @@
 #include "page.h"
 #include <stdint.h>
 #include "console.h"
+#include "irq.h"
 
 /* The physical memory available for paging starts after the kernel heap start.
  * In linker.ld, we will define __heap_start and use it as the start of our managed pool.
@@ -61,6 +62,7 @@ void *alloc_pages(int count) {
     int consecutive = 0;
     int start_page = -1;
     
+    irq_disable();
     for (int i = first_managed_page; i < NUM_PAGES; i++) {
         if ((page_bitmap[i / 8] & (1 << (i % 8))) == 0) {
             if (consecutive == 0) start_page = i;
@@ -71,12 +73,14 @@ void *alloc_pages(int count) {
                     page_bitmap[(start_page + j) / 8] |= (1 << ((start_page + j) % 8));
                 }
                 total_free_pages -= count;
+                irq_enable();
                 return (void *)(start_page * PAGE_SIZE);
             }
         } else {
             consecutive = 0;
         }
     }
+    irq_enable();
     return NULL; /* Out of memory */
 }
 
@@ -91,10 +95,12 @@ void free_pages(void *ptr, int count) {
     int start_page = addr / PAGE_SIZE;
     if (start_page < first_managed_page || start_page + count > NUM_PAGES) return;
     
+    irq_disable();
     for (int i = 0; i < count; i++) {
         page_bitmap[(start_page + i) / 8] &= ~(1 << ((start_page + i) % 8));
     }
     total_free_pages += count;
+    irq_enable();
 }
 
 void free_page(void *ptr) {

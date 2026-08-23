@@ -6,6 +6,7 @@
 #include "heap.h"
 #include "page.h"
 #include "console.h"
+#include "irq.h"
 #include <stddef.h>
 
 #define ALIGNMENT 8
@@ -55,7 +56,10 @@ void *kmalloc(size_t size) {
     size = ALIGN_UP(size);
     
     block_t *prev = NULL;
-    block_t *curr = free_list;
+    block_t *curr;
+    
+    irq_disable();
+    curr = free_list;
     
     /* First fit */
     while (curr) {
@@ -73,6 +77,7 @@ void *kmalloc(size_t size) {
                 if (prev) prev->next = curr->next;
                 else free_list = curr->next;
             }
+            irq_enable();
             return (void *)(curr + 1);
         }
         prev = curr;
@@ -85,6 +90,7 @@ void *kmalloc(size_t size) {
     
     block_t *new_mem = (block_t *)alloc_pages(pages_needed);
     if (!new_mem) {
+        irq_enable();
         kputs("kmalloc: OUT OF MEMORY (Page allocator exhausted)!\n");
         return NULL;
     }
@@ -102,14 +108,17 @@ void *kmalloc(size_t size) {
         coalesce();
     }
     
+    irq_enable();
     return (void *)(new_mem + 1);
 }
 
 void kfree(void *ptr) {
     if (!ptr) return;
+    irq_disable();
     block_t *block = (block_t *)((uint8_t*)ptr - sizeof(block_t));
     add_to_free_list(block);
     coalesce();
+    irq_enable();
 }
 
 uint32_t heap_get_free(void) {

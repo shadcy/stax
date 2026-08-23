@@ -4,6 +4,7 @@
 #include "console.h"
 #include "font8x16.h"
 #include "assets.h"
+#include "wm.h"
 /* Physics Constants (16.16 Fixed Point, Pixels per Second) */
 #define GRAVITY     TO_FIX(2000)    /* Extremely snappy gravity */
 #define MAX_FALL    TO_FIX(600)     
@@ -134,7 +135,6 @@ static Slime player;
 static GameState game_state = STATE_PLAY;
 static int debug_mode = 0;
 static int splash_timer = 0;
-static int fade_level = 0;
 static int menu_selection = 0; // 0=Play, 1=Debug, 2=Exit
 static int up_pressed = 0;
 static int down_pressed = 0;
@@ -549,8 +549,6 @@ static void slime_update_window(struct window *win, int dt_ms) {
     (void)win;
     slime_update(dt_ms);
 }
-
-#include "../include/wm.h"
 
 void cmd_slime(int argc, char **argv) {
     debug_mode = 0;

@@ -45,7 +45,7 @@ static int write_metadata(boot_metadata_t *meta) {
     
     uint8_t buf[512];
     for (int i = 0; i < 512; i++) buf[i] = 0;
-    for (int i = 0; i < sizeof(boot_metadata_t); i++) {
+    for (uint32_t i = 0; i < sizeof(boot_metadata_t); i++) {
         buf[i] = ((uint8_t *)meta)[i];
     }
     
@@ -57,9 +57,11 @@ static int write_metadata(boot_metadata_t *meta) {
 int stax_firmware_confirm(void) {
     if (!meta_valid) return -1;
     
-    uint32_t *state = (current_meta.active_slot == 0) ? &current_meta.slot_a_state : &current_meta.slot_b_state;
-    if (*state == SLOT_STATE_BOOTING) {
-        *state = SLOT_STATE_CONFIRMED;
+    uint32_t state = (current_meta.active_slot == 0) ? current_meta.slot_a_state : current_meta.slot_b_state;
+    if (state == SLOT_STATE_BOOTING) {
+        if (current_meta.active_slot == 0) current_meta.slot_a_state = SLOT_STATE_CONFIRMED;
+        else current_meta.slot_b_state = SLOT_STATE_CONFIRMED;
+        
         if (write_metadata(&current_meta) == 0) {
             kputs("Firmware update confirmed successfully!\n");
             return 0;

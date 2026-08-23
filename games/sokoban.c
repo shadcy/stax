@@ -69,8 +69,6 @@ static char s_map[MAP_H][MAP_W];
 static SokoEntity s_player;
 static int s_moving = 0; // 0 = idle, 1 = sliding
 static int s_move_timer = 0;
-static int s_target_x, s_target_y;
-static int s_box_idx_moving = -1;
 static char s_last_key = 0;
 
 static void soko_load_level(int level) {
