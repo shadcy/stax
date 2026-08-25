@@ -195,7 +195,7 @@ void wm_update(void) {
                 } else if (item == 5) {
                     extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void settings_mouse_click(struct window *win, int mx, int my, int button);
-                    window_t *sw = wm_add_window(150, 60, 540, 340, "Settings", settings_draw_window);
+                    window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                     if (sw) sw->mouse_click = settings_mouse_click;
                 }
             }
@@ -241,7 +241,7 @@ void wm_update(void) {
                     } else if (rel_y >= 150 && rel_y < 180) {
                         extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         extern void settings_mouse_click(struct window *win, int mx, int my, int button);
-                        window_t *sw = wm_add_window(150, 60, 540, 340, "Settings", settings_draw_window);
+                        window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                         if (sw) sw->mouse_click = settings_mouse_click;
                         start_menu_active = 0;
                     } else if (rel_y >= 180 && rel_y <= 210) {
@@ -458,7 +458,7 @@ desktop_hit_done:
                 } else if (app_icons[i].id == 8) {
                     extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void settings_mouse_click(struct window *win, int mx, int my, int button);
-                    window_t *sw = wm_add_window(150, 60, 540, 340, "Settings", settings_draw_window);
+                    window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                     if (sw) sw->mouse_click = settings_mouse_click;
                 }
             } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
