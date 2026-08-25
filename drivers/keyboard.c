@@ -91,13 +91,14 @@ static char kb_decode_sc(unsigned char sc, int is_break)
     }
     if (extended) { extended = 0; return 0; }   /* ignore extended for now */
     unsigned char ascii = shift_held ? sc2_shifted[sc] : sc2_normal[sc];
-    
-    /* Handle Ctrl+Q (0x11 is ASCII Device Control 1) */
-    if (ctrl_held && (ascii == 'q' || ascii == 'Q')) {
+    if (ctrl_held && ((ascii >= 'a' && ascii <= 'z') || (ascii >= 'A' && ascii <= 'Z'))) {
         if (!is_break) {
-            fs_abort_flag = 1;
+            if (ascii == 'q' || ascii == 'Q' || ascii == 'c' || ascii == 'C') {
+                fs_abort_flag = 1;
+            }
         }
-        return 0x11;
+        if (ascii >= 'a' && ascii <= 'z') return (char)(ascii - 'a' + 1);
+        if (ascii >= 'A' && ascii <= 'Z') return (char)(ascii - 'A' + 1);
     }
     
     return (char)ascii;
