@@ -1,6 +1,6 @@
 /* ============================================================================
  * STAX — app_settings.c
- * System Settings & Window Control Panel
+ * Production-Ready System Settings & Control Center
  * ============================================================================ */
 
 #include "app_settings.h"
@@ -12,6 +12,7 @@
 #include "rtc.h"
 
 extern void wm_bring_to_front(struct window *win);
+extern int bg_color_idx;
 
 sys_settings_t g_settings = {
     .show_boot_log_on_startup = 1,
@@ -23,8 +24,6 @@ sys_settings_t g_settings = {
     .active_tab = 0
 };
 
-extern int bg_color_idx;
-
 void settings_init(void) {
     g_settings.show_boot_log_on_startup = 1;
     g_settings.boot_win_x = 200;
@@ -35,178 +34,229 @@ void settings_init(void) {
     g_settings.active_tab = 0;
 }
 
+#define SIDEBAR_W 130
+
+/* Helper: Draw toggle pill switch */
+static void draw_switch(int sx, int sy, int is_on) {
+    uint16_t track_col = is_on ? rgb565(50, 180, 80) : rgb565(170, 175, 185);
+    fb_fillrect(sx, sy, 44, 20, track_col);
+    fb_drawline(sx, sy, sx + 43, sy, is_on ? rgb565(70, 200, 100) : rgb565(190, 195, 205));
+    fb_drawline(sx, sy + 19, sx + 43, sy + 19, is_on ? rgb565(30, 140, 60) : rgb565(140, 145, 155));
+
+    int knob_x = is_on ? (sx + 24) : (sx + 2);
+    fb_fillrect(knob_x, sy + 2, 18, 16, COLOR_WHITE);
+    fb_drawline(knob_x, sy + 2, knob_x + 17, sy + 2, COLOR_WHITE);
+    fb_drawline(knob_x + 17, sy + 2, knob_x + 17, sy + 17, rgb565(180, 180, 190));
+    fb_drawline(knob_x, sy + 17, knob_x + 17, sy + 17, rgb565(180, 180, 190));
+
+    draw_text(sx + 50, sy + 2, is_on ? "ON" : "OFF", is_on ? rgb565(30, 140, 60) : rgb565(100, 105, 115));
+}
+
+/* Helper: Draw action button */
 static void draw_btn(int bx, int by, int bw, int bh, const char *label, int active) {
-    uint16_t bg = active ? rgb565(40, 120, 220) : rgb565(215, 215, 225);
-    uint16_t fg = active ? COLOR_WHITE : COLOR_BLACK;
+    uint16_t bg = active ? rgb565(35, 110, 225) : rgb565(225, 228, 235);
+    uint16_t fg = active ? COLOR_WHITE : rgb565(30, 35, 45);
     fb_fillrect(bx, by, bw, bh, bg);
-    fb_drawline(bx, by, bx + bw - 1, by, active ? rgb565(80, 160, 255) : COLOR_WHITE);
-    fb_drawline(bx, by, bx, by + bh - 1, active ? rgb565(80, 160, 255) : COLOR_WHITE);
-    fb_drawline(bx + bw - 1, by, bx + bw - 1, by + bh - 1, active ? rgb565(20, 70, 140) : rgb565(140, 140, 150));
-    fb_drawline(bx, by + bh - 1, bx + bw - 1, by + bh - 1, active ? rgb565(20, 70, 140) : rgb565(140, 140, 150));
-    
+    fb_drawline(bx, by, bx + bw - 1, by, active ? rgb565(70, 150, 255) : COLOR_WHITE);
+    fb_drawline(bx, by, bx, by + bh - 1, active ? rgb565(70, 150, 255) : COLOR_WHITE);
+    fb_drawline(bx + bw - 1, by, bx + bw - 1, by + bh - 1, active ? rgb565(20, 70, 160) : rgb565(160, 165, 175));
+    fb_drawline(bx, by + bh - 1, bx + bw - 1, by + bh - 1, active ? rgb565(20, 70, 160) : rgb565(160, 165, 175));
+
     int tlen = (int)strlen(label);
     int tx = bx + (bw - tlen * 8) / 2;
     int ty = by + (bh - 16) / 2;
     draw_text(tx, ty, label, fg);
 }
 
+/* Helper: Draw card group container */
+static void draw_card(int x, int y, int w, int h) {
+    fb_fillrect(x, y, w, h, COLOR_WHITE);
+    fb_drawline(x, y, x + w - 1, y, rgb565(215, 220, 230));
+    fb_drawline(x, y, x, y + h - 1, rgb565(215, 220, 230));
+    fb_drawline(x + w - 1, y, x + w - 1, y + h - 1, rgb565(205, 210, 220));
+    fb_drawline(x, y + h - 1, x + w - 1, y + h - 1, rgb565(205, 210, 220));
+}
+
 void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     (void)win;
-    fb_fillrect(cx, cy, cw, ch, rgb565(240, 240, 245));
 
-    /* Top Tab Bar */
-    int tab_w = cw / 4;
-    const char *tabs[] = {"Startup", "Display", "Date & Time", "Network"};
-    for (int t = 0; t < 4; t++) {
-        int tx = cx + t * tab_w;
-        int is_act = (g_settings.active_tab == t);
-        uint16_t tbg = is_act ? rgb565(240, 240, 245) : rgb565(210, 210, 220);
-        fb_fillrect(tx, cy, tab_w, 28, tbg);
-        fb_drawline(tx, cy, tx + tab_w - 1, cy, COLOR_WHITE);
-        fb_drawline(tx, cy, tx, cy + 27, COLOR_WHITE);
-        fb_drawline(tx + tab_w - 1, cy, tx + tab_w - 1, cy + 27, rgb565(160, 160, 170));
-        if (!is_act) {
-            fb_drawline(tx, cy + 27, tx + tab_w - 1, cy + 27, rgb565(160, 160, 170));
+    /* Main background */
+    fb_fillrect(cx, cy, cw, ch, rgb565(245, 246, 250));
+
+    /* ---- 1. Sidebar Navigation ---- */
+    fb_fillrect(cx, cy, SIDEBAR_W, ch, rgb565(232, 235, 242));
+    fb_drawline(cx + SIDEBAR_W - 1, cy, cx + SIDEBAR_W - 1, cy + ch - 1, rgb565(205, 210, 220));
+
+    /* Sidebar Title */
+    draw_text(cx + 12, cy + 12, "Settings", rgb565(40, 45, 60));
+    fb_drawline(cx + 10, cy + 32, cx + SIDEBAR_W - 10, cy + 32, rgb565(210, 215, 225));
+
+    const char *tabs[] = {"General", "Display", "Date & Time", "Network", "About STAX"};
+    for (int t = 0; t < 5; t++) {
+        int item_y = cy + 42 + t * 34;
+        int is_sel = (g_settings.active_tab == t);
+        if (is_sel) {
+            fb_fillrect(cx + 8, item_y, SIDEBAR_W - 16, 26, rgb565(40, 115, 225));
+            fb_drawline(cx + 8, item_y, cx + SIDEBAR_W - 9, item_y, rgb565(75, 145, 255));
+            draw_text(cx + 16, item_y + 5, tabs[t], COLOR_WHITE);
+        } else {
+            draw_text(cx + 16, item_y + 5, tabs[t], rgb565(55, 60, 75));
         }
-        int slen = (int)strlen(tabs[t]);
-        draw_text(tx + (tab_w - slen * 8) / 2, cy + 6, tabs[t], is_act ? rgb565(20, 50, 160) : rgb565(60, 60, 70));
     }
-    fb_drawline(cx, cy + 28, cx + cw - 1, cy + 28, rgb565(180, 180, 190));
 
-    int px = cx + 16;
-    int py = cy + 40;
+    /* ---- 2. Content Canvas ---- */
+    int px = cx + SIDEBAR_W + 16;
+    int card_w = cw - SIDEBAR_W - 32;
+    if (card_w < 100) card_w = 100;
 
     if (g_settings.active_tab == 0) {
-        /* Startup & Boot Log Settings */
-        draw_text(px, py, "Boot Log Window Settings:", rgb565(20, 40, 100));
-        py += 24;
+        /* ==== GENERAL & STARTUP SETTINGS ==== */
+        draw_text(px, cy + 12, "Startup & Boot Log Settings", rgb565(25, 30, 45));
+        fb_drawline(px, cy + 30, px + card_w, cy + 30, rgb565(220, 225, 235));
 
-        draw_text(px, py + 4, "Launch on OS Boot:", COLOR_BLACK);
-        draw_btn(px + 180, py, 90, 24, "Enabled", g_settings.show_boot_log_on_startup == 1);
-        draw_btn(px + 280, py, 90, 24, "Hidden", g_settings.show_boot_log_on_startup == 0);
-        py += 36;
+        /* Card 1: Boot Log Behavior */
+        draw_card(px, cy + 38, card_w, 92);
+        draw_text(px + 12, cy + 48, "Boot Log Window on Boot", rgb565(30, 35, 45));
+        draw_switch(px + card_w - 90, cy + 46, g_settings.show_boot_log_on_startup);
 
-        draw_text(px, py + 4, "Window Position:", COLOR_BLACK);
-        draw_btn(px + 180, py, 95, 24, "Left (200,44)", g_settings.boot_win_x == 200);
-        draw_btn(px + 285, py, 95, 24, "Center (220,60)", g_settings.boot_win_x == 220);
-        py += 36;
+        fb_drawline(px + 12, cy + 76, px + card_w - 12, cy + 76, rgb565(240, 242, 248));
 
-        draw_text(px, py + 4, "Live Control:", COLOR_BLACK);
-        draw_btn(px + 180, py, 200, 24, "Toggle Boot Log Window", 0);
-        py += 38;
+        draw_text(px + 12, cy + 86, "Startup Placement", rgb565(30, 35, 45));
+        draw_btn(px + card_w - 190, cy + 82, 85, 22, "Left (200)", g_settings.boot_win_x == 200);
+        draw_btn(px + card_w - 95, cy + 82, 85, 22, "Center (220)", g_settings.boot_win_x == 220);
 
-        fb_fillrect(px, py, cw - 32, 44, rgb565(230, 235, 245));
-        fb_drawline(px, py, px + cw - 33, py, rgb565(180, 190, 215));
-        draw_text(px + 8, py + 6, "* Windows automatically avoid overlapping the top nav bar.", rgb565(60, 70, 90));
-        draw_text(px + 8, py + 22, "* All desktop icons are placed on the left side (x: 18..180).", rgb565(60, 70, 90));
+        /* Card 2: Live Window Control */
+        draw_card(px, cy + 138, card_w, 64);
+        draw_text(px + 12, cy + 148, "Terminal & Log Window", rgb565(30, 35, 45));
+        draw_text(px + 12, cy + 166, "Bring Boot Log to front or toggle visibility", rgb565(120, 125, 140));
+        draw_btn(px + card_w - 150, cy + 158, 140, 26, "Toggle Boot Log", 0);
+
+        /* Info Card */
+        fb_fillrect(px, cy + 210, card_w, 56, rgb565(232, 240, 254));
+        fb_drawline(px, cy + 210, px + card_w - 1, cy + 210, rgb565(180, 205, 245));
+        fb_drawline(px, cy + 265, px + card_w - 1, cy + 265, rgb565(180, 205, 245));
+        draw_text(px + 10, cy + 218, "* Boot window is anchored at Y=44 (below top bar).", rgb565(30, 70, 140));
+        draw_text(px + 10, cy + 236, "* Left columns (X: 18..180) are reserved for app icons.", rgb565(30, 70, 140));
 
     } else if (g_settings.active_tab == 1) {
-        /* Display & Wallpaper */
-        draw_text(px, py, "Desktop Wallpaper & Appearance:", rgb565(20, 40, 100));
-        py += 24;
+        /* ==== DISPLAY & APPEARANCE ==== */
+        draw_text(px, cy + 12, "Display & Desktop Appearance", rgb565(25, 30, 45));
+        fb_drawline(px, cy + 30, px + card_w, cy + 30, rgb565(220, 225, 235));
 
-        draw_text(px, py + 4, "Theme Color:", COLOR_BLACK);
-        const char *colors[] = {"Blue", "Teal", "Black", "Red", "Gray"};
+        /* Card 1: Theme colors */
+        draw_card(px, cy + 38, card_w, 92);
+        draw_text(px + 12, cy + 48, "Desktop Wallpaper Color", rgb565(30, 35, 45));
+        const char *colors[] = {"Blue", "Teal", "Dark", "Red", "Gray"};
         for (int c = 0; c < 5; c++) {
-            draw_btn(px + 130 + c * 52, py, 48, 24, colors[c], bg_color_idx == c);
+            int bx = px + 12 + c * ((card_w - 24) / 5);
+            int bw = (card_w - 24) / 5 - 4;
+            draw_btn(bx, cy + 68, bw, 24, colors[c], bg_color_idx == c);
         }
-        py += 36;
 
-        draw_text(px, py + 4, "Resolution:", COLOR_BLACK);
-        draw_btn(px + 130, py, 110, 24, "800 x 600", fb_width == 800);
-        draw_btn(px + 250, py, 110, 24, "1024 x 768", fb_width == 1024);
-        py += 40;
-
-        fb_fillrect(px, py, cw - 32, 40, rgb565(230, 235, 245));
-        draw_text(px + 8, py + 12, "Hardware: ARM926EJ-S with PL110 16-bit TrueColor Framebuffer", rgb565(40, 50, 70));
+        /* Card 2: Resolution */
+        draw_card(px, cy + 138, card_w, 80);
+        draw_text(px + 12, cy + 148, "Display Resolution", rgb565(30, 35, 45));
+        draw_text(px + 12, cy + 168, "Current: PL110 16-bit TrueColor FB", rgb565(120, 125, 140));
+        draw_btn(px + card_w - 180, cy + 152, 80, 24, "800x600", fb_width == 800);
+        draw_btn(px + card_w - 90, cy + 152, 80, 24, "1024x768", fb_width == 1024);
 
     } else if (g_settings.active_tab == 2) {
-        /* Date & Time Settings */
-        draw_text(px, py, "Real-Time Clock & Timezone:", rgb565(20, 40, 100));
-        py += 24;
+        /* ==== DATE & TIME (IST MUMBAI) ==== */
+        draw_text(px, cy + 12, "Date & Time (IST Mumbai)", rgb565(25, 30, 45));
+        fb_drawline(px, cy + 30, px + card_w, cy + 30, rgb565(220, 225, 235));
 
-        char live_dt[64];
+        draw_card(px, cy + 38, card_w, 148);
+        draw_text(px + 12, cy + 48, "Live Synced Time", rgb565(30, 35, 45));
+        char live_dt[48];
         rtc_format_ist_full(live_dt, sizeof(live_dt));
-        draw_text(px, py, "Live Time (IST):", COLOR_BLACK);
-        draw_text(px + 140, py, live_dt, rgb565(0, 100, 20));
-        py += 26;
+        draw_text(px + 150, cy + 48, live_dt, rgb565(0, 120, 30));
 
-        draw_text(px, py, "Timezone:", COLOR_BLACK);
-        draw_text(px + 140, py, "Indian Standard Time (UTC+05:30, Mumbai)", rgb565(40, 40, 50));
-        py += 26;
+        fb_drawline(px + 12, cy + 70, px + card_w - 12, cy + 70, rgb565(240, 242, 248));
 
-        draw_text(px, py, "Hardware RTC:", COLOR_BLACK);
-        draw_text(px + 140, py, "ARM PrimeCell PL031 at 0x101E8000 (Synced)", rgb565(40, 40, 50));
-        py += 32;
+        draw_text(px + 12, cy + 78, "Timezone", rgb565(30, 35, 45));
+        draw_text(px + 150, cy + 78, "IST (UTC+05:30, Mumbai)", rgb565(40, 45, 60));
 
-        draw_text(px, py + 4, "Clock Display:", COLOR_BLACK);
-        draw_btn(px + 140, py, 110, 24, "24-Hour (14:30)", g_settings.time_format_24h == 1);
-        draw_btn(px + 260, py, 120, 24, "12-Hour (02:30 PM)", g_settings.time_format_24h == 0);
+        fb_drawline(px + 12, cy + 100, px + card_w - 12, cy + 100, rgb565(240, 242, 248));
+
+        draw_text(px + 12, cy + 108, "Hardware RTC", rgb565(30, 35, 45));
+        draw_text(px + 150, cy + 108, "PL031 at 0x101E8000 (Active)", rgb565(40, 45, 60));
+
+        fb_drawline(px + 12, cy + 130, px + card_w - 12, cy + 130, rgb565(240, 242, 248));
+
+        draw_text(px + 12, cy + 138, "Clock Mode", rgb565(30, 35, 45));
+        draw_btn(px + card_w - 170, cy + 134, 75, 22, "24-Hour", g_settings.time_format_24h == 1);
+        draw_btn(px + card_w - 90, cy + 134, 75, 22, "12-Hour", g_settings.time_format_24h == 0);
 
     } else if (g_settings.active_tab == 3) {
-        /* Network Settings */
-        draw_text(px, py, "Network Adapter Information:", rgb565(20, 40, 100));
-        py += 24;
+        /* ==== NETWORK CONFIG ==== */
+        draw_text(px, cy + 12, "Network Adapter Information", rgb565(25, 30, 45));
+        fb_drawline(px, cy + 30, px + card_w, cy + 30, rgb565(220, 225, 235));
 
-        draw_text(px, py, "NIC Model :", COLOR_BLACK);
-        draw_text(px + 120, py, "SMC91C111 100Mbps Ethernet Controller", rgb565(30, 40, 60));
-        py += 22;
+        draw_card(px, cy + 38, card_w, 140);
+        draw_text(px + 12, cy + 48, "Ethernet Adapter :", rgb565(30, 35, 45));
+        draw_text(px + 170, cy + 48, "SMC91C111 100Mbps", rgb565(40, 50, 70));
 
-        draw_text(px, py, "IP Address:", COLOR_BLACK);
-        draw_text(px + 120, py, "10.0.2.15 (DHCP / Static)", rgb565(0, 100, 20));
-        py += 22;
+        draw_text(px + 12, cy + 72, "IP Address       :", rgb565(30, 35, 45));
+        draw_text(px + 170, cy + 72, "10.0.2.15 (DHCP / Static)", rgb565(0, 110, 25));
 
-        draw_text(px, py, "Gateway   :", COLOR_BLACK);
-        draw_text(px + 120, py, "10.0.2.2", rgb565(30, 40, 60));
-        py += 22;
+        draw_text(px + 12, cy + 96, "Gateway IP       :", rgb565(30, 35, 45));
+        draw_text(px + 170, cy + 96, "10.0.2.2 (QEMU Slirp)", rgb565(40, 50, 70));
 
-        draw_text(px, py, "DNS Server:", COLOR_BLACK);
-        draw_text(px + 120, py, "10.0.2.3", rgb565(30, 40, 60));
-        py += 22;
+        draw_text(px + 12, cy + 120, "DNS Nameserver   :", rgb565(30, 35, 45));
+        draw_text(px + 170, cy + 120, "10.0.2.3", rgb565(40, 50, 70));
 
-        draw_text(px, py, "Status    :", COLOR_BLACK);
-        draw_text(px + 120, py, "Connected (lwIP Stack Active)", rgb565(0, 120, 40));
+    } else if (g_settings.active_tab == 4) {
+        /* ==== ABOUT STAX OS ==== */
+        draw_text(px, cy + 12, "About STAX Operating System", rgb565(25, 30, 45));
+        fb_drawline(px, cy + 30, px + card_w, cy + 30, rgb565(220, 225, 235));
+
+        draw_card(px, cy + 38, card_w, 150);
+        draw_text(px + 14, cy + 50, "STAX OS - Advanced Agentic Edition", rgb565(20, 40, 110));
+        draw_text(px + 14, cy + 72, "Kernel : ARM926EJ-S Monolithic Phase 6e", rgb565(50, 55, 70));
+        draw_text(px + 14, cy + 94, "Stack  : lwIP TCP/IP, FatFs, Compositor", rgb565(50, 55, 70));
+        draw_text(px + 14, cy + 116, "Display: PL110 16-bit Color Framebuffer", rgb565(50, 55, 70));
+        draw_text(px + 14, cy + 138, "Clock  : Real-Time Synced (IST Mumbai)", rgb565(0, 110, 25));
     }
 }
 
 void settings_mouse_click(struct window *win, int mx, int my, int button) {
-    (void)win;
     if (button != 1) return;
 
-    /* Tabs click */
-    if (my < 28) {
-        int tab_w = win->width / 4;
-        if (tab_w > 0) {
-            int t = mx / tab_w;
-            if (t >= 0 && t < 4) g_settings.active_tab = t;
+    /* 1. Sidebar Tab Clicks */
+    if (mx < SIDEBAR_W) {
+        for (int t = 0; t < 5; t++) {
+            int item_y = 42 + t * 34;
+            if (my >= item_y && my < item_y + 28) {
+                g_settings.active_tab = t;
+                return;
+            }
         }
         return;
     }
 
-    int px = 16;
-    int py = 40;
+    int px = SIDEBAR_W + 16;
+    int card_w = win->width - SIDEBAR_W - 32;
 
     if (g_settings.active_tab == 0) {
-        py += 24;
-        /* Enabled / Hidden */
-        if (my >= py && my < py + 24) {
-            if (mx >= px + 180 && mx < px + 270) g_settings.show_boot_log_on_startup = 1;
-            else if (mx >= px + 280 && mx < px + 370) g_settings.show_boot_log_on_startup = 0;
+        /* Tab 0: General / Startup */
+        /* Toggle Switch: Launch on Boot */
+        if (my >= 46 && my < 68 && mx >= px + card_w - 90 && mx < px + card_w) {
+            g_settings.show_boot_log_on_startup = !g_settings.show_boot_log_on_startup;
+            return;
         }
-        py += 36;
-        /* Position */
-        if (my >= py && my < py + 24) {
-            if (mx >= px + 180 && mx < px + 275) {
+        /* Position buttons */
+        if (my >= 82 && my < 106) {
+            if (mx >= px + card_w - 190 && mx < px + card_w - 100) {
                 g_settings.boot_win_x = 200;
                 g_settings.boot_win_y = 44;
-            } else if (mx >= px + 285 && mx < px + 380) {
+            } else if (mx >= px + card_w - 95 && mx < px + card_w - 5) {
                 g_settings.boot_win_x = 220;
                 g_settings.boot_win_y = 60;
             }
+            return;
         }
-        py += 36;
-        /* Toggle live Boot Log */
-        if (my >= py && my < py + 24 && mx >= px + 180 && mx < px + 380) {
+        /* Toggle Boot Log Window Button */
+        if (my >= 158 && my < 186 && mx >= px + card_w - 150 && mx < px + card_w) {
             extern struct window *window_list;
             struct window *curr = window_list;
             int found = 0;
@@ -237,35 +287,41 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
                     gw->mouse_drag = gfx_console_mouse_drag;
                 }
             }
+            return;
         }
+
     } else if (g_settings.active_tab == 1) {
-        py += 24;
-        /* Theme colors */
-        if (my >= py && my < py + 24) {
+        /* Tab 1: Display & Themes */
+        if (my >= 68 && my < 94) {
             for (int c = 0; c < 5; c++) {
-                if (mx >= px + 130 + c * 52 && mx < px + 130 + c * 52 + 48) {
+                int bx = px + 12 + c * ((card_w - 24) / 5);
+                int bw = (card_w - 24) / 5 - 4;
+                if (mx >= bx && mx < bx + bw) {
                     bg_color_idx = c;
-                    break;
+                    return;
                 }
             }
         }
-        py += 36;
-        /* Resolution */
-        if (my >= py && my < py + 24) {
-            if (mx >= px + 130 && mx < px + 240) {
+        if (my >= 152 && my < 178) {
+            if (mx >= px + card_w - 180 && mx < px + card_w - 95) {
                 extern void fb_set_resolution(uint32_t, uint32_t);
                 fb_set_resolution(800, 600);
-            } else if (mx >= px + 250 && mx < px + 360) {
+            } else if (mx >= px + card_w - 90 && mx < px + card_w) {
                 extern void fb_set_resolution(uint32_t, uint32_t);
                 fb_set_resolution(1024, 768);
             }
+            return;
         }
+
     } else if (g_settings.active_tab == 2) {
-        py += 24 + 26 + 26 + 32;
-        /* 24h vs 12h */
-        if (my >= py && my < py + 24) {
-            if (mx >= px + 140 && mx < px + 250) g_settings.time_format_24h = 1;
-            else if (mx >= px + 260 && mx < px + 380) g_settings.time_format_24h = 0;
+        /* Tab 2: Date & Time */
+        if (my >= 134 && my < 158) {
+            if (mx >= px + card_w - 170 && mx < px + card_w - 95) {
+                g_settings.time_format_24h = 1;
+            } else if (mx >= px + card_w - 90 && mx < px + card_w) {
+                g_settings.time_format_24h = 0;
+            }
+            return;
         }
     }
 }
