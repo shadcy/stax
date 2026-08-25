@@ -141,10 +141,14 @@ static void term_init(terminal_state_t *st) {
     st->blink_n = 0;
     st->cur_on = 1;
 
-    term_puts(st, "========================================\n", rgb565(80, 160, 255));
-    term_puts(st, "  STAX Concurrent Shell Terminal\n", rgb565(80, 240, 100));
-    term_puts(st, "========================================\n", rgb565(80, 160, 255));
-    term_puts(st, "Type 'help' for commands | 'clear' to clear\n\n", rgb565(200, 205, 215));
+    term_puts(st, "  ____ _____  _  __  __   ____  _   _ _____ _     _     \n", rgb565(80, 190, 255));
+    term_puts(st, " / ___|_   _|/ \\| \\ \\/ /  / ___|| | | | ____| |   | |    \n", rgb565(80, 210, 255));
+    term_puts(st, " \\___ \\ | | / _ \\  \\  /   \\___ \\| |_| |  _| | |   | |    \n", rgb565(70, 230, 210));
+    term_puts(st, "  ___) || |/ ___ \\ /  \\    ___) |  _  | |___| |___| |___ \n", rgb565(60, 240, 160));
+    term_puts(st, " |____/ |_/_/   \\_/_/\\_\\  |____/|_| |_|_____|_____|_____|\n", rgb565(50, 250, 120));
+    term_puts(st, " ---------------------------------------------------------\n", rgb565(60, 75, 105));
+    term_puts(st, "  STAX OS v2.0 • ARM926EJ-S • 32MB MMU • Concurrent Shell \n", rgb565(240, 200, 50));
+    term_puts(st, "  Type 'help' for commands | 'clear' to reset terminal    \n\n", rgb565(170, 180, 200));
 }
 
 /* Redirection hook for console output */
@@ -187,6 +191,13 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     /* Terminal Window Background (Dark Midnight Slate) */
     fb_fillrect(cx, cy, cw, ch, rgb565(14, 16, 22));
 
+    /* Top Shell Info Bar */
+    int top_bar_h = 20;
+    fb_fillrect(cx, cy, cw, top_bar_h, rgb565(20, 23, 32));
+    fb_drawline(cx, cy + top_bar_h - 1, cx + cw - 1, cy + top_bar_h - 1, rgb565(36, 42, 58));
+    draw_text(cx + 8, cy + 2, "• STAX CONCURRENT SHELL (tty0)", rgb565(80, 190, 255));
+    draw_text(cx + cw - 130, cy + 2, "UTF-8 | 1000Hz", rgb565(130, 140, 160));
+
     /* Cursor blink */
     if (++st->blink_n >= 30) {
         st->blink_n = 0;
@@ -196,20 +207,20 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     uint16_t *fbuf = fb_get_buffer();
     if (!fbuf) return;
 
-    int text_area_h = ch - 26;
+    int text_area_h = ch - top_bar_h - 26;
     int max_rows = text_area_h / 16;
-    int max_cols = cw / 8;
+    int max_cols = (cw - 8) / 8;
     if (max_cols > TERM_COLS) max_cols = TERM_COLS;
     if (max_rows > TERM_ROWS) max_rows = TERM_ROWS;
 
     /* Render ring buffer ending at st->head */
     for (int r = 0; r < max_rows; r++) {
         int ring_row = (st->head - (max_rows - 1 - r) + TERM_ROWS * 2) % TERM_ROWS;
-        int py = cy + 4 + r * 16;
+        int py = cy + top_bar_h + 4 + r * 16;
         for (int c = 0; c < max_cols; c++) {
             char ch_val = st->text[ring_row][c];
             if (ch_val >= 32 && ch_val <= 126) {
-                draw_glyph(fbuf, cx + 4 + c * 8, py, ch_val, st->color[ring_row][c]);
+                draw_glyph(fbuf, cx + 6 + c * 8, py, ch_val, st->color[ring_row][c]);
             }
         }
     }
@@ -220,7 +231,7 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     fb_drawline(cx, bar_y, cx + cw - 1, bar_y, rgb565(40, 50, 75));
 
     /* Prompt + Input Line */
-    const char *prompt = "STAX:/> ";
+    const char *prompt = "stax@kernel:~$ ";
     int px = cx + 6, py2 = bar_y + 4;
     for (const char *p = prompt; *p; p++) {
         draw_glyph(fbuf, px, py2, *p, rgb565(80, 240, 100));
@@ -246,7 +257,7 @@ void terminal_key_event(struct window *win, char c) {
         st->input[st->input_pos] = '\0';
 
         /* Echo typed command */
-        term_puts(st, "STAX:/> ", rgb565(80, 240, 100));
+        term_puts(st, "stax@kernel:~$ ", rgb565(80, 240, 100));
         term_puts(st, st->input, COLOR_WHITE);
         term_putc(st, '\n', COLOR_WHITE);
 
