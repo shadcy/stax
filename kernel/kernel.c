@@ -92,7 +92,7 @@ void kernel_main(void)
         boot_win->mouse_drag = gfx_console_mouse_drag;
     }
 
-    gfx_console_init();
+//  gfx_console_init();
 
     /* ---- Phase 6e: FAT filesystem ---- */
     fat_init();
@@ -101,7 +101,17 @@ void kernel_main(void)
     extern void stax_firmware_init(void);
     stax_firmware_init();
 
-    wm_load_background("BG.BMP");
+    /* Initialize Networking */
+    extern void net_init(void);
+    extern void ifconfig_init(void);
+    extern void ping_init(void);
+    net_init();
+    ifconfig_init();
+    ping_init();
+    
+    extern void net_thread_entry(void);
+    extern int task_create(void (*entry)(void));
+    task_create(net_thread_entry);
 
     /* ---- Phase 6b: Timer ---- */
     irq_register(VIC_TIMER0_INT, timer_isr);
@@ -118,7 +128,7 @@ void kernel_main(void)
     kputs("MMU    : Enabled (32MB RAM, D/I Caches ON)\n");
     kputs("Heap   : Paging-backed block allocator\n");
     kputs("FS     : FAT12/16 driver (test image)\n");
-    kputs("Display: 640x480 framebuffer (80x60 text)\n");
+    kputs("Display: 1024x768 framebuffer (128x48 text)\n");
     kputs("----------------------------------------\n");
 
     /* Initialize command system */
@@ -166,6 +176,12 @@ void kernel_main(void)
 
         char c = kgetc();
         
+        /* Drive lwIP from the main loop only (NO_SYS=1 — not thread-safe). */
+        {
+            extern int net_poll(void);
+            net_poll();
+        }
+
         /* Always update and render GUI at 60 FPS */
         static unsigned int last_frame_tick = 0;
         unsigned int current_tick = tick_count;
@@ -177,10 +193,13 @@ void kernel_main(void)
         }
 
         if (c == 0) {
-            /* Yield until next timer tick to prevent CPU spinning and bus saturation */
+            /* Keep polling lwIP while idle so ARP/TCP replies are sent promptly.
+             * Without this, net_poll() was skipped for up to 1ms per tick,
+             * causing QEMU to flood us with unanswered ARP requests. */
             unsigned int start_tick = tick_count;
             while (tick_count == start_tick) {
-                __asm__ volatile ("nop");
+                extern int net_poll(void);
+                net_poll();
             }
             continue;
         }

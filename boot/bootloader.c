@@ -320,7 +320,8 @@ static int boot_slot(uint32_t start_lba, uint32_t min_version) {
     uart_puts("Firmware header valid. Loading payload... ");
     uint8_t *dst = (uint8_t *)hdr->load_addr;
     uint32_t size = hdr->image_size;
-    uint32_t sectors = (size + 511) / 512;
+    uint32_t total_size_on_disk = sizeof(firmware_header_t) + size;
+    uint32_t sectors = (total_size_on_disk + 511) / 512;
     
     // Copy the payload part from the first sector
     uint32_t payload_in_first = 512 - sizeof(firmware_header_t);
