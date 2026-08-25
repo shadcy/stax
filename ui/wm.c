@@ -578,24 +578,12 @@ void wm_update(void) {
                     if (ctx_menu.x + 150 > (int)fb_width) ctx_menu.x = fb_width - 150;
                     if (ctx_menu.y + 150 > (int)(fb_height - TASKBAR_HEIGHT)) ctx_menu.y = fb_height - TASKBAR_HEIGHT - 150;
                 } else if (pressed) {
-                    for (int i = 0; i < NUM_APPS; i++) {
-                        int ix = app_icons[i].x;
-                        int iy = app_icons[i].y;
-                        if (mx >= ix && mx < ix + ICON_W && my >= iy && my < iy + ICON_H) {
-                            drag_type = 0;
-                            drag_idx = i;
-                            drag_off_x = mx - ix;
-                            drag_off_y = my - iy;
-                            drag_moved = 0;
-                            goto desktop_hit_done;
-                        }
-                    }
                     if (!desk_loaded) desk_load_files();
                     for (int i = 0; i < desk_count; i++) {
                         if (!desk_files[i].valid) continue;
                         int ix = desk_files[i].x;
                         int iy = desk_files[i].y;
-                        if (mx >= ix && mx < ix + 64 && my >= iy && my < iy + 64) {
+                        if (mx >= ix && mx < ix + DESK_ICON_W && my >= iy && my < iy + DESK_ICON_H) {
                             drag_type = 1;
                             drag_idx = i;
                             drag_off_x = mx - ix;
@@ -613,104 +601,52 @@ desktop_hit_done:
     } else if (released) {
         drag_win = NULL;
         drag_client_win = NULL;
-        if (drag_type != -1 && !drag_moved) {
-            if (drag_type == 0 && drag_idx >= 0 && drag_idx < NUM_APPS) {
-                int i = drag_idx;
-                if (app_icons[i].id == 0) {
-                    extern void cmd_browser(int, char**);
-                    cmd_browser(0, 0);
-                } else if (app_icons[i].id == 1) {
-                    extern struct window *terminal_open_new(void);
-                    terminal_open_new();
-                } else if (app_icons[i].id == 2) {
-                    window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
-                    if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
-                } else if (app_icons[i].id == 3) {
+        if (drag_type == 1 && !drag_moved && drag_idx >= 0 && drag_idx < desk_count) {
+            int i = drag_idx;
+            if (desk_files[i].is_dir) {
+                window_t *fw=wm_add_window(60,60,420,320,desk_files[i].name,file_manager_draw_window);
+                if (fw) {
+                    fw->mouse_click=file_manager_click;
+                    fw->update_client=file_manager_update;
+                    int k=0; while(desk_files[i].name[k]) { fw->path[k]=desk_files[i].name[k]; k++; }
+                    fw->path[k]='\0';
+                }
+            } else {
+                int nlen=0; while(desk_files[i].name[nlen]) nlen++;
+                if (nlen>4 &&
+                    (desk_files[i].name[nlen-3]=='T'||desk_files[i].name[nlen-3]=='t') &&
+                    (desk_files[i].name[nlen-2]=='X'||desk_files[i].name[nlen-2]=='x') &&
+                    (desk_files[i].name[nlen-1]=='T'||desk_files[i].name[nlen-1]=='t')) {
+                    
                     extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void editor_key_event(struct window *win, char c);
-                    window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
-                    if (ew) ew->key_event = editor_key_event;
-                } else if (app_icons[i].id == 4) {
-                    extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                    extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
-                    extern void calculator_key_event(struct window *win, char c);
-                    window_t *cw = wm_add_window(160, 80, 280, 350, "Calculator", calculator_draw_window);
-                    if (cw) {
-                        cw->mouse_click = calculator_mouse_click;
-                        cw->key_event = calculator_key_event;
+                    window_t *nw = wm_add_window(80, 80, 500, 350, desk_files[i].name, editor_draw_window);
+                    if (nw) {
+                        nw->key_event = editor_key_event;
+                        int k=0; while(desk_files[i].name[k]) { nw->path[k]=desk_files[i].name[k]; k++; }
+                        nw->path[k]='\0';
                     }
-                } else if (app_icons[i].id == 5) {
-                    extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                    wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
-                } else if (app_icons[i].id == 6) {
-                    extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                    wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
-                } else if (app_icons[i].id == 7) {
-                    extern void cmd_doomgfx(int, char**);
-                    cmd_doomgfx(0, 0);
-                } else if (app_icons[i].id == 8) {
-                    extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                    extern void settings_mouse_click(struct window *win, int mx, int my, int button);
-                    window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
-                    if (sw) sw->mouse_click = settings_mouse_click;
-                }
-            } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
-                int i = drag_idx;
-                if (desk_files[i].is_dir) {
-                    window_t *fw=wm_add_window(60,60,420,320,desk_files[i].name,file_manager_draw_window);
-                    if (fw) {
-                        fw->mouse_click=file_manager_click;
-                        fw->update_client=file_manager_update;
-                        int k=0; while(desk_files[i].name[k]) { fw->path[k]=desk_files[i].name[k]; k++; }
-                        fw->path[k]='\0';
-                    }
-                } else {
-                    int nlen=0; while(desk_files[i].name[nlen]) nlen++;
-                    if (nlen>4 &&
-                        (desk_files[i].name[nlen-3]=='T'||desk_files[i].name[nlen-3]=='t') &&
-                        (desk_files[i].name[nlen-2]=='X'||desk_files[i].name[nlen-2]=='x') &&
-                        (desk_files[i].name[nlen-1]=='T'||desk_files[i].name[nlen-1]=='t')) {
-                        
-                        extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                        extern void editor_key_event(struct window *win, char c);
-                        window_t *nw = wm_add_window(80, 80, 500, 350, desk_files[i].name, editor_draw_window);
-                        if (nw) {
-                            nw->key_event = editor_key_event;
-                            int k=0; while(desk_files[i].name[k]) { nw->path[k]=desk_files[i].name[k]; k++; }
-                            nw->path[k]='\0';
-                        }
-                    } else if (nlen>4 &&
-                        (desk_files[i].name[nlen-3]=='B'||desk_files[i].name[nlen-3]=='b') &&
-                        (desk_files[i].name[nlen-2]=='M'||desk_files[i].name[nlen-2]=='m') &&
-                        (desk_files[i].name[nlen-1]=='P'||desk_files[i].name[nlen-1]=='p')) {
-                        
-                        extern void image_viewer_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                        window_t *nw = wm_add_window(100, 100, 320, 240, desk_files[i].name, image_viewer_draw_window);
-                        if (nw) {
-                            int k=0; while(desk_files[i].name[k]) { nw->path[k]=desk_files[i].name[k]; k++; }
-                            nw->path[k]='\0';
-                        }
+                } else if (nlen>4 &&
+                    (desk_files[i].name[nlen-3]=='B'||desk_files[i].name[nlen-3]=='b') &&
+                    (desk_files[i].name[nlen-2]=='M'||desk_files[i].name[nlen-2]=='m') &&
+                    (desk_files[i].name[nlen-1]=='P'||desk_files[i].name[nlen-1]=='p')) {
+                    
+                    extern void image_viewer_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    window_t *nw = wm_add_window(100, 100, 320, 240, desk_files[i].name, image_viewer_draw_window);
+                    if (nw) {
+                        int k=0; while(desk_files[i].name[k]) { nw->path[k]=desk_files[i].name[k]; k++; }
+                        nw->path[k]='\0';
                     }
                 }
             }
-        } else if (drag_type != -1 && drag_moved) {
-            if (drag_type == 0 && drag_idx >= 0 && drag_idx < NUM_APPS) {
-                int col = (app_icons[drag_idx].x - 18 + ICON_GRID_W/2) / ICON_GRID_W;
-                if (col < 0) col = 0;
-                if (col > 1) col = 1;
-                int row = (app_icons[drag_idx].y - 42 + ICON_GRID_H/2) / ICON_GRID_H;
-                if (row < 0) row = 0;
-                app_icons[drag_idx].x = (col == 0) ? 18 : 104;
-                app_icons[drag_idx].y = 42 + row * 86;
-            } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
-                int col = (desk_files[drag_idx].x - DESK_START_X + DESK_ICON_W/2) / DESK_ICON_W;
-                if (col < 0) col = 0;
-                int row = (desk_files[drag_idx].y - 42 + DESK_ICON_H/2) / DESK_ICON_H;
-                if (row < 0) row = 0;
-                desk_files[drag_idx].x = DESK_START_X + col * DESK_ICON_W;
-                desk_files[drag_idx].y = 42 + row * DESK_ICON_H;
-                desk_save_positions();
-            }
+        } else if (drag_type == 1 && drag_moved && drag_idx >= 0 && drag_idx < desk_count) {
+            int col = (desk_files[drag_idx].x - DESK_START_X + DESK_ICON_W/2) / DESK_ICON_W;
+            if (col < 0) col = 0;
+            int row = (desk_files[drag_idx].y - 42 + DESK_ICON_H/2) / DESK_ICON_H;
+            if (row < 0) row = 0;
+            desk_files[drag_idx].x = DESK_START_X + col * DESK_ICON_W;
+            desk_files[drag_idx].y = 42 + row * DESK_ICON_H;
+            desk_save_positions();
         }
         drag_type = -1;
     }
@@ -721,12 +657,6 @@ desktop_hit_done:
             drag_win->y = my - drag_off_y;
         } else if (drag_client_win && drag_client_win->mouse_drag) {
             drag_client_win->mouse_drag(drag_client_win, mx - drag_client_win->x, my - drag_client_win->y - BORDER_WIDTH - TITLEBAR_HEIGHT);
-        } else if (drag_type == 0 && drag_idx >= 0 && drag_idx < NUM_APPS) {
-            int old_x = app_icons[drag_idx].x;
-            int old_y = app_icons[drag_idx].y;
-            app_icons[drag_idx].x = mx - drag_off_x;
-            app_icons[drag_idx].y = my - drag_off_y;
-            if (old_x != app_icons[drag_idx].x || old_y != app_icons[drag_idx].y) drag_moved = 1;
         } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
             int old_x = desk_files[drag_idx].x;
             int old_y = desk_files[drag_idx].y;
