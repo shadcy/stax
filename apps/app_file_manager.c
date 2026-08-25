@@ -208,10 +208,12 @@ void file_manager_draw_window(struct window *win, int cx, int cy, int cw, int ch
 
         /* ---- Icon ---- */
         if (st->file_list[i].is_dir) {
-            /* Folder: yellow body + darker tab */
-            fb_fillrect(cx+4, item_y+4,  14, 11, rgb565(255,200,0));
-            fb_fillrect(cx+4, item_y+2,   7,  3, rgb565(200,150,0));
-            fb_drawline(cx+4, item_y+4, cx+17, item_y+4, rgb565(180,130,0));
+            /* Folder: Ubuntu Yaru styled warm amber folder */
+            fb_fillrect(cx+3, item_y+3, 7, 3, rgb565(210,110,20));
+            fb_fillrect(cx+3, item_y+5, 16, 10, rgb565(210,110,20));
+            fb_fillrect(cx+5, item_y+6, 12, 2, rgb565(250,252,255));
+            fb_fillrect(cx+3, item_y+7, 16, 8, rgb565(245,140,30));
+            fb_fillrect(cx+3, item_y+7, 16, 1, rgb565(255,195,100));
         } else {
             /* File: white page with folded corner */
             fb_fillrect(cx+5, item_y+2, 11, 15, COLOR_WHITE);
