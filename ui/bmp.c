@@ -28,113 +28,121 @@ typedef struct {
 } bmp_info_header_t;
 #pragma pack(pop)
 
+uint16_t *bmp_decode_mem(const uint8_t *data, uint32_t len, int *out_w, int *out_h) {
+    if (!data || len < sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t))
+        return NULL;
+
+    const bmp_file_header_t *fh = (const bmp_file_header_t *)data;
+    if (fh->type != 0x4D42) /* "BM" */
+        return NULL;
+
+    const bmp_info_header_t *ih = (const bmp_info_header_t *)(data + sizeof(bmp_file_header_t));
+    int w = ih->width;
+    int h = ih->height;
+    int top_down = 0;
+    if (h < 0) {
+        h = -h;
+        top_down = 1;
+    }
+    if (w <= 0 || h <= 0 || w > 2048 || h > 2048)
+        return NULL;
+
+    if (fh->offset >= len)
+        return NULL;
+
+    int bpp = ih->bpp;
+    if (bpp != 16 && bpp != 24 && bpp != 32)
+        return NULL;
+
+    uint16_t *img_buf = (uint16_t *)kmalloc(w * h * sizeof(uint16_t));
+    if (!img_buf)
+        return NULL;
+
+    if (out_w) *out_w = w;
+    if (out_h) *out_h = h;
+
+    int bytes_per_pixel = bpp / 8;
+    int row_stride = ((w * bytes_per_pixel) + 3) & ~3;
+    const uint8_t *pixel_data = data + fh->offset;
+
+    for (int y = 0; y < h; y++) {
+        int src_y = top_down ? y : (h - 1 - y);
+        const uint8_t *row = pixel_data + src_y * row_stride;
+        if ((uint32_t)(fh->offset + src_y * row_stride + row_stride) > len)
+            break;
+
+        for (int x = 0; x < w; x++) {
+            uint16_t c16 = 0;
+            if (bpp == 16) {
+                c16 = *(const uint16_t *)(&row[x * 2]);
+            } else if (bpp == 24) {
+                uint8_t b = row[x * 3 + 0];
+                uint8_t g = row[x * 3 + 1];
+                uint8_t r = row[x * 3 + 2];
+                c16 = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+            } else if (bpp == 32) {
+                uint8_t b = row[x * 4 + 0];
+                uint8_t g = row[x * 4 + 1];
+                uint8_t r = row[x * 4 + 2];
+                c16 = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+            }
+            img_buf[y * w + x] = c16;
+        }
+    }
+
+    return img_buf;
+}
+
 void bmp_load_and_draw(const char *filename, int x_offset, int y_offset) {
-    fat_file_t *file = fat_open(filename);
-    if (!file) {
-        kputs("bmp: file not found (");
+    int w = 0, h = 0;
+    uint16_t *pixels = bmp_load(filename, &w, &h);
+    if (!pixels) {
+        kputs("bmp: unable to load (");
         kputs(filename);
         kputs(")\n");
         return;
     }
-    
-    bmp_file_header_t fh;
-    if (fat_read(file, &fh, sizeof(fh)) != sizeof(fh)) {
-        kputs("bmp: read error (fh)\n");
-        fat_close(file);
-        return;
-    }
-    
-    if (fh.type != 0x4D42) { /* "BM" */
-        kputs("bmp: invalid format (not BM)\n");
-        fat_close(file);
-        return;
-    }
-    
-    bmp_info_header_t ih;
-    if (fat_read(file, &ih, sizeof(ih)) != sizeof(ih)) {
-        kputs("bmp: read error (ih)\n");
-        fat_close(file);
-        return;
-    }
-    
-    if (ih.bpp != 16) {
-        kputs("bmp: only 16-bit supported\n");
-        fat_close(file);
-        return;
-    }
-    
-    fat_seek(file, fh.offset);
-    
-    int row_size = ((ih.width * 2) + 3) & ~3;
-    uint8_t *row_buf = (uint8_t *)kmalloc(row_size);
-    if (!row_buf) {
-        kputs("bmp: out of memory allocating row buffer\n");
-        fat_close(file);
-        return;
-    }
-    
-    for (int y = ih.height - 1; y >= 0; y--) {
-        if (fat_read(file, row_buf, row_size) != row_size) break;
-        for (int x = 0; x < ih.width; x++) {
-            uint16_t pixel = *(uint16_t *)(&row_buf[x * 2]);
-            if (pixel == 0xF81F) continue; /* Transparent color key (Magenta) */
-            /* Plot pixel only if within FB bounds */
-            if ((x + x_offset) < (int)fb_width && (y + y_offset) < (int)fb_height &&
-                (x + x_offset) >= 0 && (y + y_offset) >= 0) {
-                fb_putpixel(x + x_offset, y + y_offset, pixel);
+
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            uint16_t pixel = pixels[y * w + x];
+            if (pixel == 0xF81F) continue; /* Transparent color key */
+            int px = x + x_offset;
+            int py = y + y_offset;
+            if (px >= 0 && px < (int)fb_width && py >= 0 && py < (int)fb_height) {
+                fb_putpixel(px, py, pixel);
             }
         }
     }
-    
-    kfree(row_buf);
-    fat_close(file);
+    kfree(pixels);
 }
 
 uint16_t *bmp_load(const char *filename, int *out_w, int *out_h) {
     fat_file_t *file = fat_open(filename);
     if (!file) return NULL;
-    
-    bmp_file_header_t fh;
-    if (fat_read(file, &fh, sizeof(fh)) != sizeof(fh) || fh.type != 0x4D42) {
+
+    /* Get file size */
+    FIL *fp = (FIL *)file;
+    uint32_t fsize = (uint32_t)f_size(fp);
+    if (fsize < sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t) || fsize > 4 * 1024 * 1024) {
         fat_close(file);
         return NULL;
     }
-    
-    bmp_info_header_t ih;
-    if (fat_read(file, &ih, sizeof(ih)) != sizeof(ih) || ih.bpp != 16) {
+
+    uint8_t *raw_data = (uint8_t *)kmalloc(fsize);
+    if (!raw_data) {
         fat_close(file);
         return NULL;
     }
-    
-    fat_seek(file, fh.offset);
-    
-    int w = ih.width;
-    int h = ih.height;
-    if (out_w) *out_w = w;
-    if (out_h) *out_h = h;
-    
-    uint16_t *img_buf = (uint16_t *)kmalloc(w * h * 2);
-    if (!img_buf) {
-        fat_close(file);
-        return NULL;
-    }
-    
-    int row_size = ((w * 2) + 3) & ~3;
-    uint8_t *row_buf = (uint8_t *)kmalloc(row_size);
-    if (!row_buf) {
-        kfree(img_buf);
-        fat_close(file);
-        return NULL;
-    }
-    
-    for (int y = h - 1; y >= 0; y--) {
-        if (fat_read(file, row_buf, row_size) != row_size) break;
-        for (int x = 0; x < w; x++) {
-            img_buf[y * w + x] = *(uint16_t *)(&row_buf[x * 2]);
-        }
-    }
-    
-    kfree(row_buf);
+
+    int bytes = fat_read(file, raw_data, fsize);
     fat_close(file);
-    return img_buf;
+    if (bytes != (int)fsize) {
+        kfree(raw_data);
+        return NULL;
+    }
+
+    uint16_t *img = bmp_decode_mem(raw_data, fsize, out_w, out_h);
+    kfree(raw_data);
+    return img;
 }
