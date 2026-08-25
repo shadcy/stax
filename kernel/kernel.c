@@ -18,6 +18,7 @@
 #include "mouse.h"
 #include "wm.h"
 #include "bmp.h"
+#include "rtc.h"
 
 /* ---------------------------------------------------------------------------
  * Global state
@@ -64,10 +65,11 @@ void print_prompt(void) {
 
 void kernel_main(void)
 {
-    /* ---- Initialize graphical console + keyboard + mouse ---- */
+    /* ---- Initialize graphical console + keyboard + mouse + rtc ---- */
     gfx_console_init();  /* also initializes the framebuffer */
     kb_init();           /* enable PL050 PS/2 keyboard */
     mouse_init();        /* enable PL050 KMI1 PS/2 mouse */
+    rtc_init();          /* sync with hardware clock in IST (Mumbai) */
     
     /* ---- Phase 6a: IRQ subsystem ---- */
     irq_system_init();
