@@ -19,6 +19,7 @@
 # QEMU output files
 output.log
 qemu.log
+*.log
 
 # Editor backup files
 *~
