@@ -15,9 +15,14 @@ uint16_t bg_colors[5] = {
 };
 
 app_icon_t app_icons[NUM_APPS] = {
-    {0, 10, 40, "Boot Log"},
-    {1, 10, 120, "File Mgr"},
-    {2, 10, 200, "sh** slime"}
+    {0, 18, 42,  "Browser"},
+    {1, 18, 128, "Terminal"},
+    {2, 18, 214, "Files"},
+    {3, 18, 300, "Notes"},
+    {4, 18, 386, "Calculator"},
+    {5, 104, 42,  "Sys Info"},
+    {6, 104, 128, "Task Mgr"},
+    {7, 104, 214, "DOOM"}
 };
 
 uint16_t *desktop_bg_image = NULL;
@@ -135,6 +140,97 @@ void wm_load_background(const char *filename) {
     desktop_bg_image = bmp_load(filename, &w, &h);
 }
 
+static void draw_app_icon_gfx(int ix, int iy, int id) {
+    if (id == 0) {
+        /* Web Browser (Globe with orbital lines & compass needle) */
+        fb_fillrect(ix+8, iy+4, 48, 44, rgb565(25, 90, 200));
+        fb_fillrect(ix+12, iy+8, 40, 36, rgb565(35, 130, 240));
+        fb_fillrect(ix+16, iy+10, 32, 4, rgb565(130, 200, 255));
+        fb_drawline(ix+12, iy+26, ix+51, iy+26, rgb565(190, 230, 255));
+        fb_drawline(ix+32, iy+8, ix+32, iy+43, rgb565(190, 230, 255));
+        fb_drawline(ix+18, iy+14, ix+46, iy+38, rgb565(230, 245, 255));
+        fb_fillrect(ix+30, iy+22, 5, 8, rgb565(255, 60, 60));
+        fb_fillrect(ix+31, iy+20, 3, 3, COLOR_WHITE);
+    } else if (id == 1) {
+        /* Terminal (Dark monitor with glowing green prompt) */
+        fb_fillrect(ix+8, iy+4, 48, 44, rgb565(45, 48, 56));
+        fb_fillrect(ix+10, iy+6, 44, 2, rgb565(90, 95, 110));
+        fb_fillrect(ix+12, iy+10, 40, 32, rgb565(12, 14, 20));
+        fb_putpixel(ix+16, iy+16, rgb565(40, 240, 80));
+        fb_putpixel(ix+17, iy+17, rgb565(40, 240, 80));
+        fb_putpixel(ix+16, iy+18, rgb565(40, 240, 80));
+        fb_fillrect(ix+20, iy+18, 6, 2, rgb565(40, 240, 80));
+        fb_fillrect(ix+16, iy+24, 22, 2, rgb565(180, 190, 200));
+        fb_fillrect(ix+16, iy+30, 14, 2, rgb565(180, 190, 200));
+    } else if (id == 2) {
+        /* File Manager (Golden Amber Folder) */
+        fb_fillrect(ix+10, iy+8, 22, 10, rgb565(220, 140, 0));
+        fb_fillrect(ix+16, iy+6, 32, 20, rgb565(250, 250, 255));
+        fb_drawline(ix+20, iy+10, ix+38, iy+10, rgb565(180, 180, 210));
+        fb_fillrect(ix+8, iy+16, 48, 32, rgb565(255, 185, 25));
+        fb_fillrect(ix+8, iy+16, 48, 3, rgb565(255, 220, 90));
+        fb_drawline(ix+8, iy+47, ix+55, iy+47, rgb565(180, 110, 0));
+    } else if (id == 3) {
+        /* Notes / Text Editor (Notepad with Pencil) */
+        fb_fillrect(ix+12, iy+4, 38, 44, rgb565(255, 252, 235));
+        fb_fillrect(ix+12, iy+4, 38, 8, rgb565(235, 75, 40));
+        fb_drawline(ix+20, iy+12, ix+20, iy+47, rgb565(240, 100, 100));
+        fb_drawline(ix+23, iy+18, ix+46, iy+18, rgb565(180, 200, 230));
+        fb_drawline(ix+23, iy+24, ix+46, iy+24, rgb565(180, 200, 230));
+        fb_drawline(ix+23, iy+30, ix+46, iy+30, rgb565(180, 200, 230));
+        fb_fillrect(ix+36, iy+26, 10, 18, rgb565(245, 185, 20));
+        fb_fillrect(ix+36, iy+24, 10, 3, rgb565(255, 140, 160));
+        fb_fillrect(ix+39, iy+44, 4, 3, rgb565(50, 50, 50));
+    } else if (id == 4) {
+        /* Calculator (Modern Keypad & LCD Display) */
+        fb_fillrect(ix+10, iy+4, 44, 44, rgb565(50, 54, 65));
+        fb_drawline(ix+10, iy+4, ix+53, iy+4, rgb565(90, 95, 110));
+        fb_fillrect(ix+14, iy+8, 36, 10, rgb565(220, 235, 225));
+        fb_fillrect(ix+36, iy+10, 10, 2, rgb565(40, 60, 50));
+        fb_fillrect(ix+14, iy+22, 6, 6, rgb565(100, 105, 120));
+        fb_fillrect(ix+23, iy+22, 6, 6, rgb565(100, 105, 120));
+        fb_fillrect(ix+32, iy+22, 6, 6, rgb565(100, 105, 120));
+        fb_fillrect(ix+14, iy+31, 6, 6, rgb565(100, 105, 120));
+        fb_fillrect(ix+23, iy+31, 6, 6, rgb565(100, 105, 120));
+        fb_fillrect(ix+32, iy+31, 6, 6, rgb565(100, 105, 120));
+        fb_fillrect(ix+41, iy+22, 9, 20, rgb565(245, 130, 30));
+    } else if (id == 5) {
+        /* System Info (Processor Chip with Golden Pins) */
+        fb_fillrect(ix+12, iy+8, 40, 36, rgb565(20, 60, 140));
+        fb_fillrect(ix+14, iy+10, 36, 3, rgb565(90, 150, 240));
+        fb_fillrect(ix+16, iy+4, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+24, iy+4, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+32, iy+4, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+40, iy+4, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+16, iy+44, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+24, iy+44, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+32, iy+44, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+40, iy+44, 3, 4, rgb565(240, 190, 30));
+        fb_fillrect(ix+20, iy+18, 24, 16, rgb565(10, 35, 90));
+        fb_drawline(ix+24, iy+26, ix+39, iy+26, rgb565(120, 180, 255));
+    } else if (id == 6) {
+        /* Task Manager (ECG Heartbeat Pulse Monitor) */
+        fb_fillrect(ix+8, iy+4, 48, 44, rgb565(30, 32, 40));
+        fb_fillrect(ix+12, iy+8, 40, 36, rgb565(10, 16, 22));
+        fb_drawline(ix+12, iy+26, ix+51, iy+26, rgb565(25, 40, 50));
+        fb_drawline(ix+14, iy+26, ix+22, iy+26, rgb565(40, 245, 100));
+        fb_drawline(ix+22, iy+26, ix+26, iy+14, rgb565(40, 245, 100));
+        fb_drawline(ix+26, iy+14, ix+30, iy+38, rgb565(40, 245, 100));
+        fb_drawline(ix+30, iy+38, ix+34, iy+20, rgb565(40, 245, 100));
+        fb_drawline(ix+34, iy+20, ix+38, iy+26, rgb565(40, 245, 100));
+        fb_drawline(ix+38, iy+26, ix+50, iy+26, rgb565(40, 245, 100));
+    } else if (id == 7) {
+        /* DOOM / Games (Arcade Controller Badge) */
+        fb_fillrect(ix+8, iy+4, 48, 44, rgb565(170, 25, 25));
+        fb_fillrect(ix+12, iy+8, 40, 36, rgb565(30, 25, 30));
+        fb_fillrect(ix+16, iy+24, 12, 4, rgb565(220, 220, 230));
+        fb_fillrect(ix+20, iy+20, 4, 12, rgb565(220, 220, 230));
+        fb_fillrect(ix+38, iy+18, 5, 5, rgb565(40, 160, 255));
+        fb_fillrect(ix+34, iy+25, 5, 5, rgb565(255, 200, 30));
+        fb_fillrect(ix+42, iy+25, 5, 5, rgb565(255, 50, 50));
+    }
+}
+
 void wm_render(void) {
     /* ---- 1. Desktop background ---- */
     if (desktop_bg_image) {
@@ -152,32 +248,15 @@ void wm_render(void) {
         int ix = app_icons[i].x;
         int iy = app_icons[i].y;
 
-        if (i == 0) {
-            fb_fillrect(ix+4, iy+4, 56, 48, rgb565(80,80,90));
-            fb_fillrect(ix+8, iy+8, 48, 40, rgb565(20,20,25));
-            fb_fillrect(ix+12, iy+14, 6, 2, rgb565(80,240,80));
-            fb_fillrect(ix+22, iy+14, 20, 2, rgb565(200,200,200));
-            fb_fillrect(ix+12, iy+22, 6, 2, rgb565(80,240,80));
-            fb_fillrect(ix+22, iy+22, 28, 2, rgb565(200,200,200));
-            fb_fillrect(ix+12, iy+30, 6, 2, rgb565(80,240,80));
-        } else if (i == 1) {
-            fb_fillrect(ix+6, iy+10, 24, 10, rgb565(230,160,0));
-            fb_fillrect(ix+14, iy+6, 32, 20, rgb565(245,245,255));
-            fb_drawline(ix+18, iy+10, ix+34, iy+10, rgb565(200,200,220));
-            fb_drawline(ix+18, iy+14, ix+40, iy+14, rgb565(200,200,220));
-            fb_fillrect(ix+4, iy+20, 56, 30, rgb565(255,200,40));
-            fb_fillrect(ix+4, iy+20, 56, 4, rgb565(255,225,100));
-        } else if (i == 2) {
-            fb_fillrect(ix+16, iy+12, 32, 34, rgb565(40,200,100));
-            fb_fillrect(ix+10, iy+18, 44, 22, rgb565(40,200,100));
-            fb_fillrect(ix+16, iy+12, 32, 4, rgb565(100,240,150));
-            fb_fillrect(ix+20, iy+24, 6, 8, rgb565(20,20,30));
-            fb_fillrect(ix+38, iy+24, 6, 8, rgb565(20,20,30));
-            fb_fillrect(ix+22, iy+24, 2, 2, COLOR_WHITE);
-            fb_fillrect(ix+40, iy+24, 2, 2, COLOR_WHITE);
-        }
-        
-        draw_text(ix, iy + 56, app_icons[i].name, COLOR_WHITE);
+        draw_app_icon_gfx(ix, iy, app_icons[i].id);
+
+        int nlen = (int)strlen(app_icons[i].name);
+        int pill_w = nlen * 8 + 8;
+        int pill_x = ix + (ICON_W - pill_w) / 2;
+        int pill_y = iy + 52;
+        fb_fillrect(pill_x, pill_y, pill_w, 16, rgb565(20, 25, 35));
+        fb_drawline(pill_x, pill_y, pill_x + pill_w - 1, pill_y, rgb565(60, 70, 90));
+        draw_text(pill_x + 4, pill_y, app_icons[i].name, COLOR_WHITE);
     }
     
     /* ---- 2b. Filesystem icons ---- */
@@ -188,7 +267,7 @@ void wm_render(void) {
         if (!desk_files[i].valid) continue;
         int ix = desk_files[i].x;
         int iy = desk_files[i].y;
-        if (iy + DESK_ICON_H > (int)fb_height) break;
+        if (iy + DESK_ICON_H > (int)fb_height) continue;
 
         if (desk_files[i].is_dir) {
             static uint16_t *folder_icon = NULL;
@@ -251,10 +330,16 @@ void wm_render(void) {
                 fb_fillrect(ix+18, iy+34, 18, 3, rgb565(180,180,190));
             }
         }
-        char lbl[10]; int j;
+        char lbl[12]; int j;
         for (j=0; j<8 && desk_files[i].name[j]; j++) lbl[j]=desk_files[i].name[j];
         lbl[j]='\0';
-        draw_text(ix + 4, iy + 56, lbl, COLOR_WHITE);
+        int nlen = j;
+        int pill_w = nlen * 8 + 8;
+        int pill_x = ix + (ICON_W - pill_w) / 2;
+        int pill_y = iy + 52;
+        fb_fillrect(pill_x, pill_y, pill_w, 16, rgb565(20, 25, 35));
+        fb_drawline(pill_x, pill_y, pill_x + pill_w - 1, pill_y, rgb565(60, 70, 90));
+        draw_text(pill_x + 4, pill_y, lbl, COLOR_WHITE);
     }
     
     window_t *arr[32];
@@ -326,21 +411,23 @@ void wm_render(void) {
     
     /* Context Menu */
     if (ctx_menu.active) {
-        fb_fillrect(ctx_menu.x, ctx_menu.y, 150, 150, rgb565(220, 220, 220));
-        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x + 149, ctx_menu.y, COLOR_WHITE);
-        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x, ctx_menu.y + 149, COLOR_WHITE);
-        fb_drawline(ctx_menu.x + 149, ctx_menu.y, ctx_menu.x + 149, ctx_menu.y + 149, rgb565(100, 100, 100));
-        fb_drawline(ctx_menu.x, ctx_menu.y + 149, ctx_menu.x + 149, ctx_menu.y + 149, rgb565(100, 100, 100));
+        fb_fillrect(ctx_menu.x, ctx_menu.y, 160, 180, rgb565(235, 235, 240));
+        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y, COLOR_WHITE);
+        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x, ctx_menu.y + 179, COLOR_WHITE);
+        fb_drawline(ctx_menu.x + 159, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y + 179, rgb565(120, 120, 130));
+        fb_drawline(ctx_menu.x, ctx_menu.y + 179, ctx_menu.x + 159, ctx_menu.y + 179, rgb565(120, 120, 130));
         
         draw_text(ctx_menu.x + 10, ctx_menu.y + 8, "New Terminal", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 30, ctx_menu.x + 145, ctx_menu.y + 30, rgb565(160, 160, 160));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 38, "File Manager", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 60, ctx_menu.x + 145, ctx_menu.y + 60, rgb565(160, 160, 160));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 68, "New Folder", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 90, ctx_menu.x + 145, ctx_menu.y + 90, rgb565(160, 160, 160));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 98, "New File", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 120, ctx_menu.x + 145, ctx_menu.y + 120, rgb565(160, 160, 160));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 128, "Change BG", COLOR_BLACK);
+        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 30, ctx_menu.x + 155, ctx_menu.y + 30, rgb565(180, 180, 190));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 38, "Web Browser", COLOR_BLACK);
+        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 60, ctx_menu.x + 155, ctx_menu.y + 60, rgb565(180, 180, 190));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 68, "File Manager", COLOR_BLACK);
+        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 90, ctx_menu.x + 155, ctx_menu.y + 90, rgb565(180, 180, 190));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 98, "Text Editor", COLOR_BLACK);
+        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 120, ctx_menu.x + 155, ctx_menu.y + 120, rgb565(180, 180, 190));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 128, "Calculator", COLOR_BLACK);
+        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 150, ctx_menu.x + 155, ctx_menu.y + 150, rgb565(180, 180, 190));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 158, "Change Wallpaper", COLOR_BLACK);
     }
     
     /* STAX System Menu Dropdown */
@@ -348,24 +435,26 @@ void wm_render(void) {
         int sm_x = 0;
         int sm_y = TASKBAR_HEIGHT; /* Dropdown from top bar */
         int sm_w = 200;
-        int sm_h = 160;
+        int sm_h = 210;
         
-        fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(240,240,245));
-        fb_drawline(sm_x, sm_y, sm_x + sm_w, sm_y, rgb565(150,150,150));
-        fb_drawline(sm_x + sm_w, sm_y, sm_x + sm_w, sm_y + sm_h, rgb565(150,150,150));
-        fb_drawline(sm_x, sm_y + sm_h, sm_x + sm_w, sm_y + sm_h, rgb565(150,150,150));
+        fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(245, 245, 250));
+        fb_drawline(sm_x, sm_y, sm_x + sm_w, sm_y, rgb565(160, 160, 170));
+        fb_drawline(sm_x + sm_w, sm_y, sm_x + sm_w, sm_y + sm_h, rgb565(160, 160, 170));
+        fb_drawline(sm_x, sm_y + sm_h, sm_x + sm_w, sm_y + sm_h, rgb565(160, 160, 170));
         
         /* Options */
-        draw_text(sm_x + 10, sm_y + 10, "About STAX", COLOR_BLACK);
-        fb_drawline(sm_x + 5, sm_y + 30, sm_x + sm_w - 5, sm_y + 30, rgb565(200,200,200));
+        draw_text(sm_x + 10, sm_y + 8, "About STAX OS", COLOR_BLACK);
+        fb_drawline(sm_x + 5, sm_y + 30, sm_x + sm_w - 5, sm_y + 30, rgb565(200, 200, 210));
         
-        draw_text(sm_x + 10, sm_y + 40, "Res: 800x600", COLOR_BLACK);
-        draw_text(sm_x + 10, sm_y + 70, "Res: 1024x768", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 38, "Web Browser", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 68, "Terminal", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 98, "File Manager", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 128, "Task Manager", COLOR_BLACK);
         
-        fb_drawline(sm_x + 5, sm_y + 100, sm_x + sm_w - 5, sm_y + 100, rgb565(200,200,200));
+        fb_drawline(sm_x + 5, sm_y + 150, sm_x + sm_w - 5, sm_y + 150, rgb565(200, 200, 210));
         
-        draw_text(sm_x + 10, sm_y + 110, "Task Manager", COLOR_BLACK);
-        draw_text(sm_x + 10, sm_y + 135, "Force Quit...", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 158, "Change Wallpaper", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 188, "Force Quit...", rgb565(180, 30, 30));
     }
     
     /* 4. Mouse Cursor */
