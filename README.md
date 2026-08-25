@@ -39,6 +39,13 @@ STAX includes a custom-built, native profiling suite to measure kernel mechanics
 - **Graphics Bandwidth:** Custom MMU configurations (Non-Cacheable + Bufferable) allow the Window Manager to achieve a **927 MB/s memory fill rate**, pushing 640x480 frames at almost 300 FPS.
 - **Footprint:** The entire compiled kernel (`kernel.bin`) is incredibly lean, weighing in at just **~430 KB**.
 
+## Few things i want to share
+
+Hardware Limitations: We are currently emulating the ARM VersatilePB board, which uses the PrimeCell PL110 graphics controller. The PL110 tops out around 1024x768 or 800x600. We cannot achieve modern 1920x1080 resolutions with this specific emulated hardware.
+(not for too long though , I'll be soon releasing the video of running on actual hardware :3)
+
+Sorry but we have Hardcoded UI problem: Many of the graphical apps, window manager bounds, and games (like Slime Escape, Sokoban, and Craft) have 640 and 480 hardcoded into their rendering logic. We would need to refactor these to dynamically use FB_WIDTH and FB_HEIGHT
+
 ## Screenshots
 
 ### Desktop & Window Management
