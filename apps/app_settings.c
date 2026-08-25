@@ -28,7 +28,9 @@ sys_settings_t g_settings = {
     .bg_color_idx = 0,
     .resolution_w = 1024,
     .resolution_h = 768,
-    .active_tab = 0
+    .active_tab = 0,
+    .network_enabled = 1,
+    .widgets_active = 0
 };
 
 void settings_init(void) {
@@ -44,6 +46,8 @@ void settings_init(void) {
     g_settings.resolution_w = 1024;
     g_settings.resolution_h = 768;
     g_settings.active_tab = 0;
+    g_settings.network_enabled = 1;
+    g_settings.widgets_active = 0;
 }
 
 void settings_load(void) {
@@ -246,24 +250,39 @@ void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         draw_text(px + 14, cy + 148, "Clock Display   :", rgb565(30, 35, 45));
         draw_btn(px + card_w - 175, cy + 144, 80, 22, "24-Hour", g_settings.time_format_24h == 1);
         draw_btn(px + card_w - 90, cy + 144, 80, 22, "12-Hour", g_settings.time_format_24h == 0);
-
     } else if (g_settings.active_tab == 3) {
-        /* ==== NETWORK CONFIG ==== */
-        draw_text(px, cy + 12, "Network Adapter Information", rgb565(25, 30, 45));
+        /* ==== NETWORK CONFIG & INTERNET CONTROL ==== */
+        draw_text(px, cy + 12, "Internet Connectivity & Network Control", rgb565(25, 30, 45));
         fb_drawline(px, cy + 30, px + card_w, cy + 30, rgb565(220, 225, 235));
 
-        draw_card(px, cy + 38, card_w, 150);
-        draw_text(px + 14, cy + 48, "Adapter  :", rgb565(30, 35, 45));
-        draw_text(px + 105, cy + 48, "SMC91C111 100Mbps Ethernet", rgb565(40, 50, 70));
+        /* Card 1: Internet Master Switch */
+        draw_card(px, cy + 38, card_w, 64);
+        draw_text(px + 14, cy + 50, "Internet Connection", rgb565(30, 35, 45));
+        draw_text(px + 14, cy + 68, "Enables HTTP APIs, Weather & Crypto Widgets", rgb565(120, 125, 140));
+        draw_switch(px + card_w - 80, cy + 48, g_settings.network_enabled);
 
-        draw_text(px + 14, cy + 72, "IP Addr  :", rgb565(30, 35, 45));
-        draw_text(px + 105, cy + 72, "10.0.2.15 (DHCP / Static)", rgb565(0, 110, 25));
+        /* Card 2: Live Network Adapter Info */
+        draw_card(px, cy + 110, card_w, 130);
+        int is_on = g_settings.network_enabled;
+        
+        draw_text(px + 14, cy + 120, "Status   :", rgb565(30, 35, 45));
+        draw_text(px + 105, cy + 120, is_on ? "ONLINE / CONNECTED" : "OFFLINE / DISABLED", is_on ? rgb565(0, 140, 40) : rgb565(210, 40, 40));
 
-        draw_text(px + 14, cy + 96, "Gateway  :", rgb565(30, 35, 45));
-        draw_text(px + 105, cy + 96, "10.0.2.2 (QEMU Slirp)", rgb565(40, 50, 70));
+        draw_text(px + 14, cy + 140, "IP Addr  :", rgb565(30, 35, 45));
+        draw_text(px + 105, cy + 140, is_on ? "10.0.2.15 (DHCP Active)" : "--.--.--.--", rgb565(40, 50, 70));
 
-        draw_text(px + 14, cy + 120, "DNS      :", rgb565(30, 35, 45));
-        draw_text(px + 105, cy + 120, "10.0.2.3", rgb565(40, 50, 70));
+        draw_text(px + 14, cy + 160, "Gateway  :", rgb565(30, 35, 45));
+        draw_text(px + 105, cy + 160, is_on ? "10.0.2.2 (QEMU Slirp)" : "--.--.--.--", rgb565(40, 50, 70));
+
+        draw_text(px + 14, cy + 180, "DNS / RTT:", rgb565(30, 35, 45));
+        draw_text(px + 105, cy + 180, is_on ? "10.0.2.3 | 12ms (Nominal)" : "Offline", rgb565(40, 50, 70));
+
+        draw_text(px + 14, cy + 200, "Adapter  :", rgb565(30, 35, 45));
+        draw_text(px + 105, cy + 200, "SMC91C111 100Mbps Ethernet", rgb565(40, 50, 70));
+
+        /* Action Buttons */
+        draw_btn(px, cy + 248, 140, 26, "Open Widgets", 0);
+        draw_btn(px + 150, cy + 248, 140, 26, "Toggle Internet", is_on);
 
     } else if (g_settings.active_tab == 4) {
         /* ==== ABOUT STAX OS ==== */
@@ -320,45 +339,17 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
             }
             return;
         }
-        /* Toggle Boot Log Window Button */
-        if (my >= 158 && my < 188 && mx >= px + card_w - 240 && mx < px + card_w - 125) {
-            extern struct window *window_list;
-            struct window *curr = window_list;
-            int found = 0;
-            while (curr) {
-                if (strcmp(curr->title, "Boot Log") == 0) {
-                    if (curr->state == WM_STATE_HIDDEN || curr->state == WM_STATE_MINIMIZED) {
-                        curr->state = WM_STATE_ACTIVE;
-                        wm_bring_to_front(curr);
-                    } else {
-                        curr->state = WM_STATE_HIDDEN;
-                    }
-                    found = 1;
-                    break;
-                }
-                curr = curr->next;
+        /* Toggle log button */
+        if (my >= 160 && my < 188) {
+            if (mx >= px + card_w - 240 && mx < px + card_w - 125) {
+                extern void wm_toggle_boot_log(void);
+                wm_toggle_boot_log();
+                return;
+            } else if (mx >= px + card_w - 120 && mx < px + card_w) {
+                settings_save();
+                system_reboot();
+                return;
             }
-            if (!found) {
-                extern void gfx_console_draw_window(struct window*, int, int, int, int);
-                extern void gfx_console_key_event(struct window*, char);
-                extern void gfx_console_mouse_click(struct window*, int, int, int);
-                extern void gfx_console_mouse_drag(struct window*, int, int);
-                window_t *gw = wm_add_window(g_settings.boot_win_x, g_settings.boot_win_y,
-                                             g_settings.boot_win_w, g_settings.boot_win_h,
-                                             "Boot Log", gfx_console_draw_window);
-                if (gw) {
-                    gw->key_event = gfx_console_key_event;
-                    gw->mouse_click = gfx_console_mouse_click;
-                    gw->mouse_drag = gfx_console_mouse_drag;
-                }
-            }
-            return;
-        }
-        /* Reboot OS Button */
-        if (my >= 158 && my < 188 && mx >= px + card_w - 120 && mx < px + card_w) {
-            settings_save();
-            system_reboot();
-            return;
         }
 
     } else if (g_settings.active_tab == 1) {
@@ -402,6 +393,27 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
                 settings_save();
             }
             return;
+        }
+
+    } else if (g_settings.active_tab == 3) {
+        /* Tab 3: Network & Internet */
+        /* Master Toggle Switch */
+        if (my >= 46 && my < 70 && mx >= px + card_w - 80 && mx < px + card_w) {
+            g_settings.network_enabled = !g_settings.network_enabled;
+            settings_save();
+            return;
+        }
+        /* Open Widgets Button */
+        if (my >= 248 && my < 276) {
+            if (mx >= px && mx < px + 140) {
+                extern struct window *widgets_open_window(void);
+                widgets_open_window();
+                return;
+            } else if (mx >= px + 150 && mx < px + 290) {
+                g_settings.network_enabled = !g_settings.network_enabled;
+                settings_save();
+                return;
+            }
         }
 
     } else if (g_settings.active_tab == 4) {
