@@ -90,72 +90,69 @@ void wm_focus_shell(void)
 }
 
 int wm_dispatch_key(char c) {
-    /* 1. Global Window & System Management Shortcuts */
-    if (c == 0x14) { /* Ctrl+T: New Terminal */
-        extern struct window *terminal_open_new(void);
-        terminal_open_new();
-        return 1;
-    }
-    if (c == 0x0E) { /* Ctrl+N: New Document */
-        extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-        extern void editor_key_event(struct window *win, char c);
-        window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
-        if (ew) ew->key_event = editor_key_event;
-        return 1;
-    }
-    if (c == 0x12) { /* Ctrl+R: Reboot System */
-        extern void settings_save(void);
-        extern void system_reboot(void);
-        settings_save();
-        system_reboot();
-        return 1;
-    }
-
-    /* 2. Active Window Action Shortcuts */
-    if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
-        if (c == 0x17 || c == 0x11) { /* Ctrl+W or Ctrl+Q: Close active window */
-            if (focused_window->app_data == DOOM_WIN_MARKER) {
-                doom_force_cleanup();
+    /* 1. Global Window & System Management Shortcuts (Strictly require CTRL held) */
+    if (kb_is_pressed(KB_CTRL)) {
+        if (c == 't' || c == 'T' || c == 0x14) { /* Ctrl+T: New Terminal */
+            extern struct window *terminal_open_new(void);
+            terminal_open_new();
+            return 1;
+        }
+        if (c == 'n' || c == 'N' || c == 0x0E) { /* Ctrl+N: New Document */
+            extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+            extern void editor_key_event(struct window *win, char c);
+            window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
+            if (ew) ew->key_event = editor_key_event;
+            return 1;
+        }
+        if (c == 'w' || c == 'W' || c == 0x17) { /* Ctrl+W: Close active window */
+            if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
+                if (focused_window->app_data == DOOM_WIN_MARKER) {
+                    doom_force_cleanup();
+                    focused_window = NULL;
+                    return 1;
+                }
+                extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                if (focused_window->draw_client == editor_draw_window) {
+                    editor_autosave(focused_window);
+                    file_manager_refresh();
+                }
+                focused_window->state = WM_STATE_HIDDEN;
                 focused_window = NULL;
                 return 1;
             }
-            extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-            if (focused_window->draw_client == editor_draw_window) {
-                editor_autosave(focused_window);
-                file_manager_refresh();
-            }
-            focused_window->state = WM_STATE_HIDDEN;
-            focused_window = NULL;
-            return 1;
         }
-        if (c == 0x06) { /* Ctrl+F: Maximize / Restore Toggle */
-            if (focused_window->is_maximized) {
-                focused_window->x = focused_window->saved_x;
-                focused_window->y = focused_window->saved_y;
-                focused_window->width = focused_window->saved_width;
-                focused_window->height = focused_window->saved_height;
-                focused_window->is_maximized = 0;
-            } else {
-                focused_window->saved_x = focused_window->x;
-                focused_window->saved_y = focused_window->y;
-                focused_window->saved_width = focused_window->width;
-                focused_window->saved_height = focused_window->height;
-                focused_window->x = 0;
-                focused_window->y = TASKBAR_HEIGHT;
-                focused_window->width = fb_width;
-                focused_window->height = fb_height - TASKBAR_HEIGHT;
-                focused_window->is_maximized = 1;
+        if (c == 'f' || c == 'F' || c == 0x06) { /* Ctrl+F: Maximize / Restore Toggle */
+            if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
+                if (focused_window->is_maximized) {
+                    focused_window->x = focused_window->saved_x;
+                    focused_window->y = focused_window->saved_y;
+                    focused_window->width = focused_window->saved_width;
+                    focused_window->height = focused_window->saved_height;
+                    focused_window->is_maximized = 0;
+                } else {
+                    focused_window->saved_x = focused_window->x;
+                    focused_window->saved_y = focused_window->y;
+                    focused_window->saved_width = focused_window->width;
+                    focused_window->saved_height = focused_window->height;
+                    focused_window->x = 0;
+                    focused_window->y = TASKBAR_HEIGHT;
+                    focused_window->width = fb_width;
+                    focused_window->height = fb_height - TASKBAR_HEIGHT;
+                    focused_window->is_maximized = 1;
+                }
+                return 1;
             }
-            return 1;
         }
-        if (c == 0x0D && kb_is_pressed(KB_CTRL)) { /* Ctrl+Enter: Minimize active window */
-            focused_window->state = WM_STATE_MINIMIZED;
-            focused_window = NULL;
-            return 1;
+        if (c == 0x0D || c == '\n') { /* Ctrl+Enter: Minimize active window */
+            if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
+                focused_window->state = WM_STATE_MINIMIZED;
+                focused_window = NULL;
+                return 1;
+            }
         }
     }
 
-    if (c == '\t') { /* Tab / Alt+Tab: Cycle windows */
+    if (c == '\t' && (kb_is_pressed(KB_ALT) || kb_is_pressed(KB_CTRL))) { /* Alt+Tab / Ctrl+Tab: Cycle windows */
         if (window_list && window_list->next) {
             window_t *last = window_list;
             while (last->next) last = last->next;
@@ -172,6 +169,7 @@ int wm_dispatch_key(char c) {
         return 1;
     }
 
+    /* Forward all regular keys and all arrow keys directly to the focused window */
     if (focused_window
         && focused_window->state == WM_STATE_ACTIVE
         && focused_window->key_event) {
