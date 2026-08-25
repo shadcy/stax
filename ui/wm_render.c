@@ -22,7 +22,8 @@ app_icon_t app_icons[NUM_APPS] = {
     {4, 18, 386, "Calculator"},
     {5, 104, 42,  "Sys Info"},
     {6, 104, 128, "Task Mgr"},
-    {7, 104, 214, "DOOM"}
+    {7, 104, 214, "DOOM"},
+    {8, 104, 300, "Settings"}
 };
 
 uint16_t *desktop_bg_image = NULL;
@@ -228,6 +229,15 @@ static void draw_app_icon_gfx(int ix, int iy, int id) {
         fb_fillrect(ix+38, iy+18, 5, 5, rgb565(40, 160, 255));
         fb_fillrect(ix+34, iy+25, 5, 5, rgb565(255, 200, 30));
         fb_fillrect(ix+42, iy+25, 5, 5, rgb565(255, 50, 50));
+    } else if (id == 8) {
+        /* Settings (Modern Metallic Gear Hub) */
+        fb_fillrect(ix+8, iy+4, 48, 44, rgb565(75, 80, 92));
+        fb_fillrect(ix+12, iy+8, 40, 36, rgb565(110, 115, 130));
+        fb_fillrect(ix+28, iy+10, 8, 32, rgb565(210, 215, 225));
+        fb_fillrect(ix+16, iy+22, 32, 8, rgb565(210, 215, 225));
+        fb_fillrect(ix+20, iy+14, 24, 24, rgb565(180, 185, 195));
+        fb_fillrect(ix+24, iy+18, 16, 16, rgb565(45, 50, 60));
+        fb_fillrect(ix+28, iy+22, 8, 8, rgb565(240, 245, 255));
     }
 }
 

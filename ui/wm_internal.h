@@ -46,7 +46,7 @@ typedef struct {
     const char *name;
 } app_icon_t;
 
-#define NUM_APPS 8
+#define NUM_APPS 9
 extern app_icon_t app_icons[NUM_APPS];
 
 #define DESK_MAX        24

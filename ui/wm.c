@@ -449,6 +449,11 @@ desktop_hit_done:
                 } else if (app_icons[i].id == 7) {
                     extern void cmd_doomgfx(int, char**);
                     cmd_doomgfx(0, 0);
+                } else if (app_icons[i].id == 8) {
+                    extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    extern void settings_mouse_click(struct window *win, int mx, int my, int button);
+                    window_t *sw = wm_add_window(150, 70, 480, 320, "Settings", settings_draw_window);
+                    if (sw) sw->mouse_click = settings_mouse_click;
                 }
             } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
                 int i = drag_idx;
