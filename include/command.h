@@ -24,6 +24,7 @@ void command_show_help(void);
 /* Individual command functions */
 void cmd_help(int argc, char *argv[]);
 void cmd_clear(int argc, char *argv[]);
+void cmd_reboot(int argc, char *argv[]);
 void cmd_status(int argc, char *argv[]);
 void cmd_mem(int argc, char *argv[]);
 void cmd_tasks(int argc, char *argv[]);
@@ -56,5 +57,9 @@ void cmd_ps(int argc, char *argv[]);
 void cmd_uptime(int argc, char *argv[]);
 void cmd_fwupdate(int argc, char *argv[]);
 void cmd_fwconfirm(int argc, char *argv[]);
+
+/* Network commands */
+void cmd_ifconfig(int argc, char *argv[]);
+void cmd_ping(int argc, char *argv[]);
 
 #endif

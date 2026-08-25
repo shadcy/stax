@@ -18,14 +18,17 @@
 #include "craft.h"
 #include "bench.h"
 #include "page.h"
+#include "system.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
+extern void cmd_browser(int argc, char *argv[]);
 
 /* Command table */
 static const command_t commands[] = {
     {"help",    "Show available commands",           cmd_help},
     {"clear",   "Clear screen",                        cmd_clear},
+    {"reboot",  "Restart the system",                  cmd_reboot},
     {"status",  "Show system status",                  cmd_status},
     {"tasks",   "Show task information",               cmd_tasks},
     {"fs",      "Show filesystem information",          cmd_fs},
@@ -50,6 +53,9 @@ static const command_t commands[] = {
     {"uptime",  "Show system uptime", cmd_uptime},
     {"fwupdate","Update system firmware (e.g. fwupdate /fw.stax)", cmd_fwupdate},
     {"fwconfirm","Confirm active firmware to prevent rollback", cmd_fwconfirm},
+    {"ifconfig","Show network interface configuration", cmd_ifconfig},
+    {"ping",    "Send ICMP ECHO_REQUEST to network hosts", cmd_ping},
+    {"browser", "Launch Graphical Web Browser", cmd_browser},
     {NULL,      NULL,                                NULL}
 };
 
@@ -111,6 +117,14 @@ static int parse_args(char *input, char *argv[], int max_args)
 }
 
 /* Command implementations */
+void cmd_reboot(int argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+    kputs("Rebooting STAX...\n");
+    system_reboot();
+}
+
 static void print_fat_error(FRESULT res) {
     switch (res) {
         case FR_OK: kputs("OK"); break;
