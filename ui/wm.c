@@ -193,7 +193,10 @@ void wm_update(void) {
                     window_t *cw = wm_add_window(160, 110, 200, 250, "Calculator", calculator_draw_window);
                     if (cw) cw->mouse_click = calculator_mouse_click;
                 } else if (item == 5) {
-                    bg_color_idx = (bg_color_idx + 1) % 5;
+                    extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    extern void settings_mouse_click(struct window *win, int mx, int my, int button);
+                    window_t *sw = wm_add_window(150, 60, 540, 340, "Settings", settings_draw_window);
+                    if (sw) sw->mouse_click = settings_mouse_click;
                 }
             }
             ctx_menu.active = 0;
@@ -236,7 +239,10 @@ void wm_update(void) {
                         wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
                         start_menu_active = 0;
                     } else if (rel_y >= 150 && rel_y < 180) {
-                        bg_color_idx = (bg_color_idx + 1) % 5;
+                        extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        extern void settings_mouse_click(struct window *win, int mx, int my, int button);
+                        window_t *sw = wm_add_window(150, 60, 540, 340, "Settings", settings_draw_window);
+                        if (sw) sw->mouse_click = settings_mouse_click;
                         start_menu_active = 0;
                     } else if (rel_y >= 180 && rel_y <= 210) {
                         /* Force Quit */
@@ -452,7 +458,7 @@ desktop_hit_done:
                 } else if (app_icons[i].id == 8) {
                     extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void settings_mouse_click(struct window *win, int mx, int my, int button);
-                    window_t *sw = wm_add_window(150, 70, 480, 320, "Settings", settings_draw_window);
+                    window_t *sw = wm_add_window(150, 60, 540, 340, "Settings", settings_draw_window);
                     if (sw) sw->mouse_click = settings_mouse_click;
                 }
             } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
