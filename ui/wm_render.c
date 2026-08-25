@@ -374,6 +374,10 @@ void wm_render(void) {
         draw_text(pill_x + 4, pill_y, lbl, COLOR_WHITE);
     }
     
+    /* ---- 2b. Desktop Background Widgets Overlay (Pinned via [ATD]) ---- */
+    extern void widgets_draw_desktop_overlay(void);
+    widgets_draw_desktop_overlay();
+
     window_t *arr[32];
     int count = 0;
     window_t *curr = window_list;

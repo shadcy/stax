@@ -614,6 +614,8 @@ void wm_update(void) {
                     if (ctx_menu.x + 150 > (int)fb_width) ctx_menu.x = fb_width - 150;
                     if (ctx_menu.y + 150 > (int)(fb_height - TASKBAR_HEIGHT)) ctx_menu.y = fb_height - TASKBAR_HEIGHT - 150;
                 } else if (pressed) {
+                    extern int widgets_handle_desktop_click(int, int);
+                    if (widgets_handle_desktop_click(mx, my)) goto update_done;
                     if (!desk_loaded) desk_load_files();
                     for (int i = 0; i < desk_count; i++) {
                         if (!desk_files[i].valid) continue;
