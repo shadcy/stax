@@ -84,39 +84,70 @@ void draw_window(window_t *win) {
     fb_drawline(wx+ww-1, wy, wx+ww-1, wy+wh-1, COL_WIN_BORDER_DARK);
     fb_drawline(wx, wy+wh-1, wx+ww-1, wy+wh-1, COL_WIN_BORDER_DARK);
     
-    /* Titlebar */
+    /* Titlebar (Ubuntu Yaru Dark / Aubergine Theme) */
     int tbx = wx + BORDER_WIDTH;
     int tby = wy + BORDER_WIDTH;
     int tbw = ww - BORDER_WIDTH*2;
-    fb_fillrect(tbx, tby, tbw, TITLEBAR_HEIGHT, COL_WIN_TITLE);
+    fb_fillrect(tbx, tby, tbw, TITLEBAR_HEIGHT, rgb565(44, 44, 44));
+    fb_drawline(tbx, tby, tbx + tbw - 1, tby, rgb565(68, 68, 68));
+    fb_drawline(tbx, tby + TITLEBAR_HEIGHT - 1, tbx + tbw - 1, tby + TITLEBAR_HEIGHT - 1, rgb565(25, 25, 25));
     
-    /* Title text (Centered) */
-    int text_w = 0;
-    while(win->title[text_w]) text_w++;
-    int text_x = tbx + (tbw - (text_w * 8)) / 2;
-    if (text_x < tbx + 60) text_x = tbx + 60;
-    draw_text(text_x, tby + 2, win->title, COL_WIN_TITLE_TXT);
-    
-    /* MacOS Style Buttons (Close, Minimize, Maximize) */
-    int btn_w = 12;
-    int close_x = wx + BORDER_WIDTH + 8;
-    int min_x   = close_x + btn_w + 6;
-    int max_x   = min_x + btn_w + 6;
-    
-    /* Helper to draw rounded button */
-    #define DRAW_MAC_BTN(bx, col) \
-        fb_fillrect((bx)+2, tby+4, 8, 12, col); \
-        fb_fillrect((bx), tby+6, 12, 8, col); \
-        fb_fillrect((bx)+1, tby+5, 10, 10, col)
-        
-    /* Close Button (Red) */
-    DRAW_MAC_BTN(close_x, rgb565(255, 95, 86));
-    /* Minimize Button (Yellow) */
-    DRAW_MAC_BTN(min_x, rgb565(255, 189, 46));
-    /* Maximize Button (Green) */
-    DRAW_MAC_BTN(max_x, rgb565(39, 201, 63));
-    
-    #undef DRAW_MAC_BTN
+    /* Ubuntu Window Controls (Right Aligned: Minimize _, Maximize □, Close ✕) */
+    int btn_size = 14;
+    int btn_y = tby + (TITLEBAR_HEIGHT - btn_size) / 2;
+    int close_x = tbx + tbw - 20;
+    int max_x   = close_x - 18;
+    int min_x   = max_x - 18;
+
+    /* Helper: Draw rounded button background */
+    #define DRAW_UBUNTU_BTN(bx, by, col) \
+        fb_fillrect((bx)+2, (by), 10, 14, col); \
+        fb_fillrect((bx), (by)+2, 14, 10, col); \
+        fb_fillrect((bx)+1, (by)+1, 12, 12, col)
+
+    /* Minimize Button (_) */
+    DRAW_UBUNTU_BTN(min_x, btn_y, rgb565(60, 60, 66));
+    fb_drawline(min_x + 3, btn_y + 9, min_x + 10, btn_y + 9, COLOR_WHITE);
+    fb_drawline(min_x + 3, btn_y + 10, min_x + 10, btn_y + 10, COLOR_WHITE);
+
+    /* Maximize Button (□) */
+    DRAW_UBUNTU_BTN(max_x, btn_y, rgb565(60, 60, 66));
+    if (win->is_maximized) {
+        /* Restore symbol */
+        fb_drawline(max_x + 5, btn_y + 3, max_x + 11, btn_y + 3, COLOR_WHITE);
+        fb_drawline(max_x + 11, btn_y + 3, max_x + 11, btn_y + 8, COLOR_WHITE);
+        fb_drawline(max_x + 3, btn_y + 5, max_x + 9, btn_y + 5, COLOR_WHITE);
+        fb_drawline(max_x + 3, btn_y + 11, max_x + 9, btn_y + 11, COLOR_WHITE);
+        fb_drawline(max_x + 3, btn_y + 5, max_x + 3, btn_y + 11, COLOR_WHITE);
+        fb_drawline(max_x + 9, btn_y + 5, max_x + 9, btn_y + 11, COLOR_WHITE);
+    } else {
+        /* Maximize box */
+        fb_drawline(max_x + 3, btn_y + 3, max_x + 10, btn_y + 3, COLOR_WHITE);
+        fb_drawline(max_x + 3, btn_y + 10, max_x + 10, btn_y + 10, COLOR_WHITE);
+        fb_drawline(max_x + 3, btn_y + 3, max_x + 3, btn_y + 10, COLOR_WHITE);
+        fb_drawline(max_x + 10, btn_y + 3, max_x + 10, btn_y + 10, COLOR_WHITE);
+    }
+
+    /* Close Button (✕, Ubuntu Orange) */
+    DRAW_UBUNTU_BTN(close_x, btn_y, rgb565(233, 84, 32));
+    fb_drawline(close_x + 3, btn_y + 3, close_x + 10, btn_y + 10, COLOR_WHITE);
+    fb_drawline(close_x + 4, btn_y + 3, close_x + 11, btn_y + 10, COLOR_WHITE);
+    fb_drawline(close_x + 10, btn_y + 3, close_x + 3, btn_y + 10, COLOR_WHITE);
+    fb_drawline(close_x + 11, btn_y + 3, close_x + 4, btn_y + 10, COLOR_WHITE);
+
+    #undef DRAW_UBUNTU_BTN
+
+    /* Title text (Left-aligned Ubuntu style) */
+    int max_title_chars = (tbw - 70) / 8;
+    if (max_title_chars < 1) max_title_chars = 1;
+    char title_buf[32];
+    int tl = 0;
+    for (; tl < max_title_chars && win->title[tl] && tl < 30; tl++) {
+        title_buf[tl] = win->title[tl];
+    }
+    title_buf[tl] = '\0';
+    draw_text(tbx + 10, tby + 2, title_buf, COLOR_WHITE);
+
     
     /* Client Area */
     int cx = wx + BORDER_WIDTH;

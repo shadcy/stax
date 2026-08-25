@@ -9,6 +9,7 @@
 #include "app_editor.h"
 #include "doom.h"
 #include "gfx_console.h"
+#include "keyboard.h"
 
 window_t *window_list = NULL;
 static int next_id = 1;
@@ -88,7 +89,72 @@ void wm_focus_shell(void)
 }
 
 int wm_dispatch_key(char c) {
-    if (c == '\t') {
+    /* 1. Global Window & System Management Shortcuts */
+    if (c == 0x14) { /* Ctrl+T: New Terminal */
+        extern struct window *terminal_open_new(void);
+        terminal_open_new();
+        return 1;
+    }
+    if (c == 0x0E) { /* Ctrl+N: New Document */
+        extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+        extern void editor_key_event(struct window *win, char c);
+        window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
+        if (ew) ew->key_event = editor_key_event;
+        return 1;
+    }
+    if (c == 0x12) { /* Ctrl+R: Reboot System */
+        extern void settings_save(void);
+        extern void system_reboot(void);
+        settings_save();
+        system_reboot();
+        return 1;
+    }
+
+    /* 2. Active Window Action Shortcuts */
+    if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
+        if (c == 0x17 || c == 0x11) { /* Ctrl+W or Ctrl+Q: Close active window */
+            if (focused_window->app_data == DOOM_WIN_MARKER) {
+                doom_force_cleanup();
+                focused_window = NULL;
+                return 1;
+            }
+            extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+            if (focused_window->draw_client == editor_draw_window) {
+                editor_autosave(focused_window);
+                file_manager_refresh();
+            }
+            focused_window->state = WM_STATE_HIDDEN;
+            focused_window = NULL;
+            return 1;
+        }
+        if (c == 0x06) { /* Ctrl+F: Maximize / Restore Toggle */
+            if (focused_window->is_maximized) {
+                focused_window->x = focused_window->saved_x;
+                focused_window->y = focused_window->saved_y;
+                focused_window->width = focused_window->saved_width;
+                focused_window->height = focused_window->saved_height;
+                focused_window->is_maximized = 0;
+            } else {
+                focused_window->saved_x = focused_window->x;
+                focused_window->saved_y = focused_window->y;
+                focused_window->saved_width = focused_window->width;
+                focused_window->saved_height = focused_window->height;
+                focused_window->x = 0;
+                focused_window->y = TASKBAR_HEIGHT;
+                focused_window->width = fb_width;
+                focused_window->height = fb_height - TASKBAR_HEIGHT;
+                focused_window->is_maximized = 1;
+            }
+            return 1;
+        }
+        if (c == 0x0D && kb_is_pressed(KB_CTRL)) { /* Ctrl+Enter: Minimize active window */
+            focused_window->state = WM_STATE_MINIMIZED;
+            focused_window = NULL;
+            return 1;
+        }
+    }
+
+    if (c == '\t') { /* Tab / Alt+Tab: Cycle windows */
         if (window_list && window_list->next) {
             window_t *last = window_list;
             while (last->next) last = last->next;
@@ -104,6 +170,7 @@ int wm_dispatch_key(char c) {
         }
         return 1;
     }
+
     if (focused_window
         && focused_window->state == WM_STATE_ACTIVE
         && focused_window->key_event) {
@@ -330,13 +397,15 @@ void wm_update(void) {
                         focused_window = curr;
                         
                         int tby = curr->y + BORDER_WIDTH;
-                        int btn_w = 12;
-                        int close_x = curr->x + BORDER_WIDTH + 8;
-                        int min_x   = close_x + btn_w + 6;
-                        int max_x   = min_x + btn_w + 6;
+                        int tbw = curr->width - BORDER_WIDTH * 2;
+                        int tbx = curr->x + BORDER_WIDTH;
+                        int close_x = tbx + tbw - 20;
+                        int max_x   = close_x - 18;
+                        int min_x   = max_x - 18;
+                        int btn_w   = 16;
                         
-                        if (my >= tby + 4 && my < tby + 4 + btn_w) {
-                            if (mx >= close_x && mx < close_x + btn_w) {
+                        if (my >= tby + 2 && my < tby + TITLEBAR_HEIGHT - 2) {
+                            if (mx >= close_x - 2 && mx < close_x + btn_w) {
                                 if (curr->app_data == DOOM_WIN_MARKER) {
                                     doom_force_cleanup();
                                     if (focused_window == curr)
@@ -358,7 +427,7 @@ void wm_update(void) {
                                 if (focused_window == curr) focused_window = NULL;
                                 break;
                             }
-                            if (mx >= max_x && mx < max_x + btn_w) {
+                            if (mx >= max_x - 2 && mx < max_x + btn_w) {
                                 if (curr->is_maximized) {
                                     curr->x = curr->saved_x;
                                     curr->y = curr->saved_y;
@@ -378,7 +447,7 @@ void wm_update(void) {
                                 }
                                 break;
                             }
-                            if (mx >= min_x && mx < min_x + btn_w) {
+                            if (mx >= min_x - 2 && mx < min_x + btn_w) {
                                 curr->state = WM_STATE_MINIMIZED;
                                 if (focused_window == curr) focused_window = NULL;
                                 break;
