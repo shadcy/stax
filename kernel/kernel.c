@@ -104,6 +104,14 @@ void kernel_main(void)
     /* ---- Phase 6e: FAT filesystem ---- */
     fat_init();
     
+    /* Load persisted settings from disk and update live window manager */
+    settings_load();
+    if (boot_win) {
+        boot_win->state = g_settings.show_boot_log_on_startup ? WM_STATE_ACTIVE : WM_STATE_MINIMIZED;
+        boot_win->x = g_settings.boot_win_x;
+        boot_win->y = g_settings.boot_win_y;
+    }
+    
     /* Initialize Firmware Subsystem */
     extern void stax_firmware_init(void);
     stax_firmware_init();
