@@ -197,6 +197,11 @@ void wm_update(void) {
                     extern void settings_mouse_click(struct window *win, int mx, int my, int button);
                     window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                     if (sw) sw->mouse_click = settings_mouse_click;
+                } else if (item == 6) {
+                    extern void settings_save(void);
+                    extern void system_reboot(void);
+                    settings_save();
+                    system_reboot();
                 }
             }
             ctx_menu.active = 0;
@@ -215,7 +220,7 @@ void wm_update(void) {
                 int sm_x = 0;
                 int sm_y = TASKBAR_HEIGHT;
                 int sm_w = 200;
-                int sm_h = 210;
+                int sm_h = 240;
                 if (mx >= sm_x && mx < sm_x + sm_w && my >= sm_y && my < sm_y + sm_h) {
                     int rel_y = my - sm_y;
                     if (rel_y >= 0 && rel_y < 30) {
@@ -244,7 +249,12 @@ void wm_update(void) {
                         window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                         if (sw) sw->mouse_click = settings_mouse_click;
                         start_menu_active = 0;
-                    } else if (rel_y >= 180 && rel_y <= 210) {
+                    } else if (rel_y >= 180 && rel_y < 210) {
+                        extern void settings_save(void);
+                        extern void system_reboot(void);
+                        settings_save();
+                        system_reboot();
+                    } else if (rel_y >= 210 && rel_y <= 240) {
                         /* Force Quit */
                         extern void wm_close_window(window_t *win);
                         if (focused_window) {

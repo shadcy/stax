@@ -421,11 +421,11 @@ void wm_render(void) {
     
     /* Context Menu */
     if (ctx_menu.active) {
-        fb_fillrect(ctx_menu.x, ctx_menu.y, 160, 180, rgb565(235, 235, 240));
+        fb_fillrect(ctx_menu.x, ctx_menu.y, 160, 210, rgb565(235, 235, 240));
         fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y, COLOR_WHITE);
-        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x, ctx_menu.y + 179, COLOR_WHITE);
-        fb_drawline(ctx_menu.x + 159, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y + 179, rgb565(120, 120, 130));
-        fb_drawline(ctx_menu.x, ctx_menu.y + 179, ctx_menu.x + 159, ctx_menu.y + 179, rgb565(120, 120, 130));
+        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x, ctx_menu.y + 209, COLOR_WHITE);
+        fb_drawline(ctx_menu.x + 159, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y + 209, rgb565(120, 120, 130));
+        fb_drawline(ctx_menu.x, ctx_menu.y + 209, ctx_menu.x + 159, ctx_menu.y + 209, rgb565(120, 120, 130));
         
         draw_text(ctx_menu.x + 10, ctx_menu.y + 8, "New Terminal", COLOR_BLACK);
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 30, ctx_menu.x + 155, ctx_menu.y + 30, rgb565(180, 180, 190));
@@ -437,7 +437,9 @@ void wm_render(void) {
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 120, ctx_menu.x + 155, ctx_menu.y + 120, rgb565(180, 180, 190));
         draw_text(ctx_menu.x + 10, ctx_menu.y + 128, "Calculator", COLOR_BLACK);
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 150, ctx_menu.x + 155, ctx_menu.y + 150, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 158, "Change Wallpaper", COLOR_BLACK);
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 158, "Settings", COLOR_BLACK);
+        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 180, ctx_menu.x + 155, ctx_menu.y + 180, rgb565(180, 180, 190));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 188, "Reboot System", rgb565(190, 40, 40));
     }
     
     /* STAX System Menu Dropdown */
@@ -445,7 +447,7 @@ void wm_render(void) {
         int sm_x = 0;
         int sm_y = TASKBAR_HEIGHT; /* Dropdown from top bar */
         int sm_w = 200;
-        int sm_h = 210;
+        int sm_h = 240;
         
         fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(245, 245, 250));
         fb_drawline(sm_x, sm_y, sm_x + sm_w, sm_y, rgb565(160, 160, 170));
@@ -460,11 +462,12 @@ void wm_render(void) {
         draw_text(sm_x + 10, sm_y + 68, "Terminal", COLOR_BLACK);
         draw_text(sm_x + 10, sm_y + 98, "File Manager", COLOR_BLACK);
         draw_text(sm_x + 10, sm_y + 128, "Task Manager", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 158, "Settings", COLOR_BLACK);
         
-        fb_drawline(sm_x + 5, sm_y + 150, sm_x + sm_w - 5, sm_y + 150, rgb565(200, 200, 210));
+        fb_drawline(sm_x + 5, sm_y + 180, sm_x + sm_w - 5, sm_y + 180, rgb565(200, 200, 210));
         
-        draw_text(sm_x + 10, sm_y + 158, "Change Wallpaper", COLOR_BLACK);
-        draw_text(sm_x + 10, sm_y + 188, "Force Quit...", rgb565(180, 30, 30));
+        draw_text(sm_x + 10, sm_y + 188, "Reboot System", rgb565(190, 40, 40));
+        draw_text(sm_x + 10, sm_y + 216, "Force Quit...", rgb565(120, 120, 130));
     }
     
     /* 4. Mouse Cursor */
