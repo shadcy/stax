@@ -1,10 +1,13 @@
 #include "engine2d.h"
 #include "../gfx/gfx.h"
+#include "framebuffer.h"
 #include "keyboard.h"
 #include "console.h"
 #include "font8x16.h"
 #include "assets.h"
 #include "wm.h"
+
+extern void wm_bring_to_front(struct window *win);
 /* Physics Constants (16.16 Fixed Point, Pixels per Second) */
 #define GRAVITY     TO_FIX(2000)    /* Extremely snappy gravity */
 #define MAX_FALL    TO_FIX(600)     
@@ -504,7 +507,7 @@ static void slime_draw_window(struct window *win, int cx, int cy, int cw, int ch
     
     slime_draw(); /* Updates the 320x200 gfx_backbuffer */
     
-    /* Now blit 320x200 gfx_backbuffer to cx, cy scaled 2x */
+    /* Blit 320x200 gfx_backbuffer to window client area scaled 2x */
     extern uint16_t* fb_get_buffer(void);
     uint16_t* vram = fb_get_buffer();
     if (!vram) return;
@@ -513,32 +516,26 @@ static void slime_draw_window(struct window *win, int cx, int cy, int cw, int ch
     extern uint16_t gfx_faded_palette[];
     uint8_t *src = gfx_backbuffer;
     
+    uint32_t screen_w = fb_width;
+    uint32_t screen_h = fb_height;
+    
+    int scale_x = cw / 320;
+    int scale_y = ch / 200;
+    if (scale_x < 1) scale_x = 1;
+    if (scale_y < 1) scale_y = 1;
+    
     for (int y = 0; y < 200; y++) {
-        int dest_y1 = cy + y * 2;
-        int dest_y2 = dest_y1 + 1;
-        
-        if (dest_y1 >= cy + ch || dest_y1 >= 480) break;
-        
-        uint16_t *row1 = vram + dest_y1 * 640;
-        uint16_t *row2 = vram + dest_y2 * 640;
-        
-        for (int x = 0; x < 320; x++) {
-            int dest_x1 = cx + x * 2;
-            int dest_x2 = dest_x1 + 1;
+        for (int dy = 0; dy < scale_y; dy++) {
+            int dest_y = cy + y * scale_y + dy;
+            if (dest_y >= cy + ch || (uint32_t)dest_y >= screen_h) break;
             
-            if (dest_x1 >= cx + cw || dest_x1 >= 640) break;
-            
-            uint16_t color = gfx_faded_palette[src[y * 320 + x]];
-            
-            row1[dest_x1] = color;
-            if (dest_x2 < cx + cw && dest_x2 < 640) {
-                row1[dest_x2] = color;
-            }
-            
-            if (dest_y2 < cy + ch && dest_y2 < 480) {
-                row2[dest_x1] = color;
-                if (dest_x2 < cx + cw && dest_x2 < 640) {
-                    row2[dest_x2] = color;
+            uint16_t *row = vram + dest_y * screen_w;
+            for (int x = 0; x < 320; x++) {
+                uint16_t color = gfx_faded_palette[src[y * 320 + x]];
+                for (int dx = 0; dx < scale_x; dx++) {
+                    int dest_x = cx + x * scale_x + dx;
+                    if (dest_x >= cx + cw || (uint32_t)dest_x >= screen_w) break;
+                    row[dest_x] = color;
                 }
             }
         }
@@ -564,6 +561,7 @@ void cmd_slime(int argc, char **argv) {
     while (curr) {
         if (curr->update_client == slime_update_window) {
             curr->state = 0; /* WM_STATE_ACTIVE */
+            wm_bring_to_front(curr);
             return;
         }
         curr = curr->next;
@@ -571,8 +569,12 @@ void cmd_slime(int argc, char **argv) {
     
     slime_init();
     
-    /* Open a 640x424 window to fit 640x400 content properly */
-    window_t *win = wm_add_window(0, 0, 640, 424, "Slime Escape", slime_draw_window);
+    /* Open a 644x424 window centered on display */
+    int win_w = 644;
+    int win_h = 424;
+    int win_x = ((int)fb_width > win_w) ? ((int)fb_width - win_w) / 2 : 10;
+    int win_y = 38;
+    window_t *win = wm_add_window(win_x, win_y, win_w, win_h, "Slime Escape", slime_draw_window);
     if (win) {
         win->update_client = slime_update_window;
         win->key_event = slime_key_event;
