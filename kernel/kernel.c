@@ -82,13 +82,18 @@ void kernel_main(void)
     page_init();
     heap_init();
     
+#include "app_settings.h"
+
     /* Initialize Window Manager early to capture output */
     wm_init();
+    settings_init();
     
-    /* 1. Terminal / Boot Log window on the left */
-    window_t *boot_win = wm_add_window(10, 10, 300, 300, "Boot Log", gfx_console_draw_window);
+    /* 1. Terminal / Boot Log window positioned cleanly below top nav bar */
+    window_t *boot_win = wm_add_window(g_settings.boot_win_x, g_settings.boot_win_y,
+                                       g_settings.boot_win_w, g_settings.boot_win_h,
+                                       "Boot Log", gfx_console_draw_window);
     if (boot_win) {
-        boot_win->state = WM_STATE_ACTIVE;
+        boot_win->state = g_settings.show_boot_log_on_startup ? WM_STATE_ACTIVE : WM_STATE_MINIMIZED;
         boot_win->key_event = gfx_console_key_event;
         boot_win->mouse_click = gfx_console_mouse_click;
         boot_win->mouse_drag = gfx_console_mouse_drag;
