@@ -114,27 +114,12 @@ int stax_strncmp(const char *s1, const char *s2, size_t n)
     return *(const unsigned char *)s1 - *(const unsigned char *)s2;
 }
 
-char *strcpy(char *d, const char *s)
-{
-    char *dst = d;
-    while ((*dst++ = *s++));
-    return d;
-}
-
 char *strcat(char *d, const char *s)
 {
     char *dst = d;
     while (*dst) dst++;
     while ((*dst++ = *s++));
     return d;
-}
-
-int strcmp(const char *s1, const char *s2)
-{
-    while (*s1 && (*s1 == *s2)) {
-        s1++; s2++;
-    }
-    return *(const unsigned char *)s1 - *(const unsigned char *)s2;
 }
 
 
