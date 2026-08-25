@@ -212,10 +212,49 @@ void wm_update(void) {
             if (!right_pressed) goto update_done;
         }        if (my < TASKBAR_HEIGHT) {
             if (pressed) {
-                if (mx >= 0 && mx < 60) {
+                if (mx >= 0 && mx < 70) {
                     start_menu_active = !start_menu_active;
                 } else {
                     start_menu_active = 0;
+                    /* Check window tab clicks */
+                    int nav_x = 75;
+                    int max_nav_x = (int)fb_width - 280;
+                    int avail_w = max_nav_x - nav_x;
+                    extern struct window *window_list;
+                    window_t *arr[32];
+                    int count = 0;
+                    window_t *curr = window_list;
+                    while (curr && count < 32) {
+                        if (curr->state != WM_STATE_HIDDEN) arr[count++] = curr;
+                        curr = curr->next;
+                    }
+                    if (count > 0 && avail_w > 80) {
+                        int tab_gap = 4;
+                        int tab_w = (avail_w - (count - 1) * tab_gap) / count;
+                        if (tab_w > 130) tab_w = 130;
+                        int visible_tabs = count;
+                        if (tab_w < 55) {
+                            tab_w = 55;
+                            int max_fit = (avail_w - 45) / (tab_w + tab_gap);
+                            if (max_fit < 1) max_fit = 1;
+                            visible_tabs = max_fit;
+                        }
+                        for (int i = 0; i < visible_tabs; i++) {
+                            int tx = nav_x + i * (tab_w + tab_gap);
+                            if (mx >= tx && mx < tx + tab_w) {
+                                window_t *w = arr[i];
+                                if (w->state == WM_STATE_MINIMIZED) {
+                                    w->state = WM_STATE_ACTIVE;
+                                    wm_bring_to_front(w);
+                                } else if (w == arr[0] && w->state == WM_STATE_ACTIVE) {
+                                    w->state = WM_STATE_MINIMIZED;
+                                } else {
+                                    wm_bring_to_front(w);
+                                }
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             drag_win = NULL;

@@ -388,10 +388,91 @@ void wm_render(void) {
         draw_text(32, ty + 6, "STAX", COLOR_BLACK);
     }
     
-    /* Active Window Title / Menu items */
-    if (count > 0 && arr[0]->state != WM_STATE_HIDDEN) {
-        draw_text(90, ty + 6, arr[0]->title, COLOR_BLACK);
+    /* Open Window Tabs in Navigation Bar (Mac/Modern OS Style) */
+    int nav_x = 75;
+    int max_nav_x = (int)fb_width - 280;
+    int avail_w = max_nav_x - nav_x;
+    
+    if (count > 0 && avail_w > 80) {
+        int tab_gap = 4;
+        int tab_w = (avail_w - (count - 1) * tab_gap) / count;
+        if (tab_w > 130) tab_w = 130;
+        
+        int visible_tabs = count;
+        int overflow_count = 0;
+        if (tab_w < 55) {
+            tab_w = 55;
+            int max_fit = (avail_w - 45) / (tab_w + tab_gap);
+            if (max_fit < 1) max_fit = 1;
+            visible_tabs = max_fit;
+            overflow_count = count - visible_tabs;
+        }
+
+        for (int i = 0; i < visible_tabs; i++) {
+            window_t *w = arr[i];
+            int tx = nav_x + i * (tab_w + tab_gap);
+            int is_active = (i == 0 && w->state == WM_STATE_ACTIVE);
+            int is_min = (w->state == WM_STATE_MINIMIZED);
+
+            uint16_t bg = is_active ? rgb565(35, 110, 225) : (is_min ? rgb565(215, 218, 225) : rgb565(238, 240, 246));
+            uint16_t fg = is_active ? COLOR_WHITE : (is_min ? rgb565(130, 135, 145) : rgb565(35, 40, 55));
+            uint16_t border = is_active ? rgb565(20, 80, 180) : rgb565(200, 205, 215);
+
+            fb_fillrect(tx, ty + 3, tab_w, 22, bg);
+            fb_drawline(tx, ty + 3, tx + tab_w - 1, ty + 3, border);
+            fb_drawline(tx, ty + 3, tx, ty + 24, border);
+            fb_drawline(tx + tab_w - 1, ty + 3, tx + tab_w - 1, ty + 24, border);
+            fb_drawline(tx, ty + 24, tx + tab_w - 1, ty + 24, border);
+
+            /* Status dot */
+            uint16_t dot_col = is_active ? rgb565(80, 240, 100) : (is_min ? rgb565(170, 175, 185) : rgb565(80, 150, 240));
+            fb_fillrect(tx + 5, ty + 12, 4, 4, dot_col);
+
+            /* Truncate title cleanly to prevent any text overflow */
+            int max_chars = (tab_w - 16) / 8;
+            if (max_chars < 1) max_chars = 1;
+            char title_trunc[18];
+            int tlen = (int)strlen(w->title);
+            if (tlen > max_chars && max_chars > 2) {
+                int k = 0;
+                for (; k < max_chars - 2 && k < 15; k++) {
+                    title_trunc[k] = w->title[k];
+                }
+                title_trunc[k++] = '.';
+                title_trunc[k++] = '.';
+                title_trunc[k] = '\0';
+            } else {
+                int k = 0;
+                for (; k < max_chars && w->title[k]; k++) title_trunc[k] = w->title[k];
+                title_trunc[k] = '\0';
+            }
+
+            draw_text(tx + 12, ty + 6, title_trunc, fg);
+        }
+
+        /* Overflow pill if more tabs exist */
+        if (overflow_count > 0) {
+            int ox = nav_x + visible_tabs * (tab_w + tab_gap);
+            fb_fillrect(ox, ty + 3, 38, 22, rgb565(220, 224, 232));
+            fb_drawline(ox, ty + 3, ox + 37, ty + 3, rgb565(180, 185, 195));
+            fb_drawline(ox, ty + 24, ox + 37, ty + 24, rgb565(180, 185, 195));
+            fb_drawline(ox, ty + 3, ox, ty + 24, rgb565(180, 185, 195));
+            fb_drawline(ox + 37, ty + 3, ox + 37, ty + 24, rgb565(180, 185, 195));
+
+            char ovf_str[8];
+            ovf_str[0] = '+';
+            if (overflow_count >= 10) {
+                ovf_str[1] = '0' + (overflow_count / 10);
+                ovf_str[2] = '0' + (overflow_count % 10);
+                ovf_str[3] = '\0';
+            } else {
+                ovf_str[1] = '0' + overflow_count;
+                ovf_str[2] = '\0';
+            }
+            draw_text(ox + 6, ty + 6, ovf_str, rgb565(40, 50, 70));
+        }
     }
+
     
     /* Real-Time Date & Time (IST Mumbai) */
     char dt_str[32];
