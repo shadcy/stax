@@ -174,101 +174,92 @@ void wm_load_background(const char *filename) {
 
 static void draw_app_icon_gfx(int ix, int iy, int id) {
     if (id == 0) {
-        /* Web Browser: Minimalist Royal Blue Globe with Equator Ring & Compass Pin */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(25, 95, 215));
-        fb_fillrect(ix + 14, iy + 8, 36, 36, rgb565(35, 135, 250));
-        fb_drawline(ix + 14, iy + 26, ix + 49, iy + 26, rgb565(180, 225, 255));
-        fb_drawline(ix + 32, iy + 8, ix + 32, iy + 43, rgb565(180, 225, 255));
-        fb_fillrect(ix + 28, iy + 22, 8, 8, rgb565(255, 70, 70));
-        fb_fillrect(ix + 30, iy + 24, 4, 4, COLOR_WHITE);
+        /* Web Browser: Modern macOS Safari Blue Badge */
+        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(32, 130, 235));
+        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(90, 175, 255));
+        /* Globe rings */
+        fb_drawline(ix + 18, iy + 26, ix + 46, iy + 26, COLOR_WHITE);
+        fb_drawline(ix + 32, iy + 12, ix + 32, iy + 40, COLOR_WHITE);
+        fb_drawline(ix + 22, iy + 16, ix + 42, iy + 36, rgb565(190, 225, 255));
+        fb_fillrect(ix + 30, iy + 24, 4, 4, rgb565(240, 70, 70));
     } else if (id == 1) {
-        /* Terminal: Sleek Dark Rounded Console with Glowing Emerald Prompt */
-        fb_fillrect(ix + 8, iy + 6, 48, 40, rgb565(36, 38, 46));
-        fb_fillrect(ix + 10, iy + 8, 44, 36, rgb565(18, 20, 24));
-        fb_drawline(ix + 8, iy + 6, ix + 55, iy + 6, rgb565(70, 75, 90));
-        /* > _ prompt */
-        fb_putpixel(ix + 15, iy + 16, rgb565(50, 240, 100));
-        fb_putpixel(ix + 16, iy + 17, rgb565(50, 240, 100));
-        fb_putpixel(ix + 15, iy + 18, rgb565(50, 240, 100));
-        fb_fillrect(ix + 19, iy + 18, 6, 2, rgb565(50, 240, 100));
-        fb_fillrect(ix + 15, iy + 24, 22, 2, rgb565(140, 150, 170));
-        fb_fillrect(ix + 15, iy + 30, 14, 2, rgb565(140, 150, 170));
+        /* Terminal: Ubuntu Yaru Dark Slate Console with Green Prompt */
+        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(40, 42, 50));
+        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(75, 80, 95));
+        /* > _ */
+        fb_putpixel(ix + 18, iy + 20, rgb565(50, 235, 100));
+        fb_putpixel(ix + 19, iy + 21, rgb565(50, 235, 100));
+        fb_putpixel(ix + 18, iy + 22, rgb565(50, 235, 100));
+        fb_fillrect(ix + 23, iy + 22, 6, 2, rgb565(50, 235, 100));
+        fb_fillrect(ix + 18, iy + 28, 20, 2, rgb565(140, 145, 160));
+        fb_fillrect(ix + 18, iy + 34, 12, 2, rgb565(140, 145, 160));
     } else if (id == 2) {
-        /* File Manager: Theme-Matched Tabbed Folder */
-        uint16_t f_main = (bg_color_idx == 0) ? rgb565(40, 130, 240) :
-                          (bg_color_idx == 1) ? rgb565(20, 160, 140) :
-                          (bg_color_idx == 2) ? rgb565(95, 100, 115) :
-                          (bg_color_idx == 3) ? rgb565(215, 60, 60) : rgb565(240, 175, 30);
-        uint16_t f_tab = (bg_color_idx == 0) ? rgb565(20, 85, 175) :
-                         (bg_color_idx == 1) ? rgb565(12, 110, 95) :
-                         (bg_color_idx == 2) ? rgb565(60, 65, 75) :
-                         (bg_color_idx == 3) ? rgb565(145, 30, 30) : rgb565(180, 120, 15);
-        fb_fillrect(ix + 10, iy + 8, 20, 8, f_tab);
-        fb_fillrect(ix + 14, iy + 6, 32, 18, rgb565(245, 248, 255));
-        fb_fillrect(ix + 8, iy + 14, 48, 32, f_main);
-        fb_fillrect(ix + 8, iy + 14, 48, 2, COLOR_WHITE);
+        /* File Manager: Clean Theme-Matched Folder */
+        uint16_t f_main = (bg_color_idx == 0) ? rgb565(38, 132, 226) :
+                          (bg_color_idx == 1) ? rgb565(26, 150, 132) :
+                          (bg_color_idx == 2) ? rgb565(88, 92, 104) :
+                          (bg_color_idx == 3) ? rgb565(210, 68, 50) : rgb565(235, 130, 30);
+        uint16_t f_tab  = (bg_color_idx == 0) ? rgb565(22, 92, 170) :
+                          (bg_color_idx == 1) ? rgb565(16, 102, 90) :
+                          (bg_color_idx == 2) ? rgb565(58, 60, 70) :
+                          (bg_color_idx == 3) ? rgb565(145, 40, 30) : rgb565(175, 85, 15);
+        fb_fillrect(ix + 10, iy + 10, 16, 5, f_tab);
+        fb_fillrect(ix + 10, iy + 14, 44, 26, f_tab);
+        fb_fillrect(ix + 10, iy + 20, 44, 20, f_main);
+        fb_fillrect(ix + 24, iy + 28, 16, 2, COLOR_WHITE);
     } else if (id == 3) {
-        /* Notes / Text Editor: Ivory Sheet with Coral Banner & Pencil */
-        fb_fillrect(ix + 12, iy + 4, 38, 44, rgb565(255, 254, 242));
-        fb_fillrect(ix + 12, iy + 4, 38, 8, rgb565(235, 80, 50));
-        fb_drawline(ix + 18, iy + 18, ix + 42, iy + 18, rgb565(160, 180, 210));
-        fb_drawline(ix + 18, iy + 24, ix + 42, iy + 24, rgb565(160, 180, 210));
-        fb_drawline(ix + 18, iy + 30, ix + 36, iy + 30, rgb565(160, 180, 210));
-        /* Pencil */
-        fb_fillrect(ix + 34, iy + 26, 8, 16, rgb565(245, 180, 20));
-        fb_fillrect(ix + 34, iy + 24, 8, 3, rgb565(255, 130, 150));
-        fb_fillrect(ix + 37, iy + 42, 3, 3, rgb565(40, 40, 40));
+        /* Text Editor: Clean Off-White Document Card with Ubuntu Orange Header */
+        fb_fillrect(ix + 12, iy + 4, 40, 44, rgb565(248, 249, 252));
+        fb_fillrect(ix + 12, iy + 4, 40, 8, rgb565(235, 95, 30));
+        fb_drawline(ix + 12, iy + 4, ix + 51, iy + 4, rgb565(255, 140, 80));
+        fb_drawline(ix + 18, iy + 20, ix + 42, iy + 20, rgb565(165, 175, 195));
+        fb_drawline(ix + 18, iy + 26, ix + 42, iy + 26, rgb565(165, 175, 195));
+        fb_drawline(ix + 18, iy + 32, ix + 34, iy + 32, rgb565(165, 175, 195));
+        /* Pencil tip */
+        fb_fillrect(ix + 36, iy + 34, 6, 8, rgb565(235, 95, 30));
     } else if (id == 4) {
-        /* Calculator: Modern Keypad with Amber Equals Button */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(46, 50, 60));
-        fb_fillrect(ix + 14, iy + 8, 36, 10, rgb565(225, 240, 230));
-        fb_fillrect(ix + 34, iy + 10, 12, 2, rgb565(30, 50, 40));
+        /* Calculator: Modern Charcoal Keypad with Orange Accent */
+        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(42, 44, 52));
+        fb_fillrect(ix + 14, iy + 8, 36, 10, rgb565(230, 235, 242));
+        fb_fillrect(ix + 34, iy + 10, 12, 2, rgb565(30, 35, 45));
         for (int r = 0; r < 3; r++) {
             for (int c = 0; c < 3; c++) {
-                fb_fillrect(ix + 14 + c * 8, iy + 22 + r * 7, 6, 5, rgb565(90, 95, 110));
+                fb_fillrect(ix + 14 + c * 8, iy + 22 + r * 7, 6, 5, rgb565(85, 90, 105));
             }
         }
-        fb_fillrect(ix + 39, iy + 22, 7, 19, rgb565(245, 130, 30));
+        fb_fillrect(ix + 39, iy + 22, 7, 19, rgb565(235, 95, 30));
     } else if (id == 5) {
-        /* System Info: Cobalt Silicon Microchip with Golden Contacts */
-        fb_fillrect(ix + 12, iy + 8, 40, 36, rgb565(25, 75, 160));
-        fb_fillrect(ix + 14, iy + 10, 36, 3, rgb565(100, 165, 255));
-        for (int p = 0; p < 4; p++) {
-            fb_fillrect(ix + 16 + p * 8, iy + 4, 3, 4, rgb565(240, 190, 30));
-            fb_fillrect(ix + 16 + p * 8, iy + 44, 3, 4, rgb565(240, 190, 30));
-        }
-        fb_fillrect(ix + 22, iy + 18, 20, 16, rgb565(15, 45, 105));
-        fb_drawline(ix + 26, iy + 26, ix + 37, iy + 26, rgb565(140, 195, 255));
+        /* System Info: Cobalt Silicon Chip */
+        fb_fillrect(ix + 12, iy + 6, 40, 40, rgb565(28, 80, 170));
+        fb_drawline(ix + 12, iy + 6, ix + 51, iy + 6, rgb565(80, 150, 255));
+        fb_fillrect(ix + 22, iy + 16, 20, 20, rgb565(15, 48, 110));
+        fb_drawline(ix + 26, iy + 26, ix + 37, iy + 26, COLOR_WHITE);
+        fb_drawline(ix + 32, iy + 20, ix + 32, iy + 31, COLOR_WHITE);
     } else if (id == 6) {
-        /* Task Manager: Heartbeat ECG Pulse Monitor */
-        fb_fillrect(ix + 8, iy + 4, 48, 44, rgb565(30, 32, 40));
-        fb_fillrect(ix + 11, iy + 7, 42, 38, rgb565(12, 16, 22));
-        fb_drawline(ix + 12, iy + 26, ix + 20, iy + 26, rgb565(40, 245, 100));
-        fb_drawline(ix + 20, iy + 26, ix + 24, iy + 14, rgb565(40, 245, 100));
-        fb_drawline(ix + 24, iy + 14, ix + 28, iy + 38, rgb565(40, 245, 100));
-        fb_drawline(ix + 28, iy + 38, ix + 32, iy + 20, rgb565(40, 245, 100));
-        fb_drawline(ix + 32, iy + 20, ix + 36, iy + 26, rgb565(40, 245, 100));
-        fb_drawline(ix + 36, iy + 26, ix + 50, iy + 26, rgb565(40, 245, 100));
+        /* Task Manager: Clean Pulse Waveform */
+        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(34, 36, 44));
+        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(70, 75, 90));
+        fb_drawline(ix + 14, iy + 26, ix + 22, iy + 26, rgb565(50, 235, 100));
+        fb_drawline(ix + 22, iy + 26, ix + 26, iy + 14, rgb565(50, 235, 100));
+        fb_drawline(ix + 26, iy + 14, ix + 30, iy + 38, rgb565(50, 235, 100));
+        fb_drawline(ix + 30, iy + 38, ix + 34, iy + 22, rgb565(50, 235, 100));
+        fb_drawline(ix + 34, iy + 22, ix + 38, iy + 26, rgb565(50, 235, 100));
+        fb_drawline(ix + 38, iy + 26, ix + 50, iy + 26, rgb565(50, 235, 100));
     } else if (id == 7) {
-        /* DOOM / Games: Crimson Gamepad Badge */
-        fb_fillrect(ix + 8, iy + 4, 48, 44, rgb565(175, 25, 25));
-        fb_fillrect(ix + 12, iy + 8, 40, 36, rgb565(35, 28, 35));
-        /* D-pad */
-        fb_fillrect(ix + 16, iy + 24, 12, 4, rgb565(220, 225, 235));
-        fb_fillrect(ix + 20, iy + 20, 4, 12, rgb565(220, 225, 235));
-        /* Buttons */
-        fb_fillrect(ix + 38, iy + 18, 5, 5, rgb565(40, 160, 255));
-        fb_fillrect(ix + 34, iy + 25, 5, 5, rgb565(255, 200, 30));
-        fb_fillrect(ix + 42, iy + 25, 5, 5, rgb565(255, 50, 50));
+        /* DOOM: Aubergine Gamepad Badge */
+        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(140, 25, 35));
+        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(200, 60, 70));
+        fb_fillrect(ix + 18, iy + 24, 12, 4, COLOR_WHITE);
+        fb_fillrect(ix + 22, iy + 20, 4, 12, COLOR_WHITE);
+        fb_fillrect(ix + 38, iy + 22, 6, 6, rgb565(235, 95, 30));
     } else if (id == 8) {
         /* Settings: Minimalist Precision Dual Gears */
-        fb_fillrect(ix + 8, iy + 4, 48, 44, rgb565(65, 70, 80));
-        fb_fillrect(ix + 12, iy + 8, 40, 36, rgb565(95, 100, 115));
-        fb_fillrect(ix + 28, iy + 10, 8, 32, rgb565(210, 215, 225));
-        fb_fillrect(ix + 16, iy + 22, 32, 8, rgb565(210, 215, 225));
-        fb_fillrect(ix + 20, iy + 14, 24, 24, rgb565(170, 175, 185));
-        fb_fillrect(ix + 25, iy + 19, 14, 14, rgb565(45, 50, 60));
-        fb_fillrect(ix + 29, iy + 23, 6, 6, rgb565(240, 245, 255));
+        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(60, 65, 75));
+        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(100, 105, 120));
+        fb_fillrect(ix + 28, iy + 14, 8, 24, rgb565(210, 215, 225));
+        fb_fillrect(ix + 20, iy + 22, 24, 8, rgb565(210, 215, 225));
+        fb_fillrect(ix + 24, iy + 18, 16, 16, rgb565(170, 175, 185));
+        fb_fillrect(ix + 28, iy + 22, 8, 8, rgb565(40, 44, 52));
     }
 }
 
@@ -289,23 +280,23 @@ void wm_render(void) {
     extern volatile int doom_loading;
     if (!desk_loaded && !doom_running && !doom_loading) desk_load_files();
 
-    /* Theme-matched folder palette */
-    uint16_t f_main = (bg_color_idx == 0) ? rgb565(40, 130, 240) :
-                      (bg_color_idx == 1) ? rgb565(20, 160, 140) :
-                      (bg_color_idx == 2) ? rgb565(95, 100, 115) :
-                      (bg_color_idx == 3) ? rgb565(215, 60, 60) : rgb565(240, 175, 30);
-    uint16_t f_tab = (bg_color_idx == 0) ? rgb565(20, 85, 175) :
-                     (bg_color_idx == 1) ? rgb565(12, 110, 95) :
-                     (bg_color_idx == 2) ? rgb565(60, 65, 75) :
-                     (bg_color_idx == 3) ? rgb565(145, 30, 30) : rgb565(180, 120, 15);
-    uint16_t f_hi  = (bg_color_idx == 0) ? rgb565(130, 190, 255) :
-                     (bg_color_idx == 1) ? rgb565(100, 230, 210) :
-                     (bg_color_idx == 2) ? rgb565(180, 185, 200) :
-                     (bg_color_idx == 3) ? rgb565(255, 140, 140) : rgb565(255, 225, 110);
-    uint16_t f_shadow = (bg_color_idx == 0) ? rgb565(15, 60, 130) :
-                        (bg_color_idx == 1) ? rgb565(8, 75, 65) :
-                        (bg_color_idx == 2) ? rgb565(40, 42, 50) :
-                        (bg_color_idx == 3) ? rgb565(100, 20, 20) : rgb565(130, 85, 10);
+    /* Theme-matched folder palette (macOS / Ubuntu Yaru Style) */
+    uint16_t f_main = (bg_color_idx == 0) ? rgb565(38, 132, 226) :
+                      (bg_color_idx == 1) ? rgb565(26, 150, 132) :
+                      (bg_color_idx == 2) ? rgb565(88, 92, 104) :
+                      (bg_color_idx == 3) ? rgb565(210, 68, 50) : rgb565(235, 130, 30);
+    uint16_t f_tab  = (bg_color_idx == 0) ? rgb565(22, 92, 170) :
+                      (bg_color_idx == 1) ? rgb565(16, 102, 90) :
+                      (bg_color_idx == 2) ? rgb565(58, 60, 70) :
+                      (bg_color_idx == 3) ? rgb565(145, 40, 30) : rgb565(175, 85, 15);
+    uint16_t f_hi   = (bg_color_idx == 0) ? rgb565(120, 188, 255) :
+                      (bg_color_idx == 1) ? rgb565(110, 220, 200) :
+                      (bg_color_idx == 2) ? rgb565(160, 165, 180) :
+                      (bg_color_idx == 3) ? rgb565(255, 140, 120) : rgb565(255, 195, 110);
+    uint16_t f_shadow = (bg_color_idx == 0) ? rgb565(15, 60, 125) :
+                        (bg_color_idx == 1) ? rgb565(10, 70, 60) :
+                        (bg_color_idx == 2) ? rgb565(35, 38, 45) :
+                        (bg_color_idx == 3) ? rgb565(110, 25, 20) : rgb565(125, 60, 10);
 
     for (int i = 0; i < desk_count; i++) {
         if (!desk_files[i].valid) continue;
@@ -314,16 +305,15 @@ void wm_render(void) {
         if (iy + DESK_ICON_H > (int)fb_height) continue;
 
         if (desk_files[i].is_dir) {
-            /* Minimalist Theme-Aware Folder Vector Icon */
-            fb_fillrect(ix + 10, iy + 10, 22, 10, f_tab);
-            fb_fillrect(ix + 14, iy + 8, 34, 18, rgb565(248, 250, 255));
-            fb_drawline(ix + 18, iy + 12, ix + 36, iy + 12, rgb565(185, 195, 215));
-            fb_drawline(ix + 18, iy + 16, ix + 42, iy + 16, rgb565(185, 195, 215));
-            
-            fb_fillrect(ix + 6, iy + 18, 52, 28, f_main);
-            fb_fillrect(ix + 6, iy + 18, 52, 2, f_hi);
-            fb_drawline(ix + 6, iy + 45, ix + 57, iy + 45, f_shadow);
-            fb_drawline(ix + 57, iy + 19, ix + 57, iy + 45, f_shadow);
+            /* Modern macOS / Ubuntu Yaru Flat Rounded Folder */
+            fb_fillrect(ix + 10, iy + 14, 18, 6, f_tab);
+            fb_fillrect(ix + 10, iy + 18, 44, 26, f_tab);
+            fb_fillrect(ix + 10, iy + 24, 44, 20, f_main);
+            fb_fillrect(ix + 10, iy + 24, 44, 1, f_hi);
+            fb_drawline(ix + 10, iy + 44, ix + 53, iy + 44, f_shadow);
+            fb_drawline(ix + 53, iy + 24, ix + 53, iy + 44, f_shadow);
+            /* Clean horizontal accent glyph */
+            fb_fillrect(ix + 24, iy + 33, 16, 2, f_hi);
         } else {
             int nlen=0; while(desk_files[i].name[nlen]) nlen++;
             int is_b = nlen>4 &&
@@ -332,28 +322,29 @@ void wm_render(void) {
                  desk_files[i].name[nlen-3]=='A'||desk_files[i].name[nlen-3]=='a');
             
             if (is_b) {
-                /* Minimalist Executable / Firmware / WAD Badge */
-                fb_fillrect(ix + 12, iy + 6, 40, 42, rgb565(44, 46, 56));
-                fb_fillrect(ix + 14, iy + 8, 36, 38, rgb565(24, 26, 32));
-                fb_drawline(ix + 12, iy + 6, ix + 51, iy + 6, rgb565(90, 95, 110));
-                /* Cyan microchip badge */
-                fb_fillrect(ix + 24, iy + 18, 16, 16, rgb565(35, 130, 240));
-                fb_fillrect(ix + 28, iy + 22, 8, 8, COLOR_WHITE);
-                for (int p = 0; p < 3; p++) {
-                    fb_fillrect(ix + 20 + p * 8, iy + 40, 4, 4, rgb565(240, 190, 30));
-                }
+                /* Modern Minimalist Dark Slate Executable Card */
+                fb_fillrect(ix + 15, iy + 10, 34, 38, rgb565(42, 44, 52));
+                fb_drawline(ix + 15, iy + 10, ix + 48, iy + 10, rgb565(75, 80, 95));
+                fb_drawline(ix + 15, iy + 10, ix + 15, iy + 47, rgb565(75, 80, 95));
+                fb_drawline(ix + 15, iy + 47, ix + 48, iy + 47, rgb565(25, 27, 32));
+                fb_drawline(ix + 48, iy + 10, ix + 48, iy + 47, rgb565(25, 27, 32));
+                /* > _ prompt in Ubuntu orange */
+                fb_putpixel(ix + 24, iy + 26, rgb565(235, 95, 30));
+                fb_putpixel(ix + 25, iy + 27, rgb565(235, 95, 30));
+                fb_putpixel(ix + 24, iy + 28, rgb565(235, 95, 30));
+                fb_fillrect(ix + 29, iy + 28, 6, 2, rgb565(235, 95, 30));
             } else {
-                /* Minimalist Clean White Document Sheet */
-                fb_fillrect(ix + 14, iy + 6, 36, 42, rgb565(250, 252, 255));
-                fb_drawline(ix + 14, iy + 6, ix + 49, iy + 6, rgb565(180, 190, 210));
-                fb_drawline(ix + 14, iy + 6, ix + 14, iy + 47, rgb565(180, 190, 210));
-                fb_drawline(ix + 14, iy + 47, ix + 49, iy + 47, rgb565(180, 190, 210));
-                fb_drawline(ix + 49, iy + 6, ix + 49, iy + 47, rgb565(180, 190, 210));
-                /* Corner fold */
-                fb_fillrect(ix + 40, iy + 6, 9, 9, rgb565(210, 220, 235));
-                /* Content lines */
-                for (int l = 0; l < 4; l++) {
-                    fb_fillrect(ix + 18, iy + 18 + l * 6, (l == 3) ? 14 : 22, 2, rgb565(130, 150, 185));
+                /* Modern Minimalist Apple / Ubuntu Clean Off-White Document */
+                fb_fillrect(ix + 15, iy + 10, 34, 38, rgb565(248, 249, 252));
+                fb_drawline(ix + 15, iy + 10, ix + 48, iy + 10, rgb565(190, 195, 205));
+                fb_drawline(ix + 15, iy + 10, ix + 15, iy + 47, rgb565(190, 195, 205));
+                fb_drawline(ix + 15, iy + 47, ix + 48, iy + 47, rgb565(190, 195, 205));
+                fb_drawline(ix + 48, iy + 10, ix + 48, iy + 47, rgb565(190, 195, 205));
+                /* Dog-ear corner fold */
+                fb_fillrect(ix + 39, iy + 10, 9, 9, rgb565(218, 222, 232));
+                /* Subtle text lines */
+                for (int l = 0; l < 3; l++) {
+                    fb_fillrect(ix + 20, iy + 24 + l * 6, (l == 2) ? 14 : 22, 2, rgb565(165, 175, 190));
                 }
             }
         }
