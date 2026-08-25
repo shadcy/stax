@@ -3,7 +3,7 @@
  *this is the most  shitty thing youll ever encounter my friend trust me
  * Implements:
  *   - i_system   : timer, memory zone, error, quit
- *   - i_video    : framebuffer blit (320x200 centered in 640x480)
+ *   - i_video    : 320x200 framebuffer blit, integer-scaled in its window
  *   - i_sound    : all stubs {for future implementation i guess}
  *   - i_net      : all stubs
  *   - POSIX shim : open/read/lseek/close → FAT, malloc → static pool (idk cursor agent cooked this too well)
@@ -449,14 +449,11 @@ void I_Error(char *error, ...)
 }
 
 /* ============================================================================
- * i_video.c replacement — 320×200 palette → RGB565, centered in 640×480
+ * i_video.c replacement — 320x200 palette -> RGB565, centered in fb_width x fb_height
  * ============================================================================ */
 #define DOOM_W   320
 #define DOOM_H   200
-#define FB_W     640
-#define FB_H     480
-#define OFF_X    ((FB_W - DOOM_W) / 2)   /* 160 */
-#define OFF_Y    ((FB_H - DOOM_H) / 2)   /* 140 */
+#define DOOM_MAX_SCALE 3
 
 /* 256-entry RGB565 palette, updated by I_SetPalette() */
 static uint16_t doom_palette[256];
@@ -488,7 +485,7 @@ static void draw_overlay_glyph(int px, int py, unsigned char c, uint16_t color, 
     uint16_t *fbuf = fb_get_buffer();
     for (int r = 0; r < 16; r++) {
         unsigned char bits = g[r];
-        uint16_t *dst = fbuf + (py + r) * FB_WIDTH + px;
+        uint16_t *dst = fbuf + (py + r) * fb_width + px;
         for (int b = 0; b < 8; b++) {
             if (bits & (0x80u >> b)) dst[b] = color;
             else dst[b] = bg;
@@ -505,6 +502,9 @@ static void draw_overlay_str(int px, int py, const char *s, uint16_t color, uint
 }
 
 static byte doom_front_buffer[320 * 200];
+/* A scanline is expanded once, then copied to each vertically-scaled row.
+ * The largest supported STAX framebuffer (1024x768) uses a 3x scale. */
+static uint16_t doom_scaled_line[DOOM_W * DOOM_MAX_SCALE];
 
 void I_FinishUpdate(void)
 {
@@ -514,9 +514,6 @@ void I_FinishUpdate(void)
         stax_memcpy(doom_front_buffer, screens[0], 320 * 200);
     }
 
-    extern void stax_kprintf(const char *fmt, ...);
-    static int frame_count = 0;
-    if (frame_count++ % 35 == 0) stax_kprintf("DOOM rendered 35 frames\n");
 }
 
 void I_ReadScreen(byte *scr)
@@ -892,38 +889,30 @@ static void doom_draw_window(window_t *win, int cx, int cy, int cw, int ch)
     byte *src = doom_front_buffer;
     if (!src) return;
 
-    /* Center the 320x200 DOOM screen, scaled 2x, in the window */
-    int x_offset = (cw - (320 * 2)) / 2;
-    int y_offset = (ch - (200 * 2)) / 2;
-    
-    if (x_offset < 0) x_offset = 0;
-    if (y_offset < 0) y_offset = 0;
+    /* Preserve DOOM's 4:3 pixels and use all available space at an integer
+     * scale: 3x (960x600) in the maximized 1024x768 STAX window. */
+    int scale = cw / DOOM_W;
+    int height_scale = ch / DOOM_H;
+    if (height_scale < scale) scale = height_scale;
+    if (scale < 1) scale = 1;
+    if (scale > DOOM_MAX_SCALE) scale = DOOM_MAX_SCALE;
 
-    for (int y = 0; y < 200; y++) {
-        int dest_y1 = cy + y_offset + y * 2;
-        int dest_y2 = dest_y1 + 1;
-        
-        if (dest_y1 >= cy + ch || dest_y1 >= 480) break;
-        
-        uint16_t *row_dst1 = fbuf + dest_y1 * 640;
-        uint16_t *row_dst2 = fbuf + dest_y2 * 640;
-        byte *row_src = src + y * 320;
+    int scaled_w = DOOM_W * scale;
+    int scaled_h = DOOM_H * scale;
+    int dest_x = cx + (cw - scaled_w) / 2;
+    int dest_y = cy + (ch - scaled_h) / 2;
 
-        for (int x = 0; x < 320; x++) {
-            int dest_x1 = cx + x_offset + x * 2;
-            int dest_x2 = dest_x1 + 1;
-            
-            if (dest_x1 >= cx + cw || dest_x1 >= 640) break;
-            
+    for (int y = 0; y < DOOM_H; y++) {
+        byte *row_src = src + y * DOOM_W;
+        int out = 0;
+        for (int x = 0; x < DOOM_W; x++) {
             uint16_t color = doom_palette[row_src[x]];
-            
-            row_dst1[dest_x1] = color;
-            if (dest_x2 < cx + cw && dest_x2 < 640) row_dst1[dest_x2] = color;
-            
-            if (dest_y2 < cy + ch && dest_y2 < 480) {
-                row_dst2[dest_x1] = color;
-                if (dest_x2 < cx + cw && dest_x2 < 640) row_dst2[dest_x2] = color;
-            }
+            for (int sx = 0; sx < scale; sx++)
+                doom_scaled_line[out++] = color;
+        }
+        for (int sy = 0; sy < scale; sy++) {
+            uint16_t *row_dst = fbuf + (dest_y + y * scale + sy) * fb_width + dest_x;
+            stax_memcpy(row_dst, doom_scaled_line, (size_t)scaled_w * sizeof(uint16_t));
         }
     }
 }
@@ -953,13 +942,6 @@ static void doom_process_task(void)
 {
     while (doom_running && !stax_doom_quit_requested && !doom_cleanup_done) {
         doom_synth_keyboard();
-        static int last_t = 0;
-        int t = I_GetTime();
-        if (t != last_t) {
-            extern void stax_kprintf(const char *fmt, ...);
-            stax_kprintf("I_GetTime() = %d\n", t);
-            last_t = t;
-        }
         D_DoomStep();
         for (volatile int i = 0; i < 2000; i++)
             __asm__ volatile ("nop");
@@ -1055,9 +1037,17 @@ static void doom_key_event(struct window *win, char c) {
 
 window_t *doom_create_window(void) {
     doom_cleanup_done = 0;
-    doom_win = wm_add_window(0, 0, 640, 440, "DOOM", doom_draw_window);
+    /* Open maximized beneath the system bar. The client area is large enough
+     * for the renderer to choose 3x scaling without stretching the game. */
+    int win_x = 0;
+    int win_y = 28;
+    int win_w = (int)fb_width;
+    int win_h = (int)fb_height - 28;
+
+    doom_win = wm_add_window(win_x, win_y, win_w, win_h, "DOOM", doom_draw_window);
     if (doom_win) {
         doom_win->app_data = DOOM_WIN_MARKER;
+        doom_win->is_maximized = 1;
         doom_win->update_client = doom_update_window;
         doom_win->key_event = doom_key_event;
     }

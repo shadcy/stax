@@ -12,7 +12,7 @@
  *
  * NOTES:
  *   - Framebuffer is 640x480 x 16bpp = 614,400 bytes
- *   - Front buffer at 0x01E00000, back buffer at 0x01F00000
+ *   - Front buffer at 0x01C00000, back buffer at 0x01E00000
  *   - Both are mapped Non-Cacheable+Bufferable to avoid cache thrashing
  *   - Memory bandwidth numbers reflect QEMU bus emulation, not real PL110
  * ============================================================================ */
@@ -25,7 +25,7 @@
 /* External tick counter */
 extern volatile unsigned int tick_count;
 
-#define FB_PIXELS       (FB_WIDTH * FB_HEIGHT)       /* 307,200 pixels */
+#define FB_PIXELS       (fb_width * fb_height)       /* 307,200 pixels */
 #define FB_BYTES        (FB_PIXELS * 2)               /* 614,400 bytes  */
 
 /* ============================================================================
@@ -276,7 +276,7 @@ void bench_gfx_run(void)
 
     kputs("  Display: PL110 CLCD 640x480 16bpp (BGR565)\n");
     kputs("  Buffer size: 614,400 bytes per frame\n");
-    kputs("  Double buffering: front=0x01E00000 back=0x01F00000\n");
+    kputs("  Double buffering: front=0x01C00000 back=0x01E00000\n");
     kputs("  Memory type: Non-Cacheable+Bufferable (avoids cache thrash)\n");
     kputs("  QEMU NOTE: Memory bandwidth reflects QEMU bus emulation,\n");
     kputs("  not real PL110 CLCD controller performance.\n\n");

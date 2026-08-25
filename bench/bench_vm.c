@@ -41,8 +41,8 @@ static void bench_vm_print_layout(void)
     kputs("  | 0x00000000-0x0000FFFF | Exception vectors + SSRAM     |\n");
     kputs("  | 0x00010000-0x000FFFFF | Bootloader + free             |\n");
     kputs("  | 0x00100000-0x01DFFFFF | Kernel code+data+heap (30MB)  |\n");
-    kputs("  | 0x01E00000-0x01EFFFFF | Front framebuffer (1MB)       |\n");
-    kputs("  | 0x01F00000-0x01FFFFFF | Back framebuffer (1MB)        |\n");
+    kputs("  | 0x01C00000-0x01EFFFFF | Front framebuffer (1MB)       |\n");
+    kputs("  | 0x01E00000-0x01FFFFFF | Back framebuffer (1MB)        |\n");
     kputs("  | 0x10000000-0x101FFFFF | MMIO peripherals (2MB)        |\n");
     kputs("  | all else              | Fault (unmapped)              |\n");
     kputs("  +-----------------------+-------------------------------+\n\n");

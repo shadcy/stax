@@ -467,15 +467,17 @@ static void sokoban_draw_window(struct window *win, int cx, int cy, int cw, int 
     for (int y = 0; y < 200; y++) {
         int dest_y1 = cy + y * 2;
         int dest_y2 = dest_y1 + 1;
-        if (dest_y1 >= cy + ch || dest_y1 >= 480) break;
+        extern uint32_t fb_height;
+        if (dest_y1 >= cy + ch || dest_y1 >= (int)fb_height) break;
         
-        uint16_t *row1 = vram + dest_y1 * 640;
-        uint16_t *row2 = vram + dest_y2 * 640;
+        extern uint32_t fb_width;
+        uint16_t *row1 = vram + dest_y1 * fb_width;
+        uint16_t *row2 = vram + dest_y2 * fb_width;
         
         for (int x = 0; x < 320; x++) {
             int dest_x1 = cx + x * 2;
             int dest_x2 = dest_x1 + 1;
-            if (dest_x1 >= cx + cw || dest_x1 >= 640) continue;
+            if (dest_x1 >= cx + cw || dest_x1 >= (int)fb_width) continue;
             
             uint16_t c = gfx_faded_palette[src[y * 320 + x]];
             row1[dest_x1] = c; row1[dest_x2] = c;

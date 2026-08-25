@@ -9,9 +9,9 @@
 #include "font8x16.h"
 #include <stdint.h>
 
-#define BW          38      /* playfield inner width  (columns: 1..38) */
-#define BH          27      /* playfield inner height (rows: 2..28)    */
-#define MAX_LEN     (BW * BH)
+#define BW          ((fb_width / CELL_SIZE) - 2)      /* playfield inner width */
+#define BH          ((fb_height / CELL_SIZE) - 3)     /* playfield inner height */
+#define MAX_LEN     4096
 
 #define CELL_SIZE   16
 
@@ -28,9 +28,9 @@ static void draw_char(int x, int y, char c, uint16_t color)
         unsigned char bits = g[r];
         for (int b = 0; b < 8; b++) {
             if (bits & (0x80u >> b)) {
-                fbuf[(y + r) * 640 + (x + b)] = color;
+                fbuf[(y + r) * fb_width + (x + b)] = color;
             } else {
-                fbuf[(y + r) * 640 + (x + b)] = FB_BG;
+                fbuf[(y + r) * fb_width + (x + b)] = FB_BG;
             }
         }
     }
@@ -102,11 +102,11 @@ static void place_food(void)
 static void draw_score(void)
 {
     /* Clear score area */
-    fb_fillrect(0, 0, 640, 16, FB_BG);
+    fb_fillrect(0, 0, fb_width, 16, FB_BG);
     draw_string(16, 0, "STAX GRAPHICAL SNAKE", COLOR_CYAN);
-    draw_string(280, 0, "Score: ", COLOR_YELLOW);
-    draw_uint(336, 0, (unsigned int)g_score, COLOR_GREEN);
-    draw_string(450, 0, "WASD = Move | Q = Quit", COLOR_GRAY);
+    draw_string(fb_width/2 - 40, 0, "Score: ", COLOR_YELLOW);
+    draw_uint(fb_width/2 + 16, 0, (unsigned int)g_score, COLOR_GREEN);
+    draw_string(fb_width - 190, 0, "WASD = Move | Q = Quit", COLOR_GRAY);
 }
 
 static void draw_cell(int cx, int cy, uint16_t color)
@@ -122,13 +122,13 @@ static void erase_cell(int cx, int cy)
 static void draw_walls(void)
 {
     /* Top wall */
-    fb_fillrect(0, 16, 640, CELL_SIZE, COLOR_GRAY);
+    fb_fillrect(0, 16, fb_width, CELL_SIZE, COLOR_GRAY);
     /* Bottom wall */
-    fb_fillrect(0, 29 * CELL_SIZE, 640, CELL_SIZE, COLOR_GRAY);
+    fb_fillrect(0, fb_height - CELL_SIZE, fb_width, CELL_SIZE, COLOR_GRAY);
     /* Left wall */
-    fb_fillrect(0, 16, CELL_SIZE, 480 - 16, COLOR_GRAY);
+    fb_fillrect(0, 16, CELL_SIZE, fb_height - 16, COLOR_GRAY);
     /* Right wall */
-    fb_fillrect(39 * CELL_SIZE, 16, CELL_SIZE, 480 - 16, COLOR_GRAY);
+    fb_fillrect(fb_width - CELL_SIZE, 16, CELL_SIZE, fb_height - 16, COLOR_GRAY);
 }
 
 static void full_redraw(void)
@@ -215,7 +215,7 @@ void snake_run(void)
         int ny = (int)body[g_head].y + g_dy;
 
         /* Wall collision */
-        if (nx <= 0 || nx >= 39 || ny <= 1 || ny >= 29) {
+        if (nx <= 0 || nx >= (int)(BW + 1) || ny <= 1 || ny >= (int)(BH + 1)) {
             g_alive = 0;
             break;
         }
@@ -261,13 +261,18 @@ void snake_run(void)
     }
 
     /* ---- Game Over Screen ---- */
-    fb_fillrect(160, 160, 320, 160, COLOR_WHITE);
-    fb_fillrect(162, 162, 316, 156, FB_BG);
+    int go_w = 320;
+    int go_h = 160;
+    int go_x = (fb_width - go_w) / 2;
+    int go_y = (fb_height - go_h) / 2;
     
-    draw_string(260, 190, "GAME OVER!", COLOR_RED);
-    draw_string(230, 220, "Final Score: ", COLOR_YELLOW);
-    draw_uint(330, 220, (unsigned int)g_score, COLOR_GREEN);
-    draw_string(190, 260, "Press Enter or Q to return...", COLOR_GRAY);
+    fb_fillrect(go_x, go_y, go_w, go_h, COLOR_WHITE);
+    fb_fillrect(go_x + 2, go_y + 2, go_w - 4, go_h - 4, FB_BG);
+    
+    draw_string(go_x + 100, go_y + 30, "GAME OVER!", COLOR_RED);
+    draw_string(go_x + 70, go_y + 60, "Final Score: ", COLOR_YELLOW);
+    draw_uint(go_x + 170, go_y + 60, (unsigned int)g_score, COLOR_GREEN);
+    draw_string(go_x + 30, go_y + 100, "Press Enter or Q to return...", COLOR_GRAY);
     fb_swap();
 
     /* Wait for Enter or Q */
