@@ -73,6 +73,8 @@ void settings_save(void) {
         f_write(&f, &g_settings, sizeof(sys_settings_t), &bw);
         f_close(&f);
     }
+    extern void desk_save_positions(void);
+    desk_save_positions();
 }
 
 #define SIDEBAR_W 120

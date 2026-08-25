@@ -711,6 +711,7 @@ desktop_hit_done:
                 if (row < 0) row = 0;
                 desk_files[drag_idx].x = DESK_START_X + col * DESK_ICON_W;
                 desk_files[drag_idx].y = 42 + row * DESK_ICON_H;
+                desk_save_positions();
             }
         }
         drag_type = -1;

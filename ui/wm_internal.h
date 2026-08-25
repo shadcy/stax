@@ -76,6 +76,7 @@ extern const char cursor_bitmap[CURSOR_H][CURSOR_W];
 
 void wm_bring_to_front(window_t *win);
 void desk_load_files(void);
+void desk_save_positions(void);
 void draw_window(window_t *win);
 
 #endif
