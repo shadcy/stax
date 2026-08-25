@@ -491,23 +491,6 @@ void command_init(void)
 }
 
 /* ============================================================================
- * cmd_snake — launch the Snake game
- * ============================================================================ */
-void cmd_snake(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    kputs("Starting Snake...\n");
-    snake_run();
-    
-    gfx_console_init();
-    
-    kputs("========================================\n");
-    kputs("  STAX Kernel - back in shell\n");
-    kputs("========================================\n");
-    kputs("Type 'help' for available commands\n");
-}
-
-/* ============================================================================
  * cmd_doomgfx — launch the graphical DOOM game
  * ============================================================================ */
 void cmd_doomgfx(int argc, char *argv[])
