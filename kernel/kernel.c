@@ -33,9 +33,9 @@ static void timer_isr(void)
 {
     tick_count++;
     timer_ack();
+    kb_poll();    /* Drain PL050 FIFO every 1ms tick for lag-free keyboard input */
+    mouse_poll(); /* Poll PL050 mouse every 1ms tick for smooth 1000Hz cursor tracking */
     if ((tick_count % 10) == 0) {
-        kb_poll();   /* drain PL050 FIFO into ring buffer every 10 ms */
-        mouse_poll(); /* poll PL050 KMI1 for mouse events */
         /* Trigger round-robin scheduler on every 10ms tick */
         need_schedule = 1;
     }
@@ -208,14 +208,6 @@ void kernel_main(void)
         }
 
         if (c == 0) {
-            /* Keep polling lwIP while idle so ARP/TCP replies are sent promptly.
-             * Without this, net_poll() was skipped for up to 1ms per tick,
-             * causing QEMU to flood us with unanswered ARP requests. */
-            unsigned int start_tick = tick_count;
-            while (tick_count == start_tick) {
-                extern int net_poll(void);
-                net_poll();
-            }
             continue;
         }
 
