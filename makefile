@@ -93,6 +93,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/string.o \
                 $(BUILD_DIR)/vic.o \
                 $(BUILD_DIR)/timer.o \
+                $(BUILD_DIR)/rtc.o \
                 $(BUILD_DIR)/scheduler.o \
                 $(BUILD_DIR)/heap.o \
                 $(BUILD_DIR)/mmu.o \
