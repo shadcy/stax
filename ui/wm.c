@@ -190,8 +190,12 @@ void wm_update(void) {
                 } else if (item == 4) {
                     extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
-                    window_t *cw = wm_add_window(160, 110, 200, 250, "Calculator", calculator_draw_window);
-                    if (cw) cw->mouse_click = calculator_mouse_click;
+                    extern void calculator_key_event(struct window *win, char c);
+                    window_t *cw = wm_add_window(160, 80, 280, 350, "Calculator", calculator_draw_window);
+                    if (cw) {
+                        cw->mouse_click = calculator_mouse_click;
+                        cw->key_event = calculator_key_event;
+                    }
                 } else if (item == 5) {
                     extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void settings_mouse_click(struct window *win, int mx, int my, int button);
@@ -454,8 +458,12 @@ desktop_hit_done:
                 } else if (app_icons[i].id == 4) {
                     extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
-                    window_t *cw = wm_add_window(160, 110, 200, 250, "Calculator", calculator_draw_window);
-                    if (cw) cw->mouse_click = calculator_mouse_click;
+                    extern void calculator_key_event(struct window *win, char c);
+                    window_t *cw = wm_add_window(160, 80, 280, 350, "Calculator", calculator_draw_window);
+                    if (cw) {
+                        cw->mouse_click = calculator_mouse_click;
+                        cw->key_event = calculator_key_event;
+                    }
                 } else if (app_icons[i].id == 5) {
                     extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
