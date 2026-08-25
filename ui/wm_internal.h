@@ -33,7 +33,8 @@ extern window_t *window_list;
 extern window_t *focused_window;
 
 extern context_menu_t ctx_menu;
-extern int start_menu_active;
+extern int stax_menu_active;
+extern int apps_menu_active;
 
 #define ICON_W          64
 #define ICON_H          74
@@ -51,7 +52,7 @@ extern app_icon_t app_icons[NUM_APPS];
 
 #define DESK_MAX        24
 #define DESK_REFRESH_MS 3000
-#define DESK_START_X    190
+#define DESK_START_X    18
 #define DESK_ICON_W     86
 #define DESK_ICON_H     86
 

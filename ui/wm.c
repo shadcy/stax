@@ -22,7 +22,8 @@ window_t *focused_window = NULL;
 static window_t *drag_client_win = NULL;
 
 context_menu_t ctx_menu = {0, 0, 0};
-int start_menu_active = 0;
+int stax_menu_active = 0;
+int apps_menu_active = 0;
 
 static int drag_type = -1; /* 0 = app, 1 = file, -1 = none */
 static int drag_idx = -1;
@@ -279,10 +280,15 @@ void wm_update(void) {
             if (!right_pressed) goto update_done;
         }        if (my < TASKBAR_HEIGHT) {
             if (pressed) {
-                if (mx >= 0 && mx < 105) {
-                    start_menu_active = !start_menu_active;
+                if (mx >= 0 && mx < 34) {
+                    stax_menu_active = !stax_menu_active;
+                    apps_menu_active = 0;
+                } else if (mx >= 34 && mx < 105) {
+                    apps_menu_active = !apps_menu_active;
+                    stax_menu_active = 0;
                 } else {
-                    start_menu_active = 0;
+                    stax_menu_active = 0;
+                    apps_menu_active = 0;
                     /* Check window tab clicks */
                     int nav_x = 106;
                     int max_nav_x = (int)fb_width - 280;
@@ -326,14 +332,56 @@ void wm_update(void) {
             }
             drag_win = NULL;
         } else {
-            if (pressed && start_menu_active) {
-                int sm_x = 6;
-                int sm_y = TASKBAR_HEIGHT + 2;
-                int sm_w = 340;
-                int sm_h = 390;
+            /* 1. STAX System Dropdown Menu Clicks */
+            if (pressed && stax_menu_active) {
+                int sm_x = 0;
+                int sm_y = TASKBAR_HEIGHT;
+                int sm_w = 190;
+                int sm_h = 195;
                 if (mx >= sm_x && mx < sm_x + sm_w && my >= sm_y && my < sm_y + sm_h) {
-                    int rel_x = mx - sm_x;
                     int rel_y = my - sm_y;
+                    if (rel_y >= 0 && rel_y < 30) {
+                        extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
+                    } else if (rel_y >= 30 && rel_y < 60) {
+                        extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        extern void settings_mouse_click(struct window *win, int mx, int my, int button);
+                        window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
+                        if (sw) sw->mouse_click = settings_mouse_click;
+                    } else if (rel_y >= 60 && rel_y < 90) {
+                        extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
+                    } else if (rel_y >= 90 && rel_y < 125) {
+                        extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
+                    } else if (rel_y >= 125 && rel_y < 160) {
+                        extern void settings_save(void);
+                        extern void system_reboot(void);
+                        settings_save();
+                        system_reboot();
+                    } else if (rel_y >= 160 && rel_y <= 195) {
+                        extern void wm_close_window(window_t *win);
+                        if (focused_window) {
+                            wm_close_window(focused_window);
+                        } else if (window_list) {
+                            wm_close_window(window_list);
+                        }
+                        extern volatile int stax_doom_quit_requested;
+                        stax_doom_quit_requested = 1;
+                    }
+                }
+                stax_menu_active = 0;
+            }
+
+            /* 2. Apps Launcher Menu Clicks */
+            if (pressed && apps_menu_active) {
+                int app_x = 34;
+                int app_y = TASKBAR_HEIGHT + 2;
+                int app_w = 340;
+                int app_h = 390;
+                if (mx >= app_x && mx < app_x + app_w && my >= app_y && my < app_y + app_h) {
+                    int rel_x = mx - app_x;
+                    int rel_y = my - app_y;
 
                     if (rel_y >= 38 && rel_y < 340) {
                         int col = (rel_x - 12) / 106;
@@ -378,13 +426,12 @@ void wm_update(void) {
                                 window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                                 if (sw) sw->mouse_click = settings_mouse_click;
                             }
-                            start_menu_active = 0;
+                            apps_menu_active = 0;
                         }
                     } else if (rel_y >= 348 && rel_y <= 385) {
                         if (rel_x >= 12 && rel_x < 110) {
                             extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                             wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
-                            start_menu_active = 0;
                         } else if (rel_x >= 118 && rel_x < 222) {
                             extern void settings_save(void);
                             extern void system_reboot(void);
@@ -399,13 +446,11 @@ void wm_update(void) {
                             }
                             extern volatile int stax_doom_quit_requested;
                             stax_doom_quit_requested = 1;
-                            start_menu_active = 0;
                         }
                     }
-                } else {
-                    start_menu_active = 0;
                 }
-            } 
+                apps_menu_active = 0;
+            }
             
             window_t *curr = window_list;
             int hit_window = 0;
