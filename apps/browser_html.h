@@ -11,12 +11,24 @@
 #define HTML_ST_PRE   5
 #define HTML_ST_LI    6
 #define HTML_ST_QUOTE 7
+#define HTML_ST_IMG   8
+
+#define MAX_HTML_IMAGES 16
+
+typedef struct {
+    char src[256];
+    char alt[64];
+    int x, y, w, h;
+    uint16_t *pixels;
+    int is_loaded;
+    uint32_t text_off;
+} html_image_t;
 
 typedef struct {
     uint32_t off;
     uint16_t n;
     uint8_t style;
-    uint8_t _pad;
+    uint8_t img_idx; /* 0xFF if none */
     uint16_t url_id;
     int32_t y;
     int16_t x;
@@ -41,5 +53,8 @@ void html_layout(int wrap_w);
 int html_layout_height(void);
 int html_span_count(void);
 const html_span_t *html_span_at(int i);
+
+int html_image_count(void);
+const html_image_t *html_image_at(int i);
 
 #endif

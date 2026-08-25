@@ -1,5 +1,7 @@
 #include "browser_html.h"
 #include "string.h"
+#include "bmp.h"
+#include "heap.h"
 
 #define TEXT_CAP      (96 * 1024)
 #define URL_ARENA_CAP (24 * 1024)
@@ -9,6 +11,16 @@
 #define TAG_NAME_MAX  24
 #define ATTR_VAL_MAX  256
 #define URL_MAX       256
+
+static html_image_t html_images[MAX_HTML_IMAGES];
+static int html_img_count = 0;
+
+int html_image_count(void) { return html_img_count; }
+
+const html_image_t *html_image_at(int i) {
+    if (i < 0 || i >= html_img_count) return 0;
+    return &html_images[i];
+}
 
 typedef struct {
     uint32_t start;
@@ -449,11 +461,50 @@ static void on_tag(void) {
         return;
     }
     if (str_ieq(tag_name, "img")) {
-        emit_char(' ');
-        emit_char('[');
-        html_emit_text(alt_buf[0] ? alt_buf : "image");
-        emit_char(']');
-        emit_char(' ');
+        emit_char('\n');
+        if (html_img_count < MAX_HTML_IMAGES) {
+            html_image_t *img = &html_images[html_img_count];
+            img->pixels = NULL;
+            img->is_loaded = 0;
+            img->x = 0;
+            img->y = 0;
+            img->w = 64;
+            img->h = 24;
+            copy_str(img->src, href_buf, sizeof(img->src));
+            copy_str(img->alt, alt_buf[0] ? alt_buf : "Image", sizeof(img->alt));
+            img->text_off = text_len;
+
+            /* Try loading local BMP image */
+            if (href_buf[0]) {
+                int bw = 0, bh = 0;
+                uint16_t *bmp = bmp_load(href_buf, &bw, &bh);
+                if (!bmp && href_buf[0] != '/') {
+                    char path_buf[128];
+                    path_buf[0] = '/';
+                    copy_str(path_buf + 1, href_buf, sizeof(path_buf) - 1);
+                    bmp = bmp_load(path_buf, &bw, &bh);
+                }
+                if (!bmp) {
+                    char bmp_prefix[128] = "BMP/";
+                    copy_str(bmp_prefix + 4, href_buf, sizeof(bmp_prefix) - 4);
+                    bmp = bmp_load(bmp_prefix, &bw, &bh);
+                }
+                if (bmp) {
+                    img->pixels = bmp;
+                    img->is_loaded = 1;
+                    img->w = bw;
+                    img->h = bh;
+                }
+            }
+
+            cur_style = HTML_ST_IMG;
+            html_emit_text("[IMG: ");
+            html_emit_text(img->alt);
+            html_emit_text("]");
+            cur_style = HTML_ST_TEXT;
+            html_img_count++;
+        }
+        emit_char('\n');
         return;
     }
     if (is_void_tag(tag_name)) return;
@@ -688,7 +739,7 @@ static void span_flush(void) {
     s->url_id = pend_url;
     s->y = pend_y;
     s->x = (int16_t)pend_x;
-    s->_pad = 0;
+    s->img_idx = 0xFF;
     pend_n = 0;
 }
 
@@ -721,6 +772,19 @@ void html_layout(int wrap_w) {
         st = (lay_run < run_count) ? runs[lay_run].style : HTML_ST_TEXT;
         uid = (lay_run < run_count) ? runs[lay_run].url_id : 0;
 
+        if (st == HTML_ST_IMG) {
+            for (int k = 0; k < html_img_count; k++) {
+                if (html_images[k].text_off <= layout_off && layout_off < html_images[k].text_off + 32) {
+                    html_images[k].x = layout_x;
+                    html_images[k].y = layout_y;
+                    if (html_images[k].is_loaded && html_images[k].h > 16) {
+                        layout_y += html_images[k].h + 4;
+                    }
+                    break;
+                }
+            }
+        }
+
         if (ch == '\n') {
             layout_nl();
             layout_off++;
@@ -748,6 +812,14 @@ void html_layout(int wrap_w) {
 }
 
 void html_doc_reset(void) {
+    for (int k = 0; k < html_img_count; k++) {
+        if (html_images[k].pixels) {
+            kfree(html_images[k].pixels);
+            html_images[k].pixels = NULL;
+        }
+    }
+    html_img_count = 0;
+
     text_len = 0;
     text_truncated = 0;
     run_count = 0;
