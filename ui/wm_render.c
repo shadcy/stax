@@ -428,28 +428,37 @@ void wm_render(void) {
     }
     draw_text(app_btn_x + 24, ty + 6, "Apps", app_fg);
 
+    /* Collect only open (non-hidden) windows for navigation tabs */
+    window_t *tab_arr[32];
+    int tab_count = 0;
+    for (int i = 0; i < count; i++) {
+        if (arr[i]->state != WM_STATE_HIDDEN) {
+            tab_arr[tab_count++] = arr[i];
+        }
+    }
+
     /* Open Window Tabs in Navigation Bar */
     int nav_x = 128;
     int max_nav_x = (int)fb_width - 280;
     int avail_w = max_nav_x - nav_x;
     
-    if (count > 0 && avail_w > 80) {
+    if (tab_count > 0 && avail_w > 80) {
         int tab_gap = 4;
-        int tab_w = (avail_w - (count - 1) * tab_gap) / count;
+        int tab_w = (avail_w - (tab_count - 1) * tab_gap) / tab_count;
         if (tab_w > 130) tab_w = 130;
         
-        int visible_tabs = count;
+        int visible_tabs = tab_count;
         int overflow_count = 0;
         if (tab_w < 55) {
             tab_w = 55;
             int max_fit = (avail_w - 45) / (tab_w + tab_gap);
             if (max_fit < 1) max_fit = 1;
             visible_tabs = max_fit;
-            overflow_count = count - visible_tabs;
+            overflow_count = tab_count - visible_tabs;
         }
 
         for (int i = 0; i < visible_tabs; i++) {
-            window_t *w = arr[i];
+            window_t *w = tab_arr[i];
             int tx = nav_x + i * (tab_w + tab_gap);
             int is_active = (i == 0 && w->state == WM_STATE_ACTIVE);
             int is_min = (w->state == WM_STATE_MINIMIZED);
