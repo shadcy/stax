@@ -280,17 +280,17 @@ void wm_update(void) {
             if (!right_pressed) goto update_done;
         }        if (my < TASKBAR_HEIGHT) {
             if (pressed) {
-                if (mx >= 0 && mx < 34) {
+                if (mx >= 0 && mx < 44) {
                     stax_menu_active = !stax_menu_active;
                     apps_menu_active = 0;
-                } else if (mx >= 34 && mx < 105) {
+                } else if (mx >= 46 && mx < 124) {
                     apps_menu_active = !apps_menu_active;
                     stax_menu_active = 0;
                 } else {
                     stax_menu_active = 0;
                     apps_menu_active = 0;
                     /* Check window tab clicks */
-                    int nav_x = 106;
+                    int nav_x = 128;
                     int max_nav_x = (int)fb_width - 280;
                     int avail_w = max_nav_x - nav_x;
                     extern struct window *window_list;
@@ -375,7 +375,7 @@ void wm_update(void) {
 
             /* 2. Apps Launcher Menu Clicks */
             if (pressed && apps_menu_active) {
-                int app_x = 34;
+                int app_x = 50;
                 int app_y = TASKBAR_HEIGHT + 2;
                 int app_w = 340;
                 int app_h = 390;

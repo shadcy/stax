@@ -382,7 +382,16 @@ void wm_render(void) {
     fb_fillrect(0, ty, fb_width, TASKBAR_HEIGHT, rgb565(230, 230, 230)); /* Light gray bar */
     fb_drawline(0, ty + TASKBAR_HEIGHT - 1, fb_width, ty + TASKBAR_HEIGHT - 1, rgb565(150, 150, 150));
     
-    /* STAX Logo */
+    /* 1. STAX Logo Button */
+    int stax_btn_x = 6;
+    int stax_btn_w = 32;
+    uint16_t stax_bg = stax_menu_active ? rgb565(35, 110, 225) : rgb565(215, 218, 228);
+    fb_fillrect(stax_btn_x, ty + 3, stax_btn_w, 22, stax_bg);
+    fb_drawline(stax_btn_x, ty + 3, stax_btn_x + stax_btn_w - 1, ty + 3, stax_menu_active ? rgb565(70, 150, 255) : rgb565(190, 195, 205));
+    fb_drawline(stax_btn_x, ty + 24, stax_btn_x + stax_btn_w - 1, ty + 24, stax_menu_active ? rgb565(20, 80, 180) : rgb565(190, 195, 205));
+    fb_drawline(stax_btn_x, ty + 3, stax_btn_x, ty + 24, stax_menu_active ? rgb565(70, 150, 255) : rgb565(190, 195, 205));
+    fb_drawline(stax_btn_x + stax_btn_w - 1, ty + 3, stax_btn_x + stax_btn_w - 1, ty + 24, stax_menu_active ? rgb565(20, 80, 180) : rgb565(190, 195, 205));
+
     static uint16_t *stax_logo = NULL;
     static int logo_w = 0, logo_h = 0, logo_attempted = 0;
     if (!stax_logo && !logo_attempted) {
@@ -390,24 +399,24 @@ void wm_render(void) {
         stax_logo = bmp_load("BMP/LOGO.BMP", &logo_w, &logo_h);
         logo_attempted = 1;
     }
-    if (stax_menu_active) {
-        fb_fillrect(4, ty + 2, 26, 24, rgb565(35, 110, 225));
-    }
     if (stax_logo) {
         for (int fy = 0; fy < logo_h; fy++) {
             for (int fx = 0; fx < logo_w; fx++) {
                 uint16_t p = stax_logo[fy * logo_w + fx];
-                fb_putpixel(8 + fx, ty + (TASKBAR_HEIGHT - logo_h) / 2 + fy, p);
+                fb_putpixel(stax_btn_x + (stax_btn_w - logo_w)/2 + fx, ty + (TASKBAR_HEIGHT - logo_h) / 2 + fy, p);
             }
         }
     } else {
-        fb_fillrect(8, ty + 6, 16, 16, stax_menu_active ? COLOR_WHITE : COLOR_BLACK);
-        draw_text(10, ty + 6, "S", stax_menu_active ? COLOR_BLACK : COLOR_WHITE);
+        draw_text(stax_btn_x + 8, ty + 6, "S", stax_menu_active ? COLOR_WHITE : COLOR_BLACK);
     }
     
-    /* Apps Launcher Button (Next to Logo) */
-    int app_btn_x = 34;
-    int app_btn_w = 66;
+    /* Vertical separator between STAX Menu and Apps Menu */
+    fb_drawline(44, ty + 5, 44, ty + 22, rgb565(180, 185, 195));
+    fb_drawline(45, ty + 5, 45, ty + 22, rgb565(245, 245, 250));
+
+    /* 2. Apps Launcher Button */
+    int app_btn_x = 50;
+    int app_btn_w = 70;
     uint16_t app_bg = apps_menu_active ? rgb565(35, 110, 225) : rgb565(215, 218, 228);
     uint16_t app_fg = apps_menu_active ? COLOR_WHITE : rgb565(30, 35, 45);
     fb_fillrect(app_btn_x, ty + 3, app_btn_w, 22, app_bg);
@@ -417,16 +426,16 @@ void wm_render(void) {
     fb_drawline(app_btn_x + app_btn_w - 1, ty + 3, app_btn_x + app_btn_w - 1, ty + 24, apps_menu_active ? rgb565(20, 80, 180) : rgb565(190, 195, 205));
 
     /* 9-dot grid icon (3x3 dots) */
-    int mx0 = app_btn_x + 6, my0 = ty + 7;
+    int mx0 = app_btn_x + 7, my0 = ty + 7;
     for (int dr = 0; dr < 3; dr++) {
         for (int dc = 0; dc < 3; dc++) {
             fb_fillrect(mx0 + dc * 4, my0 + dr * 4, 2, 2, app_fg);
         }
     }
-    draw_text(app_btn_x + 22, ty + 6, "Apps", app_fg);
+    draw_text(app_btn_x + 24, ty + 6, "Apps", app_fg);
 
     /* Open Window Tabs in Navigation Bar */
-    int nav_x = 106;
+    int nav_x = 128;
     int max_nav_x = (int)fb_width - 280;
     int avail_w = max_nav_x - nav_x;
     
@@ -592,7 +601,7 @@ void wm_render(void) {
     
     /* 2. Modern 3x3 Applications Launcher Menu Window (Under Apps button) */
     if (apps_menu_active) {
-        int app_x = 34;
+        int app_x = 50;
         int app_y = TASKBAR_HEIGHT + 2;
         int app_w = 340;
         int app_h = 390;
