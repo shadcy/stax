@@ -181,10 +181,10 @@ void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch) 
     fb_fillrect(cx, cy, cw, ch, rgb565(30, 32, 40));
 
     /* LCD Screen Display Frame */
-    int disp_x = cx + 10;
-    int disp_y = cy + 10;
-    int disp_w = cw - 20;
-    int disp_h = 56;
+    int disp_x = cx + 8;
+    int disp_y = cy + 8;
+    int disp_w = cw - 16;
+    int disp_h = 46;
 
     fb_fillrect(disp_x, disp_y, disp_w, disp_h, rgb565(16, 18, 24));
     fb_drawline(disp_x, disp_y, disp_x + disp_w - 1, disp_y, rgb565(10, 12, 16));
@@ -194,20 +194,20 @@ void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch) 
 
     /* Memory indicator */
     if (st->has_memory) {
-        draw_text(disp_x + 8, disp_y + 6, "M", rgb565(80, 240, 120));
+        draw_text(disp_x + 6, disp_y + 4, "M", rgb565(80, 240, 120));
     }
 
     /* Sub expression (upper formula) */
     if (st->sub_buf[0]) {
         int sub_len = (int)strlen(st->sub_buf);
-        draw_text(disp_x + disp_w - 10 - sub_len * 8, disp_y + 6, st->sub_buf, rgb565(140, 150, 170));
+        draw_text(disp_x + disp_w - 8 - sub_len * 8, disp_y + 4, st->sub_buf, rgb565(140, 150, 170));
     }
 
     /* Main digits */
     int main_len = (int)strlen(st->display_buf);
-    int main_x = disp_x + disp_w - 10 - main_len * 8;
-    if (main_x < disp_x + 8) main_x = disp_x + 8;
-    draw_text(main_x, disp_y + 30, st->display_buf, st->has_error ? rgb565(255, 80, 80) : COLOR_WHITE);
+    int main_x = disp_x + disp_w - 8 - main_len * 8;
+    if (main_x < disp_x + 6) main_x = disp_x + 6;
+    draw_text(main_x, disp_y + 24, st->display_buf, st->has_error ? rgb565(255, 80, 80) : COLOR_WHITE);
 
     /* 5 Columns x 6 Rows Keypad */
     const char *btn_labels[6][5] = {
@@ -219,9 +219,9 @@ void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch) 
         {"0",  ".",  "=",  "=",  "="}
     };
 
-    int start_y = cy + 74;
-    int btn_h = 38;
-    int gap = 6;
+    int start_y = cy + 60;
+    int btn_h = 32;
+    int gap = 4;
     int btn_w = (disp_w - gap * 4) / 5;
 
     for (int r = 0; r < 6; r++) {
@@ -364,11 +364,11 @@ void calculator_mouse_click(struct window *win, int mx, int my, int button) {
     calc_state_t *st = (calc_state_t *)win->app_data;
     if (!st) return;
 
-    int disp_x = 10;
-    int disp_w = win->width - 20;
-    int start_y = 74;
-    int btn_h = 38;
-    int gap = 6;
+    int disp_x = 8;
+    int disp_w = win->width - 16;
+    int start_y = 60;
+    int btn_h = 32;
+    int gap = 4;
     int btn_w = (disp_w - gap * 4) / 5;
 
     const char *btn_labels[6][5] = {
