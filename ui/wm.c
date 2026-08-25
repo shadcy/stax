@@ -89,6 +89,36 @@ void wm_focus_shell(void)
     focused_window = NULL;
 }
 
+void wm_toggle_boot_log(void)
+{
+    window_t *curr = window_list;
+    while (curr) {
+        if (strcmp(curr->title, "Boot Log") == 0) {
+            if (curr->state == WM_STATE_HIDDEN || curr->state == WM_STATE_MINIMIZED) {
+                curr->state = WM_STATE_ACTIVE;
+                wm_bring_to_front(curr);
+                focused_window = curr;
+            } else {
+                curr->state = WM_STATE_HIDDEN;
+                if (focused_window == curr) focused_window = NULL;
+            }
+            return;
+        }
+        curr = curr->next;
+    }
+    extern void gfx_console_draw_window(struct window*, int, int, int, int);
+    extern void gfx_console_key_event(struct window*, char);
+    extern void gfx_console_mouse_click(struct window*, int, int, int);
+    extern void gfx_console_mouse_drag(struct window*, int, int);
+    window_t *gw = wm_add_window(200, 44, 560, 380, "Boot Log", gfx_console_draw_window);
+    if (gw) {
+        gw->key_event = gfx_console_key_event;
+        gw->mouse_click = gfx_console_mouse_click;
+        gw->mouse_drag = gfx_console_mouse_drag;
+        focused_window = gw;
+    }
+}
+
 int wm_dispatch_key(char c) {
     /* 1. Global Window & System Management Shortcuts (Strictly require CTRL held) */
     if (kb_is_pressed(KB_CTRL)) {
@@ -243,17 +273,20 @@ void wm_update(void) {
                     extern struct window *terminal_open_new(void);
                     terminal_open_new();
                 } else if (item == 1) {
+                    extern struct window *widgets_open_window(void);
+                    widgets_open_window();
+                } else if (item == 2) {
                     extern void cmd_browser(int, char**);
                     cmd_browser(0, 0);
-                } else if (item == 2) {
+                } else if (item == 3) {
                     window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
                     if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
-                } else if (item == 3) {
+                } else if (item == 4) {
                     extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void editor_key_event(struct window *win, char c);
                     window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
                     if (ew) ew->key_event = editor_key_event;
-                } else if (item == 4) {
+                } else if (item == 5) {
                     extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
                     extern void calculator_key_event(struct window *win, char c);
@@ -262,12 +295,12 @@ void wm_update(void) {
                         cw->mouse_click = calculator_mouse_click;
                         cw->key_event = calculator_key_event;
                     }
-                } else if (item == 5) {
+                } else if (item == 6) {
                     extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void settings_mouse_click(struct window *win, int mx, int my, int button);
                     window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                     if (sw) sw->mouse_click = settings_mouse_click;
-                } else if (item == 6) {
+                } else if (item == 7) {
                     extern void settings_save(void);
                     extern void system_reboot(void);
                     settings_save();
@@ -342,22 +375,25 @@ void wm_update(void) {
                         extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
                     } else if (rel_y >= 30 && rel_y < 60) {
+                        extern struct window *widgets_open_window(void);
+                        widgets_open_window();
+                    } else if (rel_y >= 60 && rel_y < 90) {
                         extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         extern void settings_mouse_click(struct window *win, int mx, int my, int button);
                         window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                         if (sw) sw->mouse_click = settings_mouse_click;
-                    } else if (rel_y >= 60 && rel_y < 90) {
+                    } else if (rel_y >= 90 && rel_y < 120) {
                         extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
-                    } else if (rel_y >= 90 && rel_y < 125) {
+                    } else if (rel_y >= 120 && rel_y < 150) {
                         extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
-                    } else if (rel_y >= 125 && rel_y < 160) {
+                    } else if (rel_y >= 150 && rel_y < 185) {
                         extern void settings_save(void);
                         extern void system_reboot(void);
                         settings_save();
                         system_reboot();
-                    } else if (rel_y >= 160 && rel_y <= 195) {
+                    } else if (rel_y >= 185 && rel_y <= 225) {
                         extern void wm_close_window(window_t *win);
                         if (focused_window) {
                             wm_close_window(focused_window);

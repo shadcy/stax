@@ -564,25 +564,27 @@ void wm_render(void) {
     
     /* Context Menu */
     if (ctx_menu.active) {
-        fb_fillrect(ctx_menu.x, ctx_menu.y, 160, 210, rgb565(235, 235, 240));
+        fb_fillrect(ctx_menu.x, ctx_menu.y, 160, 240, rgb565(235, 235, 240));
         fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y, COLOR_WHITE);
-        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x, ctx_menu.y + 209, COLOR_WHITE);
-        fb_drawline(ctx_menu.x + 159, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y + 209, rgb565(120, 120, 130));
-        fb_drawline(ctx_menu.x, ctx_menu.y + 209, ctx_menu.x + 159, ctx_menu.y + 209, rgb565(120, 120, 130));
+        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x, ctx_menu.y + 239, COLOR_WHITE);
+        fb_drawline(ctx_menu.x + 159, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y + 239, rgb565(120, 120, 130));
+        fb_drawline(ctx_menu.x, ctx_menu.y + 239, ctx_menu.x + 159, ctx_menu.y + 239, rgb565(120, 120, 130));
         
         draw_text(ctx_menu.x + 10, ctx_menu.y + 8, "New Terminal", COLOR_BLACK);
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 30, ctx_menu.x + 155, ctx_menu.y + 30, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 38, "Web Browser", COLOR_BLACK);
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 38, "Retro Widgets", rgb565(20, 100, 220));
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 60, ctx_menu.x + 155, ctx_menu.y + 60, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 68, "File Manager", COLOR_BLACK);
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 68, "Web Browser", COLOR_BLACK);
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 90, ctx_menu.x + 155, ctx_menu.y + 90, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 98, "Text Editor", COLOR_BLACK);
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 98, "File Manager", COLOR_BLACK);
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 120, ctx_menu.x + 155, ctx_menu.y + 120, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 128, "Calculator", COLOR_BLACK);
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 128, "Text Editor", COLOR_BLACK);
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 150, ctx_menu.x + 155, ctx_menu.y + 150, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 158, "Settings", COLOR_BLACK);
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 158, "Calculator", COLOR_BLACK);
         fb_drawline(ctx_menu.x + 5, ctx_menu.y + 180, ctx_menu.x + 155, ctx_menu.y + 180, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 188, "Reboot System", rgb565(190, 40, 40));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 188, "Settings", COLOR_BLACK);
+        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 210, ctx_menu.x + 155, ctx_menu.y + 210, rgb565(180, 180, 190));
+        draw_text(ctx_menu.x + 10, ctx_menu.y + 218, "Reboot System", rgb565(190, 40, 40));
     }
 
     /* 1. STAX System Dropdown Menu (Under Logo) */
@@ -590,7 +592,7 @@ void wm_render(void) {
         int sm_x = 0;
         int sm_y = TASKBAR_HEIGHT;
         int sm_w = 190;
-        int sm_h = 195;
+        int sm_h = 225;
 
         /* Drop shadow */
         fb_fillrect(sm_x + 3, sm_y + 3, sm_w, sm_h, rgb565(20, 22, 28));
@@ -606,14 +608,15 @@ void wm_render(void) {
         draw_text(sm_x + 12, sm_y + 8, "About STAX OS", COLOR_WHITE);
         fb_drawline(sm_x + 6, sm_y + 30, sm_x + sm_w - 6, sm_y + 30, rgb565(55, 58, 70));
 
-        draw_text(sm_x + 12, sm_y + 38, "System Settings", COLOR_WHITE);
-        draw_text(sm_x + 12, sm_y + 68, "Task Manager", COLOR_WHITE);
-        draw_text(sm_x + 12, sm_y + 98, "System Info", COLOR_WHITE);
+        draw_text(sm_x + 12, sm_y + 38, "Retro Widgets", rgb565(80, 210, 255));
+        draw_text(sm_x + 12, sm_y + 68, "System Settings", COLOR_WHITE);
+        draw_text(sm_x + 12, sm_y + 98, "Task Manager", COLOR_WHITE);
+        draw_text(sm_x + 12, sm_y + 128, "System Info", COLOR_WHITE);
 
-        fb_drawline(sm_x + 6, sm_y + 126, sm_x + sm_w - 6, sm_y + 126, rgb565(55, 58, 70));
+        fb_drawline(sm_x + 6, sm_y + 156, sm_x + sm_w - 6, sm_y + 156, rgb565(55, 58, 70));
 
-        draw_text(sm_x + 12, sm_y + 136, "Reboot System", rgb565(240, 80, 80));
-        draw_text(sm_x + 12, sm_y + 166, "Force Quit...", rgb565(160, 165, 180));
+        draw_text(sm_x + 12, sm_y + 166, "Reboot System", rgb565(240, 80, 80));
+        draw_text(sm_x + 12, sm_y + 196, "Force Quit...", rgb565(160, 165, 180));
     }
     
     /* 2. Modern 3x3 Applications Launcher Menu Window (Under Apps button) */

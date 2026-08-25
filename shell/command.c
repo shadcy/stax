@@ -23,6 +23,7 @@
 /* External variables */
 extern volatile unsigned int tick_count;
 extern void cmd_browser(int argc, char *argv[]);
+void cmd_widgets(int argc, char *argv[]);
 
 /* Command table */
 static const command_t commands[] = {
@@ -56,6 +57,7 @@ static const command_t commands[] = {
     {"ifconfig","Show network interface configuration", cmd_ifconfig},
     {"ping",    "Send ICMP ECHO_REQUEST to network hosts", cmd_ping},
     {"browser", "Launch Graphical Web Browser", cmd_browser},
+    {"widgets", "Launch Retro Internet Widgets & Telemetry Dashboard", cmd_widgets},
     {"date",    "Show current date and time (IST Mumbai)", cmd_date},
     {"time",    "Show current date and time (IST Mumbai)", cmd_date},
     {NULL,      NULL,                                NULL}
@@ -1164,5 +1166,16 @@ void cmd_date(int argc, char *argv[])
     kputs("Host UTC Epoch     : ");
     kput_uint(rtc_get_epoch());
     kputs(" seconds\n");
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_widgets — open Retro Internet Widgets window
+ * --------------------------------------------------------------------------- */
+void cmd_widgets(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    extern struct window *widgets_open_window(void);
+    widgets_open_window();
+    kputs("Launched Retro Internet Widgets & HTTP Telemetry Dashboard.\n");
 }
 
