@@ -298,17 +298,11 @@ void wm_render(void) {
         draw_text(90, ty + 6, arr[0]->title, COLOR_BLACK);
     }
     
-    /* Clock */
-    extern volatile unsigned int tick_count;
-    unsigned int secs = tick_count / 1000;
-    int h = (secs / 3600) % 24;
-    int m = (secs / 60) % 60;
-    int s = secs % 60;
-    char clock_str[10];
-    clock_str[0] = '0' + (h / 10); clock_str[1] = '0' + (h % 10); clock_str[2] = ':';
-    clock_str[3] = '0' + (m / 10); clock_str[4] = '0' + (m % 10); clock_str[5] = ':';
-    clock_str[6] = '0' + (s / 10); clock_str[7] = '0' + (s % 10); clock_str[8] = '\0';
-    draw_text(fb_width - 76, ty + 6, clock_str, COLOR_BLACK);
+    /* Real-Time Date & Time (IST Mumbai) */
+    char dt_str[32];
+    extern void rtc_format_ist_navbar(char *buf, int max_len);
+    rtc_format_ist_navbar(dt_str, sizeof(dt_str));
+    draw_text(fb_width - 192, ty + 6, dt_str, COLOR_BLACK);
     
     /* Memory Usage */
     extern int get_total_memory(void);
@@ -328,7 +322,7 @@ void wm_render(void) {
     }
     mem_str[m_idx++] = '%';
     mem_str[m_idx] = '\0';
-    draw_text(fb_width - 160, ty + 6, mem_str, COLOR_BLACK);
+    draw_text(fb_width - 272, ty + 6, mem_str, COLOR_BLACK);
     
     /* Context Menu */
     if (ctx_menu.active) {
