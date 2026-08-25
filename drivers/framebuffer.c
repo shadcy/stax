@@ -18,12 +18,15 @@
 #define CLCD_CTRL   (*(volatile uint32_t *)(CLCD_BASE + 0x018))
 #define CLCD_IMSC   (*(volatile uint32_t *)(CLCD_BASE + 0x01C))
 
-/* Framebuffer at the end of 32MB RAM to avoid overlapping with large .bss */
-#define FB_BASE      0x01E00000u /* 30 MB mark */
-#define FB_BACK_BASE 0x01F00000u /* 31 MB mark */
+/* Framebuffers at the end of 32MB RAM. Each 1024x768 FB needs ~1.5MB */
+#define FB_BASE      0x01C00000u /* 28 MB mark */
+#define FB_BACK_BASE 0x01E00000u /* 30 MB mark */
 
 /* LCD enable | 16bpp (mode 4 = 5:6:5) | TFT | power on */
 #define CTRL_VAL    ((1u<<11)|(1u<<5)|(4u<<1)|(1u<<0))
+
+uint32_t fb_width = 1024;
+uint32_t fb_height = 768;
 
 static uint16_t * const fb_front = (uint16_t *)FB_BASE;
 static uint16_t * const fb_back  = (uint16_t *)FB_BACK_BASE;
@@ -34,26 +37,59 @@ static int double_buffered = 0;
 int fb_init(void)
 {
     /*
-     * Proven register values for QEMU VersatilePB 640×480:
-     *   TIM0 = 0x3F1F3F9C
-     *   TIM1 = 0x090B61DF  <-- 0x1DF = 479 (480 lines)
-     *   TIM2 = 0x067F1800
-     * Source: multiple bare-metal QEMU VersatilePB references (OSDev, QEMU tests)
+     * Register values for QEMU VersatilePB 1024x768:
+     *   TIM0 = 0x3F1F3FFC
+     *   TIM1 = 0x090B62FF
+     *   TIM2 = 0x07FF1800
      */
-    CLCD_TIM0   = 0x3F1F3F9Cu;
-    CLCD_TIM1   = 0x090B61DFu;
-    CLCD_TIM2   = 0x067F1800u;
+    CLCD_TIM0   = 0x3F1F3FFCu;
+    CLCD_TIM1   = 0x090B62FFu;
+    CLCD_TIM2   = 0x07FF1800u;
     CLCD_TIM3   = 0x00000000u;
     CLCD_UPBASE = FB_BASE;
     CLCD_LPBASE = FB_BASE;
     CLCD_IMSC   = 0;
 
     fb_clear(FB_BG);
+    
+    CLCD_CTRL = CTRL_VAL; /* Enable the LCD controller */
 
-    CLCD_CTRL = CTRL_VAL;
-
-    kputs("FB: PL110 640x480 16bpp OK\n");
+    kputs("FB: PL110 Framebuffer OK\n");
     return 0;
+}
+
+void fb_set_resolution(uint32_t w, uint32_t h)
+{
+    fb_width = w;
+    fb_height = h;
+    
+    if (w == 800 && h == 600) {
+        /*
+         * VESA 800x600 timing estimate for PL110
+         * PPL = (800/16)-1 = 49. In TIM0, PPL is bits 2-7 -> 49 << 2 = 196 = 0xC4.
+         * LPP = 600-1 = 599 = 0x257 (bits 0-9 in TIM1)
+         * CPL = 800-1 = 799 = 0x31F (bits 16-25 in TIM2 -> 0x031F0000)
+         */
+        CLCD_TIM0 = 0x3F1F3FC4u; /* 0xC4 for 800 */
+        CLCD_TIM1 = 0x090B6257u; /* 0x257 for 600 */
+        CLCD_TIM2 = 0x031F1800u;
+    } else {
+        /* Default 1024x768 */
+        CLCD_TIM0 = 0x3F1F3FFCu;
+        CLCD_TIM1 = 0x090B62FFu;
+        CLCD_TIM2 = 0x07FF1800u;
+    }
+    
+    CLCD_TIM3   = 0x00000000u;
+    CLCD_UPBASE = FB_BASE;
+    CLCD_LPBASE = FB_BASE;
+    CLCD_IMSC   = 0;
+    
+    CLCD_CTRL = 0; /* Disable briefly */
+    for (volatile int i = 0; i < 10000; i++); /* tiny delay */
+    CLCD_CTRL = CTRL_VAL; /* Re-enable */
+    
+    fb_clear(0x0000);
 }
 
 /* ── primitives ──────────────────────────────────────────────────────────── */
@@ -62,7 +98,7 @@ void fb_clear(uint16_t col)
     /* Write 2 pixels per 32-bit store, optimized via STMIA assembly */
     uint32_t w = ((uint32_t)col << 16) | col;
     uint32_t *dst = (uint32_t *)fb;
-    int chunks = (FB_WIDTH * FB_HEIGHT * 2) / 32; /* 19200 chunks of 32 bytes */
+    int chunks = (fb_width * fb_height * 2) / 32;
     
     asm volatile (
         "mov r3, %1\n"
@@ -86,19 +122,19 @@ void fb_clear(uint16_t col)
 
 void fb_putpixel(int x, int y, uint16_t col)
 {
-    if ((unsigned)x < FB_WIDTH && (unsigned)y < FB_HEIGHT)
-        fb[y * FB_WIDTH + x] = col;
+    if ((unsigned)x < fb_width && (unsigned)y < fb_height)
+        fb[y * fb_width + x] = col;
 }
 
 void fb_fillrect(int x, int y, int w, int h, uint16_t col)
 {
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
-    if (x + w > (int)FB_WIDTH)  w = FB_WIDTH  - x;
-    if (y + h > (int)FB_HEIGHT) h = FB_HEIGHT - y;
+    if (x + w > (int)fb_width)  w = fb_width  - x;
+    if (y + h > (int)fb_height) h = fb_height - y;
     if (w <= 0 || h <= 0) return;
     for (int r = 0; r < h; r++) {
-        uint16_t *p = fb + (y + r) * FB_WIDTH + x;
+        uint16_t *p = fb + (y + r) * fb_width + x;
         for (int c = 0; c < w; c++) p[c] = col;
     }
 }
@@ -137,9 +173,7 @@ void fb_swap(void)
         uint32_t *dst = (uint32_t *)fb_front;
         uint32_t *src = (uint32_t *)fb_back;
         
-        /* 640 * 480 * 2 bytes = 153600 words */
-        /* 153600 / 8 = 19200 chunks */
-        int chunks = (FB_WIDTH * FB_HEIGHT * 2) / 32;
+        int chunks = (fb_width * fb_height * 2) / 32;
         
         asm volatile (
             "mov r2, %2\n"
@@ -161,13 +195,13 @@ void fb_draw_sprite(int x, int y, int w, int h, const uint16_t *data)
     
     for (int r = 0; r < h; r++) {
         int screen_y = y + r;
-        if (screen_y < 0 || screen_y >= (int)FB_HEIGHT) continue;
+        if (screen_y < 0 || screen_y >= (int)fb_height) continue;
         
         for (int c = 0; c < w; c++) {
             int screen_x = x + c;
-            if (screen_x < 0 || screen_x >= (int)FB_WIDTH) continue;
+            if (screen_x < 0 || screen_x >= (int)fb_width) continue;
             
-            fb[screen_y * FB_WIDTH + screen_x] = data[r * w + c];
+            fb[screen_y * fb_width + screen_x] = data[r * w + c];
         }
     }
 }
@@ -178,15 +212,15 @@ void fb_draw_sprite_colorkey(int x, int y, int w, int h, const uint16_t *data, u
     
     for (int r = 0; r < h; r++) {
         int screen_y = y + r;
-        if (screen_y < 0 || screen_y >= (int)FB_HEIGHT) continue;
+        if (screen_y < 0 || screen_y >= (int)fb_height) continue;
         
         for (int c = 0; c < w; c++) {
             int screen_x = x + c;
-            if (screen_x < 0 || screen_x >= (int)FB_WIDTH) continue;
+            if (screen_x < 0 || screen_x >= (int)fb_width) continue;
             
             uint16_t pixel = data[r * w + c];
             if (pixel != colorkey) {
-                fb[screen_y * FB_WIDTH + screen_x] = pixel;
+                fb[screen_y * fb_width + screen_x] = pixel;
             }
         }
     }
@@ -200,8 +234,8 @@ void fb_save_rect(int x, int y, int w, int h, uint16_t *buffer)
         int screen_y = y + r;
         for (int c = 0; c < w; c++) {
             int screen_x = x + c;
-            if (screen_y >= 0 && screen_y < (int)FB_HEIGHT && screen_x >= 0 && screen_x < (int)FB_WIDTH) {
-                buffer[r * w + c] = fb[screen_y * FB_WIDTH + screen_x];
+            if (screen_y >= 0 && screen_y < (int)fb_height && screen_x >= 0 && screen_x < (int)fb_width) {
+                buffer[r * w + c] = fb[screen_y * fb_width + screen_x];
             } else {
                 buffer[r * w + c] = 0;
             }
@@ -215,13 +249,13 @@ void fb_restore_rect(int x, int y, int w, int h, const uint16_t *buffer)
     
     for (int r = 0; r < h; r++) {
         int screen_y = y + r;
-        if (screen_y < 0 || screen_y >= (int)FB_HEIGHT) continue;
+        if (screen_y < 0 || screen_y >= (int)fb_height) continue;
         
         for (int c = 0; c < w; c++) {
             int screen_x = x + c;
-            if (screen_x < 0 || screen_x >= (int)FB_WIDTH) continue;
+            if (screen_x < 0 || screen_x >= (int)fb_width) continue;
             
-            fb[screen_y * FB_WIDTH + screen_x] = buffer[r * w + c];
+            fb[screen_y * fb_width + screen_x] = buffer[r * w + c];
         }
     }
 }
