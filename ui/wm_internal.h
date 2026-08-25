@@ -16,7 +16,7 @@
 #define BORDER_WIDTH    2
 #define TASKBAR_HEIGHT  28
 
-#define RGB565_C(r, g, b) (((b >> 3) << 11) | ((g >> 2) << 5) | (r >> 3))
+#define RGB565_C(r, g, b) (uint16_t)((((b) & 0xF8u) << 8) | (((g) & 0xFCu) << 3) | ((r) >> 3))
 
 extern int bg_color_idx;
 extern uint16_t bg_colors[5];
