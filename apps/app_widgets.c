@@ -1,11 +1,12 @@
 /* ============================================================================
  * STAX — app_widgets.c
- * Clean & Minimalist Internet-Powered Widgets (Weather, Markets, World Clock)
+ * Clean & Minimalist Internet-Powered Widgets with [ATD] Desktop Pinning
  * ============================================================================ */
 
 #include "app_widgets.h"
 #include "app_settings.h"
 #include "wm.h"
+#include "../ui/wm_internal.h"
 #include "framebuffer.h"
 #include "string.h"
 #include "font8x16.h"
@@ -105,8 +106,8 @@ void widgets_update(int dt_ms) {
     }
 }
 
-/* Helper: Draw clean modern card */
-static void draw_clean_card(int x, int y, int w, int h, const char *title) {
+/* Helper: Draw clean modern card with [ATD] Add To Display button */
+static void draw_clean_card(int x, int y, int w, int h, const char *title, int pin_mask) {
     /* Background & Border */
     fb_fillrect(x, y, w, h, COL_CARD);
     fb_drawline(x, y, x + w - 1, y, COL_BORDER);
@@ -121,10 +122,17 @@ static void draw_clean_card(int x, int y, int w, int h, const char *title) {
     /* Title */
     draw_text(x + 10, y + 4, title, COL_TEXT_PRI);
 
-    /* Status dot */
-    int is_online = g_settings.network_enabled;
-    uint16_t dot = is_online ? COL_SUCCESS : COL_DANGER;
-    fb_fillrect(x + w - 16, y + 8, 6, 6, dot);
+    /* [ATD] / [Pinned] Button */
+    if (pin_mask != 0) {
+        int is_pinned = (g_settings.widgets_pinned_mask & pin_mask) != 0;
+        int atd_x = x + w - 76;
+        int atd_y = y + 3;
+        uint16_t atd_bg = is_pinned ? COL_ACCENT : rgb565(52, 56, 70);
+        fb_fillrect(atd_x, atd_y, 58, 16, atd_bg);
+        fb_drawline(atd_x, atd_y, atd_x + 57, atd_y, COL_BORDER);
+        fb_drawline(atd_x, atd_y + 15, atd_x + 57, atd_y + 15, COL_BORDER);
+        draw_text(atd_x + 4, atd_y, is_pinned ? "[Pin \xFB]" : "[+ATD]", is_pinned ? COLOR_WHITE : COL_TEXT_PRI);
+    }
 }
 
 /* Helper: Draw clean minimalist weather icon */
@@ -186,7 +194,7 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     int w1_y = cy + 32;
     int w1_w = (cw / 2) - 12;
     int w1_h = 165;
-    draw_clean_card(w1_x, w1_y, w1_w, w1_h, "Weather");
+    draw_clean_card(w1_x, w1_y, w1_w, w1_h, "Weather", WIDGET_PIN_WEATHER);
 
     /* City Selector */
     weather_data_t *wd = &g_weather_cities[g_current_city];
@@ -228,7 +236,7 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     int w2_y = cy + 32;
     int w2_w = (cw / 2) - 12;
     int w2_h = 165;
-    draw_clean_card(w2_x, w2_y, w2_w, w2_h, "Markets");
+    draw_clean_card(w2_x, w2_y, w2_w, w2_h, "Markets", WIDGET_PIN_CRYPTO);
 
     /* Ticker Tabs */
     for (int t = 0; t < NUM_CRYPTO; t++) {
@@ -285,7 +293,7 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     int w3_y = cy + 205;
     int w3_w = cw - 16;
     int w3_h = 95;
-    draw_clean_card(w3_x, w3_y, w3_w, w3_h, "World Time (NTP Sync)");
+    draw_clean_card(w3_x, w3_y, w3_w, w3_h, "World Time (NTP Sync)", WIDGET_PIN_CLOCK);
 
     const char *tz_names[] = {"Mumbai (IST)", "London (UTC)", "New York (EST)", "Tokyo (JST)"};
     int tz_w = (w3_w - 20) / 4;
@@ -331,12 +339,39 @@ void widgets_mouse_click(struct window *win, int mx, int my, int button) {
     (void)win;
     if (button != 1) return;
 
-    /* City selector */
+    /* [ATD] Weather Button Click */
     int w1_x = 8;
-    int w1_y = 32;
-    int pill_x = w1_x + 10;
-    int pill_y = w1_y + 28;
+    int w1_w = (win->width / 2) - 12;
+    int atd1_x = w1_x + w1_w - 76;
+    if (my >= 35 && my < 51 && mx >= atd1_x && mx < atd1_x + 58) {
+        g_settings.widgets_pinned_mask ^= WIDGET_PIN_WEATHER;
+        settings_save();
+        return;
+    }
 
+    /* [ATD] Markets Button Click */
+    int w2_x = (win->width / 2) + 4;
+    int w2_w = (win->width / 2) - 12;
+    int atd2_x = w2_x + w2_w - 76;
+    if (my >= 35 && my < 51 && mx >= atd2_x && mx < atd2_x + 58) {
+        g_settings.widgets_pinned_mask ^= WIDGET_PIN_CRYPTO;
+        settings_save();
+        return;
+    }
+
+    /* [ATD] Clock Button Click */
+    int w3_x = 8;
+    int w3_w = win->width - 16;
+    int atd3_x = w3_x + w3_w - 76;
+    if (my >= 208 && my < 224 && mx >= atd3_x && mx < atd3_x + 58) {
+        g_settings.widgets_pinned_mask ^= WIDGET_PIN_CLOCK;
+        settings_save();
+        return;
+    }
+
+    /* City selector */
+    int pill_x = w1_x + 10;
+    int pill_y = 32 + 28;
     if (my >= pill_y && my < pill_y + 24) {
         if (mx >= pill_x && mx < pill_x + 16) {
             g_current_city = (g_current_city + NUM_CITIES - 1) % NUM_CITIES;
@@ -348,9 +383,8 @@ void widgets_mouse_click(struct window *win, int mx, int my, int button) {
     }
 
     /* Crypto Tabs */
-    int w2_x = (win->width / 2) + 4;
-    int w2_y = 32;
-    if (my >= w2_y + 28 && my < w2_y + 50) {
+    int tab_y = 32 + 28;
+    if (my >= tab_y && my < tab_y + 22) {
         for (int t = 0; t < NUM_CRYPTO; t++) {
             int tab_x = w2_x + 10 + t * 46;
             if (mx >= tab_x && mx < tab_x + 42) {
@@ -359,6 +393,216 @@ void widgets_mouse_click(struct window *win, int mx, int my, int button) {
             }
         }
     }
+}
+
+/* ============================================================================
+ * Desktop Background Widgets Overlay Rendering & Click Handler
+ * ============================================================================ */
+
+void widgets_draw_desktop_overlay(void) {
+    if (g_settings.widgets_pinned_mask == 0) return;
+
+    int is_online = g_settings.network_enabled;
+    int dw_w = 260;
+    int dw_x = (int)fb_width - dw_w - 18;
+    int curr_y = TASKBAR_HEIGHT + 14;
+
+    /* 1. Pinned Weather Widget */
+    if (g_settings.widgets_pinned_mask & WIDGET_PIN_WEATHER) {
+        int h = 135;
+        draw_clean_card(dw_x, curr_y, dw_w, h, "Weather", 0);
+        /* [✕] Unpin button */
+        draw_text(dw_x + dw_w - 20, curr_y + 4, "\xFB", COL_TEXT_MUTED);
+
+        weather_data_t *wd = &g_weather_cities[g_current_city];
+        int pill_x = dw_x + 10;
+        int pill_y = curr_y + 28;
+        draw_text(pill_x, pill_y + 2, "<", COL_ACCENT);
+        fb_fillrect(pill_x + 14, pill_y, 100, 20, COL_CARD_HDR);
+        draw_text(pill_x + 20, pill_y + 2, wd->city, COL_TEXT_PRI);
+        draw_text(pill_x + 118, pill_y + 2, ">", COL_ACCENT);
+
+        if (is_online) {
+            draw_clean_weather_icon(dw_x + 16, curr_y + 58, wd->condition_id);
+            char temp_str[16];
+            num_to_str(wd->temp_c, temp_str);
+            strcat(temp_str, " `C");
+            draw_text(dw_x + 56, curr_y + 60, temp_str, COL_TEXT_PRI);
+            draw_text(dw_x + 16, curr_y + 92, wd->condition, COL_TEXT_SEC);
+
+            char met_buf[32];
+            strcpy(met_buf, "Hum: "); char num[8]; num_to_str(wd->humidity, num); strcat(met_buf, num); strcat(met_buf, "% | Wind: ");
+            num_to_str(wd->wind_kmh, num); strcat(met_buf, num); strcat(met_buf, "km/h");
+            draw_text(dw_x + 16, curr_y + 112, met_buf, COL_TEXT_MUTED);
+        } else {
+            draw_text(dw_x + 16, curr_y + 70, "Offline", COL_TEXT_SEC);
+        }
+        curr_y += h + 12;
+    }
+
+    /* 2. Pinned Markets Widget */
+    if (g_settings.widgets_pinned_mask & WIDGET_PIN_CRYPTO) {
+        int h = 135;
+        draw_clean_card(dw_x, curr_y, dw_w, h, "Markets", 0);
+        draw_text(dw_x + dw_w - 20, curr_y + 4, "\xFB", COL_TEXT_MUTED);
+
+        for (int t = 0; t < NUM_CRYPTO; t++) {
+            int tab_x = dw_x + 10 + t * 44;
+            int is_cur = (g_current_crypto == t);
+            fb_fillrect(tab_x, curr_y + 28, 40, 18, is_cur ? COL_ACCENT : COL_CARD_HDR);
+            draw_text(tab_x + 6, curr_y + 29, g_crypto_tickers[t].symbol, is_cur ? COLOR_WHITE : COL_TEXT_SEC);
+        }
+
+        crypto_data_t *cd = &g_crypto_tickers[g_current_crypto];
+        if (is_online) {
+            char price_str[32];
+            strcpy(price_str, "$");
+            char pnum[12]; num_to_str(cd->price_usd, pnum); strcat(price_str, pnum);
+            draw_text(dw_x + 14, curr_y + 54, price_str, COL_TEXT_PRI);
+
+            char delta_str[16];
+            strcpy(delta_str, "+");
+            char dnum[8]; num_to_str(cd->delta_percent / 10, dnum); strcat(delta_str, dnum);
+            strcat(delta_str, "%");
+            draw_text(dw_x + 130, curr_y + 54, delta_str, COL_SUCCESS);
+
+            /* Sparkline */
+            int gx = dw_x + 14;
+            int gy = curr_y + 76;
+            int gw = dw_w - 28;
+            int gh = 48;
+            fb_fillrect(gx, gy, gw, gh, COL_CARD_HDR);
+            int step = (gw - 10) / 15;
+            for (int p = 0; p < 15; p++) {
+                int px1 = gx + 5 + p * step;
+                int py1 = gy + gh - 6 - (cd->history[p] % 36);
+                int px2 = gx + 5 + (p + 1) * step;
+                int py2 = gy + gh - 6 - (cd->history[p + 1] % 36);
+                fb_drawline(px1, py1, px2, py2, COL_TEXT_PRI);
+                fb_putpixel(px2, py2, COL_ACCENT);
+            }
+        } else {
+            draw_text(dw_x + 16, curr_y + 70, "Offline", COL_TEXT_SEC);
+        }
+        curr_y += h + 12;
+    }
+
+    /* 3. Pinned World Clock Widget */
+    if (g_settings.widgets_pinned_mask & WIDGET_PIN_CLOCK) {
+        int h = 95;
+        draw_clean_card(dw_x, curr_y, dw_w, h, "World Time", 0);
+        draw_text(dw_x + dw_w - 20, curr_y + 4, "\xFB", COL_TEXT_MUTED);
+
+        const char *tz_names[] = {"Mumbai", "London", "New York", "Tokyo"};
+        int tz_w = (dw_w - 20) / 2;
+
+        for (int z = 0; z < 4; z++) {
+            int row = z / 2;
+            int col = z % 2;
+            int zx = dw_x + 10 + col * tz_w;
+            int zy = curr_y + 28 + row * 30;
+
+            draw_text(zx, zy, tz_names[z], COL_TEXT_SEC);
+
+            char clk_buf[16];
+            rtc_datetime_t t;
+            rtc_get_ist(&t);
+            int h_val = t.hour;
+            if (z == 1) h_val = (h_val + 24 - 5) % 24;
+            else if (z == 2) h_val = (h_val + 24 - 10) % 24;
+            else if (z == 3) h_val = (h_val + 3) % 24;
+
+            clk_buf[0] = '0' + (h_val / 10);
+            clk_buf[1] = '0' + (h_val % 10);
+            clk_buf[2] = ':';
+            clk_buf[3] = '0' + (t.min / 10);
+            clk_buf[4] = '0' + (t.min % 10);
+            clk_buf[5] = '\0';
+
+            draw_text(zx + 64, zy, clk_buf, COL_TEXT_PRI);
+        }
+        curr_y += h + 12;
+    }
+}
+
+int widgets_handle_desktop_click(int mx, int my) {
+    if (g_settings.widgets_pinned_mask == 0) return 0;
+
+    int dw_w = 260;
+    int dw_x = (int)fb_width - dw_w - 18;
+    if (mx < dw_x || mx >= dw_x + dw_w) return 0;
+
+    int curr_y = TASKBAR_HEIGHT + 14;
+
+    /* Weather */
+    if (g_settings.widgets_pinned_mask & WIDGET_PIN_WEATHER) {
+        int h = 135;
+        if (my >= curr_y && my < curr_y + h) {
+            /* [✕] Unpin button */
+            if (my >= curr_y && my < curr_y + 24 && mx >= dw_x + dw_w - 28) {
+                g_settings.widgets_pinned_mask &= ~WIDGET_PIN_WEATHER;
+                settings_save();
+                return 1;
+            }
+            /* City selector */
+            int pill_x = dw_x + 10;
+            int pill_y = curr_y + 28;
+            if (my >= pill_y && my < pill_y + 22) {
+                if (mx >= pill_x && mx < pill_x + 16) {
+                    g_current_city = (g_current_city + NUM_CITIES - 1) % NUM_CITIES;
+                    return 1;
+                } else if (mx >= pill_x + 114 && mx < pill_x + 130) {
+                    g_current_city = (g_current_city + 1) % NUM_CITIES;
+                    return 1;
+                }
+            }
+            return 1;
+        }
+        curr_y += h + 12;
+    }
+
+    /* Crypto */
+    if (g_settings.widgets_pinned_mask & WIDGET_PIN_CRYPTO) {
+        int h = 135;
+        if (my >= curr_y && my < curr_y + h) {
+            /* [✕] Unpin button */
+            if (my >= curr_y && my < curr_y + 24 && mx >= dw_x + dw_w - 28) {
+                g_settings.widgets_pinned_mask &= ~WIDGET_PIN_CRYPTO;
+                settings_save();
+                return 1;
+            }
+            /* Ticker tabs */
+            int tab_y = curr_y + 28;
+            if (my >= tab_y && my < tab_y + 20) {
+                for (int t = 0; t < NUM_CRYPTO; t++) {
+                    int tab_x = dw_x + 10 + t * 44;
+                    if (mx >= tab_x && mx < tab_x + 40) {
+                        g_current_crypto = t;
+                        return 1;
+                    }
+                }
+            }
+            return 1;
+        }
+        curr_y += h + 12;
+    }
+
+    /* Clock */
+    if (g_settings.widgets_pinned_mask & WIDGET_PIN_CLOCK) {
+        int h = 95;
+        if (my >= curr_y && my < curr_y + h) {
+            /* [✕] Unpin button */
+            if (my >= curr_y && my < curr_y + 24 && mx >= dw_x + dw_w - 28) {
+                g_settings.widgets_pinned_mask &= ~WIDGET_PIN_CLOCK;
+                settings_save();
+                return 1;
+            }
+            return 1;
+        }
+        curr_y += h + 12;
+    }
+
+    return 0;
 }
 
 static void widgets_window_update(struct window *win, int dt_ms) {
