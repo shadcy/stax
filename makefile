@@ -57,7 +57,9 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -I$(UI_DIR)         \
             -I$(SHELL_DIR)      \
             -I$(LIB_DIR)        \
-            -I$(BENCH_DIR)
+            -I$(BENCH_DIR)      \
+            -Ithird_party/lwip/src/include \
+            -Inet
 
 ifeq ($(ENABLE_BENCH), 1)
 CFLAGS += -DENABLE_BENCH
@@ -87,6 +89,7 @@ BOOT_BIN     := $(BUILD_DIR)/bootloader.bin
 KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/vectors.o \
                 $(BUILD_DIR)/kernel.o \
+                $(BUILD_DIR)/system.o \
                 $(BUILD_DIR)/string.o \
                 $(BUILD_DIR)/vic.o \
                 $(BUILD_DIR)/timer.o \
@@ -112,6 +115,8 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/app_image_viewer.o \
                 $(BUILD_DIR)/app_memview.o \
                 $(BUILD_DIR)/app_firmware_viewer.o \
+                $(BUILD_DIR)/app_browser.o \
+                $(BUILD_DIR)/browser_html.o \
                 $(BUILD_DIR)/framebuffer.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
@@ -185,13 +190,30 @@ KERNEL_BIN   := $(BUILD_DIR)/kernel.bin
 
 OS_BIN       := os.bin
 
+# Networking
+KERNEL_OBJS  += $(BUILD_DIR)/smc91c111.o \
+                $(BUILD_DIR)/sys_arch.o \
+                $(BUILD_DIR)/net_init.o \
+                $(BUILD_DIR)/netif_smc.o \
+                $(BUILD_DIR)/ping.o
+
+LWIP_DIR := third_party/lwip/src
+LWIP_SRCS := $(wildcard $(LWIP_DIR)/core/*.c) \
+             $(wildcard $(LWIP_DIR)/core/ipv4/*.c) \
+             $(wildcard $(LWIP_DIR)/netif/*.c)
+LWIP_OBJS := $(patsubst $(LWIP_DIR)/%.c, $(BUILD_DIR)/lwip/%.o, $(LWIP_SRCS))
+KERNEL_OBJS  += $(LWIP_OBJS)
+
 # ---------------------------------------------------------------------------
-# QEMU invocation
+# QEMU / Emulation Variables
 # ---------------------------------------------------------------------------
 QEMU         := qemu-system-arm
 QEMU_MACHINE := versatilepb
-QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -nographic -serial mon:stdio
-QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -serial stdio
+# Guest NIC MAC must differ from slirp's gateway MAC (52:54:00:12:34:56) to
+# avoid src==dst collisions that cause slirp to drop all outbound TCP frames.
+QEMU_NIC     := -net nic,model=smc91c111,macaddr=52:54:00:12:34:57
+QEMU_FLAGS   := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -nographic -serial mon:stdio $(QEMU_NIC) -net user
+QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),if=sd,format=raw -serial stdio $(QEMU_NIC) -net user
 
 # =============================================================================
 # Rules
@@ -222,7 +244,8 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) tools/stax-sign/stax-sign scripts/create_mb
 		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
 		if [ -f $(GAMES_DIR)/em-doom/doom1.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom1.wad ::/DOOM1.WAD; fi; \
 		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
-		if [ -f /tmp/KITTEN.BMP ]; then mcopy -i $@@@2098688 /tmp/KITTEN.BMP ::/KITTEN.BMP; fi; \
+		mmd -i $@@@2098688 ::/BMP; \
+		if [ -d assets/bmp ]; then mcopy -i $@@@2098688 assets/bmp/*.BMP ::/BMP/; fi; \
 	fi
 	@echo "Signing KERNEL.BIN as Firmware v1..."
 	@if [ ! -f stax_key.priv ]; then ./tools/stax-sign/stax-sign --gen-key stax_key; fi
@@ -318,6 +341,19 @@ $(BUILD_DIR)/%.o: $(BENCH_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(BENCH_DIR)/firmware/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: drivers/net/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: net/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: apps/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/lwip/%.o: $(LWIP_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 tools/stax-sign/stax-sign: tools/stax-sign/stax-sign.c firmware/image_format/firmware_format.c crypto/sha256/sha256.c crypto/crc32/crc32.c crypto/monocypher.c
