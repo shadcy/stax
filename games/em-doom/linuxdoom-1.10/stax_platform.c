@@ -114,14 +114,6 @@ int stax_strncmp(const char *s1, const char *s2, size_t n)
     return *(const unsigned char *)s1 - *(const unsigned char *)s2;
 }
 
-char *strcat(char *d, const char *s)
-{
-    char *dst = d;
-    while (*dst) dst++;
-    while ((*dst++ = *s++));
-    return d;
-}
-
 
 
 int strncasecmp(const char *s1, const char *s2, size_t n)
