@@ -62,7 +62,21 @@
       DNS_LOCAL_HOSTLIST_ELEM("example.com",     IPADDR4_INIT_BYTES(93, 184, 216, 34)), \
       DNS_LOCAL_HOSTLIST_ELEM("wiby.me",         IPADDR4_INIT_BYTES(172, 93, 49, 252)), \
       DNS_LOCAL_HOSTLIST_ELEM("68k.news",        IPADDR4_INIT_BYTES(134, 209, 213, 152)), \
-      DNS_LOCAL_HOSTLIST_ELEM("neverssl.com",    IPADDR4_INIT_BYTES(34, 223, 155, 91)) }
+      DNS_LOCAL_HOSTLIST_ELEM("neverssl.com",    IPADDR4_INIT_BYTES(34, 223, 155, 91)), \
+      DNS_LOCAL_HOSTLIST_ELEM("pool.ntp.org",    IPADDR4_INIT_BYTES(129, 6, 15, 28)), \
+      DNS_LOCAL_HOSTLIST_ELEM("time.google.com", IPADDR4_INIT_BYTES(216, 239, 35, 0)) }
+
+/* SNTP Client Configuration */
+#include <stdint.h>
+extern void rtc_set_epoch(uint32_t epoch);
+#define SNTP_SERVER_DNS 1
+#define SNTP_MAX_SERVERS 3
+#define SNTP_SERVER_ADDRESS "pool.ntp.org"
+#define SNTP_SET_SYSTEM_TIME(sec) rtc_set_epoch((uint32_t)(sec))
+#define SNTP_STARTUP_DELAY 0
+#define SNTP_CHECK_RESPONSE 0
+#define SNTP_UPDATE_DELAY 15000
+#define SNTP_RETRY_TIMEOUT 3000
 
 #include "lwip/arch.h"
 /* Logging - disable verbose debug spam to keep UART usable */

@@ -10,6 +10,8 @@
 extern volatile unsigned int tick_count;
 
 static uint32_t boot_epoch = 0;
+static uint32_t base_tick = 0;
+static int rtc_synced_flag = 0;
 static const int days_per_month[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 static const char *day_names[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static const char *month_names[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
@@ -21,21 +23,40 @@ static int is_leap_year(int y) {
 void rtc_init(void) {
     /* Read hardware RTC data register */
     boot_epoch = PL031_RTC_DR;
-    if (boot_epoch == 0) {
+    base_tick = tick_count;
+    if (boot_epoch > 0) {
+        rtc_synced_flag = 1;
+    } else {
         /* Default fallback epoch if RTC unit uninitialized */
         boot_epoch = 1771800000; /* Approximate fallback epoch */
+        rtc_synced_flag = 0;
     }
     rtc_datetime_t ist;
     rtc_get_ist(&ist);
     char buf[64];
     rtc_format_ist_full(buf, sizeof(buf));
-    kprintf("RTC: Initialized (Host hardware sync). Current IST: %s\n", buf);
+    kprintf("RTC: Initialized (%s). Current IST: %s\n",
+            rtc_synced_flag ? "Host hardware sync" : "Fallback clock", buf);
+}
+
+void rtc_set_epoch(uint32_t epoch) {
+    boot_epoch = epoch;
+    base_tick = tick_count;
+    rtc_synced_flag = 1;
+    /* Try writing to hardware RTC load register if supported */
+    PL031_RTC_LR = epoch;
+    char buf[64];
+    rtc_format_ist_full(buf, sizeof(buf));
+    kprintf("[RTC/NTP] System time updated from internet API! Current IST: %s\n", buf);
+}
+
+int rtc_is_synced(void) {
+    return rtc_synced_flag;
 }
 
 uint32_t rtc_get_epoch(void) {
-    uint32_t hw_sec = PL031_RTC_DR;
-    if (hw_sec > 0) return hw_sec;
-    return boot_epoch + (tick_count / 1000);
+    uint32_t elapsed_sec = (tick_count >= base_tick) ? ((tick_count - base_tick) / 1000) : (tick_count / 1000);
+    return boot_epoch + elapsed_sec;
 }
 
 void rtc_get_ist(rtc_datetime_t *dt) {

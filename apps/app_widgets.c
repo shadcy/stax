@@ -67,14 +67,22 @@ static crypto_data_t g_crypto_tickers[] = {
 static int g_current_crypto = 0;
 
 /* Clean Feed Headlines */
-static const char *g_headlines[] = {
+static const char *g_headlines_online[] = {
+    "Realtime internet clock synchronized via SNTP API",
     "Network telemetry active • All core services nominal",
-    "STAX Kernel v1.0 • Low-latency monolithic micro-core",
-    "System memory: 32MB physical RAM with active caching",
-    "World clock synchronized to hardware PL031 RTC",
+    "Live crypto and market feeds streaming",
+    "Weather telemetry synchronized for global regions",
     "Display compositor running at smooth 60 FPS"
 };
-#define NUM_HEADLINES 5
+#define NUM_HEADLINES_ONLINE 5
+
+static const char *g_headlines_offline[] = {
+    "Network offline • Telemetry disabled (---) • Enable in Settings",
+    "Realtime internet sync paused • Using local fallback",
+    "Live weather and market feeds unavailable (---)"
+};
+#define NUM_HEADLINES_OFFLINE 3
+
 static int g_headline_idx = 0;
 static int g_api_poll_timer = 0;
 static int g_api_ping_ms = 12;
@@ -96,11 +104,13 @@ void widgets_update(int dt_ms) {
     g_api_poll_timer += dt_ms;
     if (g_api_poll_timer >= 4000) {
         g_api_poll_timer = 0;
-        g_headline_idx = (g_headline_idx + 1) % NUM_HEADLINES;
+        int num_h = g_settings.network_enabled ? NUM_HEADLINES_ONLINE : NUM_HEADLINES_OFFLINE;
+        g_headline_idx = (g_headline_idx + 1) % num_h;
         if (g_settings.network_enabled) {
             int delta = ((int)(tick_count % 7) - 3);
             g_crypto_tickers[0].price_usd += delta * 10;
             g_crypto_tickers[1].price_usd += delta * 2;
+            g_crypto_tickers[2].price_usd += delta;
             g_api_ping_ms = 10 + (tick_count % 6);
         }
     }
@@ -136,7 +146,13 @@ static void draw_clean_card(int x, int y, int w, int h, const char *title, int p
 }
 
 /* Helper: Draw clean minimalist weather icon */
-static void draw_clean_weather_icon(int x, int y, int condition_id) {
+static void draw_clean_weather_icon(int x, int y, int condition_id, int is_online) {
+    if (!is_online) {
+        /* Offline icon: Clean dashed placeholder */
+        fb_fillrect(x + 4, y + 10, 22, 8, COL_TEXT_MUTED);
+        fb_drawline(x + 2, y + 14, x + 28, y + 14, COL_BORDER);
+        return;
+    }
     if (condition_id == 0) {
         /* Minimalist Sun */
         fb_fillrect(x + 6, y + 6, 16, 16, COL_ACCENT);
@@ -186,7 +202,7 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         strcat(stat_buf, "ms");
         draw_text(cx + cw - 160, cy + 4, stat_buf, COL_SUCCESS);
     } else {
-        draw_text(cx + cw - 160, cy + 4, "Offline (Disabled)", COL_DANGER);
+        draw_text(cx + cw - 160, cy + 4, "Offline | RTT: ---", COL_DANGER);
     }
 
     /* ---- 2. Widget 1: Clean Weather Card ---- */
@@ -206,9 +222,9 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     draw_text(pill_x + 20, pill_y + 2, wd->city, COL_TEXT_PRI);
     draw_text(pill_x + 128, pill_y + 2, ">", COL_ACCENT);
 
-    if (is_online) {
-        draw_clean_weather_icon(w1_x + 16, w1_y + 60, wd->condition_id);
+    draw_clean_weather_icon(w1_x + 16, w1_y + 60, wd->condition_id, is_online);
 
+    if (is_online) {
         /* Temperature */
         char temp_str[16];
         num_to_str(wd->temp_c, temp_str);
@@ -226,9 +242,10 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         num_to_str(wd->wind_kmh, num); strcat(met_buf, num); strcat(met_buf, " km/h");
         draw_text(w1_x + 16, w1_y + 138, met_buf, COL_TEXT_MUTED);
     } else {
-        fb_fillrect(w1_x + 14, w1_y + 65, w1_w - 28, 50, COL_CARD_HDR);
-        draw_text(w1_x + 24, w1_y + 75, "Offline", COL_TEXT_SEC);
-        draw_text(w1_x + 24, w1_y + 94, "Enable network in Settings", COL_TEXT_MUTED);
+        draw_text(w1_x + 56, w1_y + 64, "--- `C", COL_TEXT_MUTED);
+        draw_text(w1_x + 16, w1_y + 98, "--- (Offline)", COL_TEXT_MUTED);
+        draw_text(w1_x + 16, w1_y + 120, "Humidity: ---", COL_TEXT_MUTED);
+        draw_text(w1_x + 16, w1_y + 138, "Wind    : ---", COL_TEXT_MUTED);
     }
 
     /* ---- 3. Widget 2: Clean Crypto / Market Card ---- */
@@ -283,9 +300,17 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
             fb_putpixel(px2, py2, COL_ACCENT);
         }
     } else {
-        fb_fillrect(w2_x + 14, w2_y + 65, w2_w - 28, 50, COL_CARD_HDR);
-        draw_text(w2_x + 24, w2_y + 75, "Offline", COL_TEXT_SEC);
-        draw_text(w2_x + 24, w2_y + 94, "Enable network in Settings", COL_TEXT_MUTED);
+        draw_text(w2_x + 14, w2_y + 58, "$---", COL_TEXT_MUTED);
+        draw_text(w2_x + 130, w2_y + 58, "---%", COL_TEXT_MUTED);
+
+        /* Dashed / offline sparkline */
+        int gx = w2_x + 14;
+        int gy = w2_y + 82;
+        int gw = w2_w - 28;
+        int gh = 65;
+        fb_fillrect(gx, gy, gw, gh, COL_CARD_HDR);
+        fb_drawline(gx, gy + (gh / 2), gx + gw - 1, gy + (gh / 2), COL_BORDER);
+        draw_text(gx + (gw / 2) - 18, gy + (gh / 2) - 8, "---", COL_TEXT_MUTED);
     }
 
     /* ---- 4. Widget 3: Clean World Clock Card ---- */
@@ -293,7 +318,7 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     int w3_y = cy + 205;
     int w3_w = cw - 16;
     int w3_h = 95;
-    draw_clean_card(w3_x, w3_y, w3_w, w3_h, "World Time (NTP Sync)", WIDGET_PIN_CLOCK);
+    draw_clean_card(w3_x, w3_y, w3_w, w3_h, is_online ? "World Time (SNTP Realtime Sync)" : "World Time (Offline RTC)", WIDGET_PIN_CLOCK);
 
     const char *tz_names[] = {"Mumbai (IST)", "London (UTC)", "New York (EST)", "Tokyo (JST)"};
     int tz_w = (w3_w - 20) / 4;
@@ -306,24 +331,28 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         draw_text(zx + 6, w3_y + 32, tz_names[z], COL_TEXT_SEC);
 
         char clk_buf[16];
-        rtc_datetime_t t;
-        rtc_get_ist(&t);
-        int h = t.hour;
-        if (z == 1) h = (h + 24 - 5) % 24;
-        else if (z == 2) h = (h + 24 - 10) % 24;
-        else if (z == 3) h = (h + 3) % 24;
+        if (is_online || rtc_is_synced()) {
+            rtc_datetime_t t;
+            rtc_get_ist(&t);
+            int h = t.hour;
+            if (z == 1) h = (h + 24 - 5) % 24;
+            else if (z == 2) h = (h + 24 - 10) % 24;
+            else if (z == 3) h = (h + 3) % 24;
 
-        clk_buf[0] = '0' + (h / 10);
-        clk_buf[1] = '0' + (h % 10);
-        clk_buf[2] = ':';
-        clk_buf[3] = '0' + (t.min / 10);
-        clk_buf[4] = '0' + (t.min % 10);
-        clk_buf[5] = ':';
-        clk_buf[6] = '0' + (t.sec / 10);
-        clk_buf[7] = '0' + (t.sec % 10);
-        clk_buf[8] = '\0';
+            clk_buf[0] = '0' + (h / 10);
+            clk_buf[1] = '0' + (h % 10);
+            clk_buf[2] = ':';
+            clk_buf[3] = '0' + (t.min / 10);
+            clk_buf[4] = '0' + (t.min % 10);
+            clk_buf[5] = ':';
+            clk_buf[6] = '0' + (t.sec / 10);
+            clk_buf[7] = '0' + (t.sec % 10);
+            clk_buf[8] = '\0';
+        } else {
+            strcpy(clk_buf, "--:--:--");
+        }
 
-        draw_text(zx + 6, w3_y + 54, clk_buf, COL_TEXT_PRI);
+        draw_text(zx + 6, w3_y + 54, clk_buf, is_online ? COL_TEXT_PRI : COL_TEXT_MUTED);
     }
 
     /* ---- 5. Bottom Status Strip ---- */
@@ -332,7 +361,9 @@ void widgets_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     fb_drawline(cx, bar_y, cx + cw - 1, bar_y, COL_BORDER);
 
     draw_text(cx + 8, bar_y + 2, "Status:", COL_TEXT_SEC);
-    draw_text(cx + 70, bar_y + 2, g_headlines[g_headline_idx], COL_TEXT_PRI);
+    const char *hd = is_online ? g_headlines_online[g_headline_idx % NUM_HEADLINES_ONLINE]
+                               : g_headlines_offline[g_headline_idx % NUM_HEADLINES_OFFLINE];
+    draw_text(cx + 70, bar_y + 2, hd, is_online ? COL_TEXT_PRI : COL_TEXT_MUTED);
 }
 
 void widgets_mouse_click(struct window *win, int mx, int my, int button) {
@@ -422,8 +453,9 @@ void widgets_draw_desktop_overlay(void) {
         draw_text(pill_x + 20, pill_y + 2, wd->city, COL_TEXT_PRI);
         draw_text(pill_x + 118, pill_y + 2, ">", COL_ACCENT);
 
+        draw_clean_weather_icon(dw_x + 16, curr_y + 58, wd->condition_id, is_online);
+
         if (is_online) {
-            draw_clean_weather_icon(dw_x + 16, curr_y + 58, wd->condition_id);
             char temp_str[16];
             num_to_str(wd->temp_c, temp_str);
             strcat(temp_str, " `C");
@@ -435,7 +467,9 @@ void widgets_draw_desktop_overlay(void) {
             num_to_str(wd->wind_kmh, num); strcat(met_buf, num); strcat(met_buf, "km/h");
             draw_text(dw_x + 16, curr_y + 112, met_buf, COL_TEXT_MUTED);
         } else {
-            draw_text(dw_x + 16, curr_y + 70, "Offline", COL_TEXT_SEC);
+            draw_text(dw_x + 56, curr_y + 60, "--- `C", COL_TEXT_MUTED);
+            draw_text(dw_x + 16, curr_y + 92, "--- (Offline)", COL_TEXT_MUTED);
+            draw_text(dw_x + 16, curr_y + 112, "Hum: --- | Wind: ---", COL_TEXT_MUTED);
         }
         curr_y += h + 12;
     }
@@ -482,7 +516,16 @@ void widgets_draw_desktop_overlay(void) {
                 fb_putpixel(px2, py2, COL_ACCENT);
             }
         } else {
-            draw_text(dw_x + 16, curr_y + 70, "Offline", COL_TEXT_SEC);
+            draw_text(dw_x + 14, curr_y + 54, "$---", COL_TEXT_MUTED);
+            draw_text(dw_x + 130, curr_y + 54, "---%", COL_TEXT_MUTED);
+
+            int gx = dw_x + 14;
+            int gy = curr_y + 76;
+            int gw = dw_w - 28;
+            int gh = 48;
+            fb_fillrect(gx, gy, gw, gh, COL_CARD_HDR);
+            fb_drawline(gx, gy + (gh / 2), gx + gw - 1, gy + (gh / 2), COL_BORDER);
+            draw_text(gx + (gw / 2) - 16, gy + (gh / 2) - 8, "---", COL_TEXT_MUTED);
         }
         curr_y += h + 12;
     }
@@ -490,7 +533,7 @@ void widgets_draw_desktop_overlay(void) {
     /* 3. Pinned World Clock Widget */
     if (g_settings.widgets_pinned_mask & WIDGET_PIN_CLOCK) {
         int h = 95;
-        draw_clean_card(dw_x, curr_y, dw_w, h, "World Time", 0);
+        draw_clean_card(dw_x, curr_y, dw_w, h, is_online ? "World Time" : "World Time (Offline)", 0);
         draw_text(dw_x + dw_w - 20, curr_y + 4, "\xFB", COL_TEXT_MUTED);
 
         const char *tz_names[] = {"Mumbai", "London", "New York", "Tokyo"};
@@ -505,21 +548,25 @@ void widgets_draw_desktop_overlay(void) {
             draw_text(zx, zy, tz_names[z], COL_TEXT_SEC);
 
             char clk_buf[16];
-            rtc_datetime_t t;
-            rtc_get_ist(&t);
-            int h_val = t.hour;
-            if (z == 1) h_val = (h_val + 24 - 5) % 24;
-            else if (z == 2) h_val = (h_val + 24 - 10) % 24;
-            else if (z == 3) h_val = (h_val + 3) % 24;
+            if (is_online || rtc_is_synced()) {
+                rtc_datetime_t t;
+                rtc_get_ist(&t);
+                int h_val = t.hour;
+                if (z == 1) h_val = (h_val + 24 - 5) % 24;
+                else if (z == 2) h_val = (h_val + 24 - 10) % 24;
+                else if (z == 3) h_val = (h_val + 3) % 24;
 
-            clk_buf[0] = '0' + (h_val / 10);
-            clk_buf[1] = '0' + (h_val % 10);
-            clk_buf[2] = ':';
-            clk_buf[3] = '0' + (t.min / 10);
-            clk_buf[4] = '0' + (t.min % 10);
-            clk_buf[5] = '\0';
+                clk_buf[0] = '0' + (h_val / 10);
+                clk_buf[1] = '0' + (h_val % 10);
+                clk_buf[2] = ':';
+                clk_buf[3] = '0' + (t.min / 10);
+                clk_buf[4] = '0' + (t.min % 10);
+                clk_buf[5] = '\0';
+            } else {
+                strcpy(clk_buf, "--:--");
+            }
 
-            draw_text(zx + 64, zy, clk_buf, COL_TEXT_PRI);
+            draw_text(zx + 64, zy, clk_buf, is_online ? COL_TEXT_PRI : COL_TEXT_MUTED);
         }
         curr_y += h + 12;
     }

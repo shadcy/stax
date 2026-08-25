@@ -28,6 +28,8 @@ typedef struct {
 
 void rtc_init(void);
 uint32_t rtc_get_epoch(void);
+void rtc_set_epoch(uint32_t epoch);
+int rtc_is_synced(void);
 void rtc_get_ist(rtc_datetime_t *dt);
 void rtc_format_ist_navbar(char *buf, int max_len);
 void rtc_format_ist_full(char *buf, int max_len);

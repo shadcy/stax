@@ -6,9 +6,11 @@
 #include "netif/ethernet.h"
 #include "lwip/etharp.h"
 #include "lwip/prot/ethernet.h"
+#include "lwip/apps/sntp.h"
 #include "../include/gfx_console.h"
 #include "../include/console.h"
 #include "../include/irq.h"
+#include "../include/rtc.h"
 
 extern err_t smc_netif_init(struct netif *netif);
 extern void smc_netif_poll(struct netif *netif);
@@ -16,6 +18,7 @@ extern void smc_netif_poll(struct netif *netif);
 static struct netif smc_netif;
 
 static void net_ensure_dns(void);
+static void net_start_sntp(void);
 int net_poll(void);
 
 static void net_install_static_arp(void);
@@ -36,6 +39,7 @@ void net_init(void) {
 
     net_install_static_arp();
     net_ensure_dns();
+    net_start_sntp();
 }
 
 /*
@@ -80,6 +84,17 @@ static void net_ensure_dns(void) {
     IP_ADDR4(&secondary, 8, 8, 8, 8);
     dns_setserver(0, &primary);
     dns_setserver(1, &secondary);
+}
+
+static void net_start_sntp(void) {
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_setservername(1, "time.google.com");
+    ip_addr_t nist_ip;
+    IP_ADDR4(&nist_ip, 129, 6, 15, 28);
+    sntp_setserver(2, &nist_ip);
+    sntp_init();
+    kprintf("[NET] SNTP Internet Realtime Time Protocol initialized (pool.ntp.org)\n");
 }
 
 int net_poll(void) {

@@ -203,7 +203,8 @@ KERNEL_OBJS  += $(BUILD_DIR)/smc91c111.o \
 LWIP_DIR := third_party/lwip/src
 LWIP_SRCS := $(wildcard $(LWIP_DIR)/core/*.c) \
              $(wildcard $(LWIP_DIR)/core/ipv4/*.c) \
-             $(wildcard $(LWIP_DIR)/netif/*.c)
+             $(wildcard $(LWIP_DIR)/netif/*.c) \
+             $(wildcard $(LWIP_DIR)/apps/sntp/*.c)
 LWIP_OBJS := $(patsubst $(LWIP_DIR)/%.c, $(BUILD_DIR)/lwip/%.o, $(LWIP_SRCS))
 KERNEL_OBJS  += $(LWIP_OBJS)
 
