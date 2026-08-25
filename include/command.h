@@ -62,4 +62,7 @@ void cmd_fwconfirm(int argc, char *argv[]);
 void cmd_ifconfig(int argc, char *argv[]);
 void cmd_ping(int argc, char *argv[]);
 
+/* Real-Time Clock commands */
+void cmd_date(int argc, char *argv[]);
+
 #endif

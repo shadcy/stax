@@ -56,6 +56,8 @@ static const command_t commands[] = {
     {"ifconfig","Show network interface configuration", cmd_ifconfig},
     {"ping",    "Send ICMP ECHO_REQUEST to network hosts", cmd_ping},
     {"browser", "Launch Graphical Web Browser", cmd_browser},
+    {"date",    "Show current date and time (IST Mumbai)", cmd_date},
+    {"time",    "Show current date and time (IST Mumbai)", cmd_date},
     {NULL,      NULL,                                NULL}
 };
 
@@ -1162,3 +1164,22 @@ void cmd_fwconfirm(int argc, char *argv[])
     extern int stax_firmware_confirm(void);
     stax_firmware_confirm();
 }
+
+/* ---------------------------------------------------------------------------
+ * cmd_date / cmd_time — display realtime date and time in IST (Mumbai)
+ * --------------------------------------------------------------------------- */
+void cmd_date(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    char buf[64];
+    extern void rtc_format_ist_full(char *buf, int max_len);
+    extern uint32_t rtc_get_epoch(void);
+    rtc_format_ist_full(buf, sizeof(buf));
+    kputs("Current Date & Time: ");
+    kputs(buf);
+    kputs("\nTimezone           : Indian Standard Time (UTC+05:30, Mumbai / Kolkata)\n");
+    kputs("Host UTC Epoch     : ");
+    kput_uint(rtc_get_epoch());
+    kputs(" seconds\n");
+}
+
