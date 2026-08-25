@@ -15,3 +15,5 @@ char kgetc(void);
 void kgets(char *buf, int max_len);
 
 #endif
+
+void kprintf(const char *fmt, ...);
