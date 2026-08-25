@@ -1,7 +1,6 @@
 /* ============================================================================
  * STAX — app_terminal.c
- * Standalone per-window terminal — compact 32-row buffer so it fits in a
- * 64 KB heap alongside file-manager, editor, and window structs.
+ * Concurrent Graphical Terminal with Full Shell Command Execution & ANSI Colors
  * ============================================================================ */
 
 #include "app_terminal.h"
@@ -11,44 +10,108 @@
 #include "heap.h"
 #include "string.h"
 #include "command.h"
+#include "console.h"
 
-/* ---- Keep the buffer small to fit in the 64 KB heap ---- */
-#define TERM_COLS   72   /* visible columns                        */
-#define TERM_ROWS   32   /* ring-buffer depth (32×72×3 = ~6.9 KB)  */
-#define TERM_INLEN  64   /* input line length                       */
+#define TERM_COLS       80
+#define TERM_ROWS       64
+#define TERM_INLEN      128
+#define TERM_HIST_MAX   16
 
 typedef struct {
     char     text[TERM_ROWS][TERM_COLS];
     uint16_t color[TERM_ROWS][TERM_COLS];
-    int      head;          /* current write row (mod TERM_ROWS) */
-    int      cur_x;         /* write column on head row          */
+    int      head;                  /* Current write row index */
+    int      cur_x;                 /* Write column on head row */
+    uint16_t cur_col;               /* Current active text color */
+    
     char     input[TERM_INLEN];
     int      input_pos;
+    
+    /* Command History */
+    char     history[TERM_HIST_MAX][TERM_INLEN];
+    int      history_count;
+    int      history_idx;
+    
+    /* ANSI state machine */
+    int      ansi_state;            /* 0=normal, 1=ESC, 2=bracket */
+    int      ansi_param;
+    
     int      blink_n;
     int      cur_on;
 } terminal_state_t;
 
-/* ---- helpers ---- */
+/* Advance to the next line in circular ring buffer */
 static void term_advance(terminal_state_t *st) {
     st->head = (st->head + 1) % TERM_ROWS;
     st->cur_x = 0;
     for (int c = 0; c < TERM_COLS; c++) {
         st->text[st->head][c]  = 0;
-        st->color[st->head][c] = COLOR_WHITE;
+        st->color[st->head][c] = st->cur_col;
     }
 }
 
-static void term_putc(terminal_state_t *st, char c, uint16_t col) {
+/* Output single character into terminal ring buffer */
+static void term_putc(terminal_state_t *st, char c, uint16_t default_col) {
+    /* Basic ANSI escape code parser for color formatting */
+    if (st->ansi_state == 0) {
+        if (c == 0x1B) {
+            st->ansi_state = 1;
+            return;
+        }
+    } else if (st->ansi_state == 1) {
+        if (c == '[') {
+            st->ansi_state = 2;
+            st->ansi_param = 0;
+            return;
+        }
+        st->ansi_state = 0;
+    } else if (st->ansi_state == 2) {
+        if (c >= '0' && c <= '9') {
+            st->ansi_param = st->ansi_param * 10 + (c - '0');
+            return;
+        } else if (c == 'm') {
+            if (st->ansi_param == 0) st->cur_col = COLOR_WHITE;
+            else if (st->ansi_param == 31) st->cur_col = rgb565(255, 80, 80);    /* Red */
+            else if (st->ansi_param == 32) st->cur_col = rgb565(80, 240, 80);    /* Green */
+            else if (st->ansi_param == 33) st->cur_col = rgb565(255, 220, 80);   /* Yellow */
+            else if (st->ansi_param == 34) st->cur_col = rgb565(80, 160, 255);   /* Blue */
+            else if (st->ansi_param == 35) st->cur_col = rgb565(230, 100, 255);  /* Magenta */
+            else if (st->ansi_param == 36) st->cur_col = rgb565(80, 240, 240);   /* Cyan */
+            else if (st->ansi_param == 37) st->cur_col = COLOR_WHITE;
+            st->ansi_state = 0;
+            return;
+        } else {
+            st->ansi_state = 0;
+            return;
+        }
+    }
+
+    uint16_t col = (st->cur_col != COLOR_WHITE) ? st->cur_col : default_col;
+
     if (c == '\n') {
         term_advance(st);
     } else if (c == '\r') {
         st->cur_x = 0;
-    } else if (c == '\b') {
-        if (st->cur_x > 0) { st->cur_x--; st->text[st->head][st->cur_x] = 0; }
+    } else if (c == '\t') {
+        int next_tab = (st->cur_x + 8) & ~7;
+        while (st->cur_x < next_tab && st->cur_x < TERM_COLS) {
+            st->text[st->head][st->cur_x]  = ' ';
+            st->color[st->head][st->cur_x] = col;
+            st->cur_x++;
+        }
+        if (st->cur_x >= TERM_COLS) term_advance(st);
+    } else if (c == '\b' || c == 0x7F) {
+        if (st->cur_x > 0) {
+            st->cur_x--;
+            st->text[st->head][st->cur_x] = 0;
+        }
     } else if ((unsigned char)c >= 32) {
+        if (st->cur_x >= TERM_COLS) {
+            term_advance(st);
+        }
         st->text[st->head][st->cur_x]  = c;
         st->color[st->head][st->cur_x] = col;
-        if (++st->cur_x >= TERM_COLS) term_advance(st);
+        st->cur_x++;
     }
 }
 
@@ -56,20 +119,43 @@ static void term_puts(terminal_state_t *st, const char *s, uint16_t col) {
     while (*s) term_putc(st, *s++, col);
 }
 
-static void term_init(terminal_state_t *st) {
-    st->head = 0; st->cur_x = 0; st->input_pos = 0;
-    st->blink_n = 0; st->cur_on = 1;
-    for (int r = 0; r < TERM_ROWS; r++)
+static void term_clear(terminal_state_t *st) {
+    st->head = 0;
+    st->cur_x = 0;
+    st->cur_col = COLOR_WHITE;
+    st->ansi_state = 0;
+    for (int r = 0; r < TERM_ROWS; r++) {
         for (int c = 0; c < TERM_COLS; c++) {
             st->text[r][c]  = 0;
             st->color[r][c] = COLOR_WHITE;
         }
-    term_puts(st, "STAX Terminal v1.0\n", rgb565(100, 220, 100));
-    term_puts(st, "Commands: ls, mkdir, cat, help, cls ...\n", rgb565(180, 180, 180));
-    term_puts(st, "Ctrl+S saves editor files.\n\n", rgb565(140, 140, 160));
+    }
 }
 
-/* ---- Draw ---- */
+static void term_init(terminal_state_t *st) {
+    term_clear(st);
+    st->input_pos = 0;
+    st->input[0] = '\0';
+    st->history_count = 0;
+    st->history_idx = 0;
+    st->blink_n = 0;
+    st->cur_on = 1;
+
+    term_puts(st, "========================================\n", rgb565(80, 160, 255));
+    term_puts(st, "  STAX Concurrent Shell Terminal\n", rgb565(80, 240, 100));
+    term_puts(st, "========================================\n", rgb565(80, 160, 255));
+    term_puts(st, "Type 'help' for commands | 'clear' to clear\n\n", rgb565(200, 205, 215));
+}
+
+/* Redirection hook for console output */
+static void term_console_hook(char c, void *ctx) {
+    terminal_state_t *st = (terminal_state_t *)ctx;
+    if (st) {
+        term_putc(st, c, COLOR_WHITE);
+    }
+}
+
+/* Fast glyph rendering */
 static void draw_glyph(uint16_t *fbuf, int px, int py, char c, uint16_t color) {
     extern const unsigned char font8x16_data[256][16];
     const unsigned char *g = font8x16_data[(unsigned char)c];
@@ -90,61 +176,68 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     if (!st) {
         st = (terminal_state_t *)kmalloc(sizeof(terminal_state_t));
         if (!st) {
-            /* OOM — draw error message */
             fb_fillrect(cx, cy, cw, ch, rgb565(80, 0, 0));
+            draw_text(cx + 8, cy + 8, "Out of Memory", COLOR_WHITE);
             return;
         }
         term_init(st);
         win->app_data = st;
     }
 
-    /* Dark background */
-    fb_fillrect(cx, cy, cw, ch, rgb565(12, 12, 20));
+    /* Terminal Window Background (Dark Midnight Slate) */
+    fb_fillrect(cx, cy, cw, ch, rgb565(14, 16, 22));
 
     /* Cursor blink */
-    if (++st->blink_n >= 40) { st->blink_n = 0; st->cur_on = !st->cur_on; }
+    if (++st->blink_n >= 30) {
+        st->blink_n = 0;
+        st->cur_on = !st->cur_on;
+    }
 
     uint16_t *fbuf = fb_get_buffer();
+    if (!fbuf) return;
 
-    int text_area_h = ch - 22;          /* leave room for input bar */
+    int text_area_h = ch - 26;
     int max_rows = text_area_h / 16;
     int max_cols = cw / 8;
     if (max_cols > TERM_COLS) max_cols = TERM_COLS;
     if (max_rows > TERM_ROWS) max_rows = TERM_ROWS;
 
-    /* Draw ring buffer: show the last max_rows rows ending at head */
+    /* Render ring buffer ending at st->head */
     for (int r = 0; r < max_rows; r++) {
-        /* row index into ring: head-(max_rows-1-r), wrapping */
         int ring_row = (st->head - (max_rows - 1 - r) + TERM_ROWS * 2) % TERM_ROWS;
-        int py = cy + r * 16;
+        int py = cy + 4 + r * 16;
         for (int c = 0; c < max_cols; c++) {
             char ch_val = st->text[ring_row][c];
-            if (ch_val >= 32) {
-                draw_glyph(fbuf, cx + c * 8, py, ch_val, st->color[ring_row][c]);
+            if (ch_val >= 32 && ch_val <= 126) {
+                draw_glyph(fbuf, cx + 4 + c * 8, py, ch_val, st->color[ring_row][c]);
             }
         }
     }
 
-    /* Input bar */
-    int bar_y = cy + ch - 22;
-    fb_fillrect(cx, bar_y, cw, 22, rgb565(20, 20, 40));
-    fb_drawline(cx, bar_y, cx + cw - 1, bar_y, rgb565(50, 160, 50));
+    /* Bottom Command Input Bar */
+    int bar_y = cy + ch - 24;
+    fb_fillrect(cx, bar_y, cw, 24, rgb565(22, 25, 36));
+    fb_drawline(cx, bar_y, cx + cw - 1, bar_y, rgb565(40, 50, 75));
 
-    /* Draw prompt + input */
+    /* Prompt + Input Line */
     const char *prompt = "STAX:/> ";
-    int px = cx + 4, py2 = bar_y + 3;
+    int px = cx + 6, py2 = bar_y + 4;
     for (const char *p = prompt; *p; p++) {
-        draw_glyph(fbuf, px, py2, *p, rgb565(80, 200, 80));
+        draw_glyph(fbuf, px, py2, *p, rgb565(80, 240, 100));
         px += 8;
     }
+
     for (int i = 0; i < st->input_pos; i++) {
         draw_glyph(fbuf, px, py2, st->input[i], COLOR_WHITE);
         px += 8;
     }
-    if (st->cur_on) fb_fillrect(px, py2, 8, 16, rgb565(80, 200, 80));
+
+    if (st->cur_on) {
+        fb_fillrect(px, py2, 8, 16, rgb565(80, 240, 100));
+    }
 }
 
-/* ---- Key handler ---- */
+/* Key Event Handler */
 void terminal_key_event(struct window *win, char c) {
     terminal_state_t *st = (terminal_state_t *)win->app_data;
     if (!st) return;
@@ -152,30 +245,65 @@ void terminal_key_event(struct window *win, char c) {
     if (c == '\r' || c == '\n') {
         st->input[st->input_pos] = '\0';
 
-        /* Echo command into text buffer */
-        term_puts(st, "STAX:/> ", rgb565(80, 200, 80));
+        /* Echo typed command */
+        term_puts(st, "STAX:/> ", rgb565(80, 240, 100));
         term_puts(st, st->input, COLOR_WHITE);
         term_putc(st, '\n', COLOR_WHITE);
 
         if (st->input_pos > 0) {
-            /* Local built-ins */
-            if (st->input[0]=='c' && st->input[1]=='l' && st->input[2]=='s' &&
-                (st->input[3]=='\0' || st->input[3]==' ')) {
-                term_init(st);
+            /* Add to history */
+            if (st->history_count < TERM_HIST_MAX) {
+                strncpy(st->history[st->history_count++], st->input, TERM_INLEN);
             } else {
-                /* Route through global command_process — output goes to
-                   gfx_console (shared boot log), which is acceptable until
-                   a full output-redirection layer is added. */
+                for (int i = 0; i < TERM_HIST_MAX - 1; i++) {
+                    strncpy(st->history[i], st->history[i + 1], TERM_INLEN);
+                }
+                strncpy(st->history[TERM_HIST_MAX - 1], st->input, TERM_INLEN);
+            }
+            st->history_idx = st->history_count;
+
+            /* Check for clear/cls command */
+            if (strcmp(st->input, "clear") == 0 || strcmp(st->input, "cls") == 0) {
+                term_clear(st);
+            } else {
+                /* Redirect all kernel and shell output to this terminal instance */
+                console_set_hook(term_console_hook, st);
                 command_process(st->input);
-                term_puts(st, "[done]\n", rgb565(100, 100, 100));
+                console_set_hook(NULL, NULL);
             }
         }
         st->input_pos = 0;
+        st->input[0] = '\0';
 
-    } else if ((c == '\b' || c == 0x7F) && st->input_pos > 0) {
-        st->input[--st->input_pos] = '\0';
+    } else if (c == '\b' || c == 0x7F) {
+        if (st->input_pos > 0) {
+            st->input[--st->input_pos] = '\0';
+        }
     } else if (c >= 32 && c <= 126 && st->input_pos < TERM_INLEN - 1) {
         st->input[st->input_pos++] = c;
         st->input[st->input_pos]   = '\0';
     }
 }
+
+static int g_term_counter = 0;
+
+struct window *terminal_open_new(void) {
+    int idx = g_term_counter++;
+    int ox = 70 + (idx % 6) * 30;
+    int oy = 48 + (idx % 6) * 30;
+    char title[32];
+    strcpy(title, "Terminal");
+    if (idx > 0) {
+        int tlen = 8;
+        title[tlen++] = ' ';
+        title[tlen++] = '#';
+        title[tlen++] = '1' + (idx % 9);
+        title[tlen] = '\0';
+    }
+    struct window *tw = wm_add_window(ox, oy, 560, 360, title, terminal_draw_window);
+    if (tw) {
+        tw->key_event = terminal_key_event;
+    }
+    return tw;
+}
+

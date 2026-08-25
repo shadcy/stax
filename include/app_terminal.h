@@ -8,5 +8,7 @@ struct window;
 
 void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch);
 void terminal_key_event(struct window *win, char c);
+struct window *terminal_open_new(void);
 
 #endif
+

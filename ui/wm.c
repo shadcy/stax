@@ -174,8 +174,8 @@ void wm_update(void) {
                 
                 int item = (my - ctx_menu.y) / 30;
                 if (item == 0) {
-                    window_t *tw = wm_add_window(60, 50, 560, 360, "Terminal", terminal_draw_window);
-                    if (tw) tw->key_event = terminal_key_event;
+                    extern struct window *terminal_open_new(void);
+                    terminal_open_new();
                 } else if (item == 1) {
                     extern void cmd_browser(int, char**);
                     cmd_browser(0, 0);
@@ -227,8 +227,8 @@ void wm_update(void) {
                         cmd_browser(0, 0);
                         start_menu_active = 0;
                     } else if (rel_y >= 60 && rel_y < 90) {
-                        window_t *tw = wm_add_window(60, 50, 560, 360, "Terminal", terminal_draw_window);
-                        if (tw) tw->key_event = terminal_key_event;
+                        extern struct window *terminal_open_new(void);
+                        terminal_open_new();
                         start_menu_active = 0;
                     } else if (rel_y >= 90 && rel_y < 120) {
                         window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
@@ -431,8 +431,8 @@ desktop_hit_done:
                     extern void cmd_browser(int, char**);
                     cmd_browser(0, 0);
                 } else if (app_icons[i].id == 1) {
-                    window_t *tw = wm_add_window(60, 50, 560, 360, "Terminal", terminal_draw_window);
-                    if (tw) tw->key_event = terminal_key_event;
+                    extern struct window *terminal_open_new(void);
+                    terminal_open_new();
                 } else if (app_icons[i].id == 2) {
                     window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
                     if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
