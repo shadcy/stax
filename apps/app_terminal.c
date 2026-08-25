@@ -78,8 +78,8 @@ static void draw_glyph(uint16_t *fbuf, int px, int py, char c, uint16_t color) {
         for (int gb = 0; gb < 8; gb++) {
             if (bits & (0x80 >> gb)) {
                 int sx = px + gb, sy = py + gr;
-                if ((unsigned)sx < FB_WIDTH && (unsigned)sy < FB_HEIGHT)
-                    fbuf[sy * FB_WIDTH + sx] = color;
+                if ((unsigned)sx < fb_width && (unsigned)sy < fb_height)
+                    fbuf[sy * fb_width + sx] = color;
             }
         }
     }

@@ -54,7 +54,7 @@ void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     draw_text(cx + 140, cy + 120, "ARM926EJ-S", COLOR_BLACK);
     
     draw_text(cx + 10, cy + 140, "Display:", COLOR_BLACK);
-    draw_text(cx + 140, cy + 140, "640x480 16-bit", COLOR_BLACK);
+    draw_text(cx + 140, cy + 140, "1024x768 16-bit", COLOR_BLACK);
     
     /* Memory */
     fb_drawline(cx + 10, cy + 165, cx + cw - 10, cy + 165, rgb565(180, 180, 180));
