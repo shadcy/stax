@@ -21,6 +21,7 @@ typedef struct {
     int      active_tab;
     int      network_enabled;    /* 1 = Internet Online, 0 = Offline/Disabled */
     int      widgets_active;     /* 1 = Desktop Widgets Active */
+    uint32_t widgets_pinned_mask;/* Bitmask of widgets pinned to desktop display */
 } sys_settings_t;
 
 extern sys_settings_t g_settings;

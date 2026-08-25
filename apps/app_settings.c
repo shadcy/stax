@@ -30,7 +30,8 @@ sys_settings_t g_settings = {
     .resolution_h = 768,
     .active_tab = 0,
     .network_enabled = 1,
-    .widgets_active = 0
+    .widgets_active = 0,
+    .widgets_pinned_mask = 0
 };
 
 void settings_init(void) {
@@ -48,6 +49,7 @@ void settings_init(void) {
     g_settings.active_tab = 0;
     g_settings.network_enabled = 1;
     g_settings.widgets_active = 0;
+    g_settings.widgets_pinned_mask = 0;
 }
 
 void settings_load(void) {
