@@ -193,78 +193,55 @@ void wm_update(void) {
             }
             ctx_menu.active = 0;
             if (!right_pressed) goto update_done;
-        }
-
-        if (my >= (int)(FB_HEIGHT - TASKBAR_HEIGHT)) {
+        }        if (my < TASKBAR_HEIGHT) {
             if (pressed) {
                 if (mx >= 0 && mx < 60) {
                     start_menu_active = !start_menu_active;
                 } else {
                     start_menu_active = 0;
-                    int tb_idx = 0;
-                    window_t *curr = window_list;
-                    while (curr) {
-                        if (curr->state != WM_STATE_HIDDEN) {
-                            int item_x = 60 + tb_idx * 100;
-                            if (mx >= item_x && mx < item_x + 95) {
-                                if (curr->state == WM_STATE_MINIMIZED) {
-                                    curr->state = WM_STATE_ACTIVE;
-                                    wm_bring_to_front(curr);
-                                } else {
-                                    curr->state = WM_STATE_MINIMIZED;
-                                }
-                                break;
-                            }
-                            tb_idx++;
-                        }
-                        curr = curr->next;
-                    }
+                    /* Clicked on window title in taskbar? Or just ignore for now since Mac doesn't minimize on top bar */
                 }
             }
             drag_win = NULL;
         } else {
             if (pressed && start_menu_active) {
                 int sm_x = 0;
-                int sm_y = FB_HEIGHT - TASKBAR_HEIGHT - 280;
-                int sm_w = 140;
-                int sm_h = 280;
+                int sm_y = TASKBAR_HEIGHT;
+                int sm_w = 200;
+                int sm_h = 160;
                 if (mx >= sm_x && mx < sm_x + sm_w && my >= sm_y && my < sm_y + sm_h) {
-                    int item = (my - sm_y - 24) / 40;
-                    if (item == 0) {
+                    int rel_y = my - sm_y;
+                    if (rel_y >= 30 && rel_y <= 60) {
+                        extern void fb_set_resolution(uint32_t w, uint32_t h);
+                        fb_set_resolution(800, 600);
+                        start_menu_active = 0;
+                    } else if (rel_y >= 60 && rel_y <= 100) {
+                        extern void fb_set_resolution(uint32_t w, uint32_t h);
+                        fb_set_resolution(1024, 768);
+                        start_menu_active = 0;
+                    } else if (rel_y >= 100 && rel_y <= 125) {
                         extern void taskmgr_draw_window(struct window *win,int cx,int cy,int cw,int ch);
                         wm_add_window(100,100,400,300,"Task Manager",taskmgr_draw_window);
                         start_menu_active = 0;
-                    } else if (item == 1) {
-                        extern void cmd_game(int, char**);
-                        char *args[] = {"game", "--snake"};
-                        cmd_game(2, args);
+                    } else if (rel_y >= 125 && rel_y <= 150) {
+                        /* Force Quit Logic */
+                        extern void wm_close_window(window_t *win);
+                        if (focused_window) {
+                            wm_close_window(focused_window);
+                        } else if (window_list) {
+                            wm_close_window(window_list);
+                        }
+                        extern volatile int stax_doom_quit_requested;
+                        stax_doom_quit_requested = 1;
+                        
                         start_menu_active = 0;
-                    } else if (item == 2) {
-                        extern void cmd_sokoban(int, char**);
-                        cmd_sokoban(0, 0);
-                        start_menu_active = 0;
-                    } else if (item == 3) {
-                        extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                        extern void calculator_mouse_click(struct window *win, int mx, int my, int btn);
-                        window_t *cw = wm_add_window(200, 100, 210, 260, "Calculator", calculator_draw_window);
-                        if (cw) cw->mouse_click = calculator_mouse_click;
-                        start_menu_active = 0;
-                    } else if (item == 4) {
-                        extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                        wm_add_window(150, 150, 300, 260, "System Info", sysinfo_draw_window);
-                        start_menu_active = 0;
-                    } else if (item == 5) {
-                        extern void memview_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                        extern void memview_key_event(struct window *win, char c);
-                        window_t *mw = wm_add_window(100, 80, 420, 280, "Mem Viewer", memview_draw_window);
-                        if (mw) mw->key_event = memview_key_event;
+                    } else {
                         start_menu_active = 0;
                     }
-                    goto update_done;
                 } else {
                     start_menu_active = 0;
                 }
-            }
+            } 
             
             window_t *curr = window_list;
             int hit_window = 0;
@@ -280,12 +257,12 @@ void wm_update(void) {
                         focused_window = curr;
                         
                         int tby = curr->y + BORDER_WIDTH;
-                        int btn_w = 16;
-                        int close_x = curr->x + curr->width - BORDER_WIDTH - btn_w - 2;
-                        int max_x   = close_x - btn_w - 2;
-                        int min_x   = max_x - btn_w - 2;
+                        int btn_w = 12;
+                        int close_x = curr->x + BORDER_WIDTH + 8;
+                        int min_x   = close_x + btn_w + 6;
+                        int max_x   = min_x + btn_w + 6;
                         
-                        if (my >= tby + 2 && my < tby + 2 + btn_w) {
+                        if (my >= tby + 4 && my < tby + 4 + btn_w) {
                             if (mx >= close_x && mx < close_x + btn_w) {
                                 if (curr->app_data == DOOM_WIN_MARKER) {
                                     doom_force_cleanup();
@@ -321,9 +298,9 @@ void wm_update(void) {
                                     curr->saved_width = curr->width;
                                     curr->saved_height = curr->height;
                                     curr->x = 0;
-                                    curr->y = 0;
-                                    curr->width = FB_WIDTH;
-                                    curr->height = FB_HEIGHT - TASKBAR_HEIGHT;
+                                    curr->y = TASKBAR_HEIGHT;
+                                    curr->width = fb_width;
+                                    curr->height = fb_height - TASKBAR_HEIGHT;
                                     curr->is_maximized = 1;
                                 }
                                 break;
@@ -352,9 +329,9 @@ void wm_update(void) {
                                     curr->saved_width = curr->width;
                                     curr->saved_height = curr->height;
                                     curr->x = 0;
-                                    curr->y = 0;
-                                    curr->width = FB_WIDTH;
-                                    curr->height = FB_HEIGHT - TASKBAR_HEIGHT;
+                                    curr->y = TASKBAR_HEIGHT;
+                                    curr->width = fb_width;
+                                    curr->height = fb_height - TASKBAR_HEIGHT;
                                     curr->is_maximized = 1;
                                 }
                                 last_click = 0;
@@ -389,8 +366,8 @@ void wm_update(void) {
                     ctx_menu.active = 1;
                     ctx_menu.x = mx;
                     ctx_menu.y = my;
-                    if (ctx_menu.x + 150 > (int)FB_WIDTH) ctx_menu.x = FB_WIDTH - 150;
-                    if (ctx_menu.y + 150 > (int)(FB_HEIGHT - TASKBAR_HEIGHT)) ctx_menu.y = FB_HEIGHT - TASKBAR_HEIGHT - 150;
+                    if (ctx_menu.x + 150 > (int)fb_width) ctx_menu.x = fb_width - 150;
+                    if (ctx_menu.y + 150 > (int)(fb_height - TASKBAR_HEIGHT)) ctx_menu.y = fb_height - TASKBAR_HEIGHT - 150;
                 } else if (pressed) {
                     for (int i = 0; i < NUM_APPS; i++) {
                         int ix = app_icons[i].x;

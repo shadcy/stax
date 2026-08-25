@@ -77,8 +77,9 @@ void bmp_load_and_draw(const char *filename, int x_offset, int y_offset) {
         if (fat_read(file, row_buf, row_size) != row_size) break;
         for (int x = 0; x < ih.width; x++) {
             uint16_t pixel = *(uint16_t *)(&row_buf[x * 2]);
+            if (pixel == 0xF81F) continue; /* Transparent color key (Magenta) */
             /* Plot pixel only if within FB bounds */
-            if ((x + x_offset) < (int)FB_WIDTH && (y + y_offset) < (int)FB_HEIGHT &&
+            if ((x + x_offset) < (int)fb_width && (y + y_offset) < (int)fb_height &&
                 (x + x_offset) >= 0 && (y + y_offset) >= 0) {
                 fb_putpixel(x + x_offset, y + y_offset, pixel);
             }

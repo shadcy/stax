@@ -15,9 +15,9 @@ uint16_t bg_colors[5] = {
 };
 
 app_icon_t app_icons[NUM_APPS] = {
-    {0, 10, 10, "Boot Log"},
-    {1, 10, 90, "File Mgr"},
-    {2, 10, 170, "sh** slime"}
+    {0, 10, 40, "Boot Log"},
+    {1, 10, 120, "File Mgr"},
+    {2, 10, 200, "sh** slime"}
 };
 
 uint16_t *desktop_bg_image = NULL;
@@ -84,46 +84,33 @@ void draw_window(window_t *win) {
     int tbw = ww - BORDER_WIDTH*2;
     fb_fillrect(tbx, tby, tbw, TITLEBAR_HEIGHT, COL_WIN_TITLE);
     
-    /* Title text */
-    draw_text(tbx + 4, tby + 2, win->title, COL_WIN_TITLE_TXT);
+    /* Title text (Centered) */
+    int text_w = 0;
+    while(win->title[text_w]) text_w++;
+    int text_x = tbx + (tbw - (text_w * 8)) / 2;
+    if (text_x < tbx + 60) text_x = tbx + 60;
+    draw_text(text_x, tby + 2, win->title, COL_WIN_TITLE_TXT);
     
-    /* Buttons (Minimize, Maximize, Close) */
-    int btn_w = 16;
-    int close_x = wx + ww - BORDER_WIDTH - btn_w - 2;
-    int max_x   = close_x - btn_w - 2;
-    int min_x   = max_x - btn_w - 2;
+    /* MacOS Style Buttons (Close, Minimize, Maximize) */
+    int btn_w = 12;
+    int close_x = wx + BORDER_WIDTH + 8;
+    int min_x   = close_x + btn_w + 6;
+    int max_x   = min_x + btn_w + 6;
     
-    /* Close Button */
-    fb_fillrect(close_x, tby + 2, btn_w, btn_w, COL_WIN_BG);
-    draw_text(close_x + 4, tby + 2, "X", COLOR_BLACK);
+    /* Helper to draw rounded button */
+    #define DRAW_MAC_BTN(bx, col) \
+        fb_fillrect((bx)+2, tby+4, 8, 12, col); \
+        fb_fillrect((bx), tby+6, 12, 8, col); \
+        fb_fillrect((bx)+1, tby+5, 10, 10, col)
+        
+    /* Close Button (Red) */
+    DRAW_MAC_BTN(close_x, rgb565(255, 95, 86));
+    /* Minimize Button (Yellow) */
+    DRAW_MAC_BTN(min_x, rgb565(255, 189, 46));
+    /* Maximize Button (Green) */
+    DRAW_MAC_BTN(max_x, rgb565(39, 201, 63));
     
-    /* Maximize Button */
-    fb_fillrect(max_x, tby + 2, btn_w, btn_w, COL_WIN_BG);
-    if (win->is_maximized) {
-        /* Restore icon: two overlapping squares */
-        fb_drawline(max_x + 6, tby + 4, max_x + 13, tby + 4, COLOR_BLACK);
-        fb_drawline(max_x + 6, tby + 5, max_x + 13, tby + 5, COLOR_BLACK);
-        fb_drawline(max_x + 6, tby + 6, max_x + 6, tby + 7, COLOR_BLACK);
-        fb_drawline(max_x + 13, tby + 6, max_x + 13, tby + 11, COLOR_BLACK);
-        fb_drawline(max_x + 10, tby + 11, max_x + 13, tby + 11, COLOR_BLACK);
-
-        fb_drawline(max_x + 2, tby + 8, max_x + 9, tby + 8, COLOR_BLACK);
-        fb_drawline(max_x + 2, tby + 9, max_x + 9, tby + 9, COLOR_BLACK);
-        fb_drawline(max_x + 2, tby + 10, max_x + 2, tby + 15, COLOR_BLACK);
-        fb_drawline(max_x + 9, tby + 10, max_x + 9, tby + 15, COLOR_BLACK);
-        fb_drawline(max_x + 2, tby + 15, max_x + 9, tby + 15, COLOR_BLACK);
-    } else {
-        /* Maximize icon: a single square */
-        fb_drawline(max_x + 3, tby + 5, max_x + 12, tby + 5, COLOR_BLACK);
-        fb_drawline(max_x + 3, tby + 6, max_x + 12, tby + 6, COLOR_BLACK);
-        fb_drawline(max_x + 3, tby + 7, max_x + 3, tby + 14, COLOR_BLACK);
-        fb_drawline(max_x + 12, tby + 7, max_x + 12, tby + 14, COLOR_BLACK);
-        fb_drawline(max_x + 3, tby + 14, max_x + 12, tby + 14, COLOR_BLACK);
-    }
-    
-    /* Minimize Button */
-    fb_fillrect(min_x, tby + 2, btn_w, btn_w, COL_WIN_BG);
-    draw_text(min_x + 4, tby + 2, "_", COLOR_BLACK);
+    #undef DRAW_MAC_BTN
     
     /* Client Area */
     int cx = wx + BORDER_WIDTH;
@@ -154,7 +141,7 @@ void wm_render(void) {
         extern uint16_t *fb_get_buffer(void);
         uint16_t *fbuf = fb_get_buffer();
         if (fbuf) {
-            memcpy(fbuf, desktop_bg_image, FB_WIDTH * FB_HEIGHT * 2);
+            memcpy(fbuf, desktop_bg_image, fb_width * fb_height * 2);
         }
     } else {
         fb_clear(COL_DESKTOP);
@@ -201,15 +188,32 @@ void wm_render(void) {
         if (!desk_files[i].valid) continue;
         int ix = desk_files[i].x;
         int iy = desk_files[i].y;
-        if (iy + DESK_ICON_H > (int)FB_HEIGHT - TASKBAR_HEIGHT) break;
+        if (iy + DESK_ICON_H > (int)fb_height) break;
 
         if (desk_files[i].is_dir) {
-            fb_fillrect(ix+8, iy+12, 24, 8, rgb565(230,160,0));
-            fb_fillrect(ix+14, iy+8, 28, 16, rgb565(245,245,255));
-            fb_drawline(ix+18, iy+12, ix+32, iy+12, rgb565(200,200,220));
-            fb_drawline(ix+18, iy+16, ix+38, iy+16, rgb565(200,200,220));
-            fb_fillrect(ix+6, iy+20, 52, 28, rgb565(255,200,40));
-            fb_fillrect(ix+6, iy+20, 52, 3, rgb565(255,225,100));
+            static uint16_t *folder_icon = NULL;
+            static int folder_w = 0, folder_h = 0;
+            static int load_attempted = 0;
+            if (!folder_icon && !load_attempted) {
+                extern uint16_t *bmp_load(const char *filename, int *out_w, int *out_h);
+                folder_icon = bmp_load("BMP/FOLDER.BMP", &folder_w, &folder_h);
+                load_attempted = 1;
+            }
+            if (folder_icon) {
+                for (int fy = 0; fy < folder_h; fy++) {
+                    for (int fx = 0; fx < folder_w; fx++) {
+                        uint16_t p = folder_icon[fy * folder_w + fx];
+                        fb_putpixel(ix + (64 - folder_w)/2 + fx, iy + 6 + fy, p);
+                    }
+                }
+            } else {
+                fb_fillrect(ix+8, iy+12, 24, 8, rgb565(230,160,0));
+                fb_fillrect(ix+14, iy+8, 28, 16, rgb565(245,245,255));
+                fb_drawline(ix+18, iy+12, ix+32, iy+12, rgb565(200,200,220));
+                fb_drawline(ix+18, iy+16, ix+38, iy+16, rgb565(200,200,220));
+                fb_fillrect(ix+6, iy+20, 52, 28, rgb565(255,200,40));
+                fb_fillrect(ix+6, iy+20, 52, 3, rgb565(255,225,100));
+            }
         } else {
             int nlen=0; while(desk_files[i].name[nlen]) nlen++;
             int is_t = nlen>4 &&
@@ -264,29 +268,34 @@ void wm_render(void) {
         draw_window(arr[i]);
     }
     
-    /* 3. Taskbar */
-    int ty = FB_HEIGHT - TASKBAR_HEIGHT;
-    fb_fillrect(0, ty, FB_WIDTH, TASKBAR_HEIGHT, COL_TASKBAR);
-    fb_drawline(0, ty, FB_WIDTH, ty, COLOR_WHITE);
-    fb_fillrect(4, ty + 4, 50, 20, rgb565(160, 160, 160));
-    draw_text(10, ty + 6, "Start", COLOR_BLACK);
+    /* 3. Top Menu Bar (Mac-Style) */
+    int ty = 0;
+    fb_fillrect(0, ty, fb_width, TASKBAR_HEIGHT, rgb565(230, 230, 230)); /* Light gray bar */
+    fb_drawline(0, ty + TASKBAR_HEIGHT - 1, fb_width, ty + TASKBAR_HEIGHT - 1, rgb565(150, 150, 150)); /* Bottom border */
     
-    int tb_idx = 0;
-    for (int i = count - 1; i >= 0; i--) {
-        if (arr[i]->state != WM_STATE_HIDDEN) {
-            int bx = 60 + tb_idx * 100;
-            if (bx + 100 > (int)(FB_WIDTH - 170)) break;
-            uint16_t bcol = (arr[i]->state == WM_STATE_ACTIVE) ? rgb565(220, 220, 220) : rgb565(160, 160, 160);
-            fb_fillrect(bx, ty + 4, 95, 20, bcol);
-            char short_title[10];
-            int j;
-            for (j = 0; j < 9 && arr[i]->title[j] != '\0'; j++) {
-                short_title[j] = arr[i]->title[j];
+    /* STAX Menu Logo (Instead of Start button) */
+    static uint16_t *stax_logo = NULL;
+    static int logo_w = 0, logo_h = 0, logo_attempted = 0;
+    if (!stax_logo && !logo_attempted) {
+        extern uint16_t *bmp_load(const char *filename, int *out_w, int *out_h);
+        stax_logo = bmp_load("BMP/LOGO.BMP", &logo_w, &logo_h);
+        logo_attempted = 1;
+    }
+    if (stax_logo) {
+        for (int fy = 0; fy < logo_h; fy++) {
+            for (int fx = 0; fx < logo_w; fx++) {
+                uint16_t p = stax_logo[fy * logo_w + fx];
+                fb_putpixel(12 + fx, ty + (TASKBAR_HEIGHT - logo_h) / 2 + fy, p);
             }
-            short_title[j] = '\0';
-            draw_text(bx + 4, ty + 6, short_title, COLOR_BLACK);
-            tb_idx++;
         }
+    } else {
+        fb_fillrect(8, ty + 6, 16, 16, COLOR_BLACK); /* STAX Logo placeholder */
+        draw_text(32, ty + 6, "STAX", COLOR_BLACK);
+    }
+    
+    /* Active Window Title / Menu items */
+    if (count > 0 && arr[0]->state != WM_STATE_HIDDEN) {
+        draw_text(90, ty + 6, arr[0]->title, COLOR_BLACK);
     }
     
     /* Clock */
@@ -299,7 +308,7 @@ void wm_render(void) {
     clock_str[0] = '0' + (h / 10); clock_str[1] = '0' + (h % 10); clock_str[2] = ':';
     clock_str[3] = '0' + (m / 10); clock_str[4] = '0' + (m % 10); clock_str[5] = ':';
     clock_str[6] = '0' + (s / 10); clock_str[7] = '0' + (s % 10); clock_str[8] = '\0';
-    draw_text(FB_WIDTH - 76, ty + 6, clock_str, COLOR_BLACK);
+    draw_text(fb_width - 76, ty + 6, clock_str, COLOR_BLACK);
     
     /* Memory Usage */
     extern int get_total_memory(void);
@@ -319,7 +328,7 @@ void wm_render(void) {
     }
     mem_str[m_idx++] = '%';
     mem_str[m_idx] = '\0';
-    draw_text(FB_WIDTH - 160, ty + 6, mem_str, COLOR_BLACK);
+    draw_text(fb_width - 160, ty + 6, mem_str, COLOR_BLACK);
     
     /* Context Menu */
     if (ctx_menu.active) {
@@ -340,62 +349,29 @@ void wm_render(void) {
         draw_text(ctx_menu.x + 10, ctx_menu.y + 128, "Change BG", COLOR_BLACK);
     }
     
-    /* Start Menu */
+    /* STAX System Menu Dropdown */
     if (start_menu_active) {
         int sm_x = 0;
-        int sm_y = FB_HEIGHT - TASKBAR_HEIGHT - 280;
-        int sm_w = 140;
-        int sm_h = 280;
+        int sm_y = TASKBAR_HEIGHT; /* Dropdown from top bar */
+        int sm_w = 200;
+        int sm_h = 160;
         
-        fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(40,40,45));
-        fb_drawline(sm_x, sm_y, sm_x + sm_w, sm_y, rgb565(100,100,120));
-        fb_drawline(sm_x + sm_w, sm_y, sm_x + sm_w, sm_y + sm_h, rgb565(20,20,25));
+        fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(240,240,245));
+        fb_drawline(sm_x, sm_y, sm_x + sm_w, sm_y, rgb565(150,150,150));
+        fb_drawline(sm_x + sm_w, sm_y, sm_x + sm_w, sm_y + sm_h, rgb565(150,150,150));
+        fb_drawline(sm_x, sm_y + sm_h, sm_x + sm_w, sm_y + sm_h, rgb565(150,150,150));
         
-        fb_fillrect(sm_x, sm_y, sm_w, 24, rgb565(60,120,200));
-        draw_text(sm_x + 10, sm_y + 4, "Apps", COLOR_WHITE);
+        /* Options */
+        draw_text(sm_x + 10, sm_y + 10, "About STAX", COLOR_BLACK);
+        fb_drawline(sm_x + 5, sm_y + 30, sm_x + sm_w - 5, sm_y + 30, rgb565(200,200,200));
         
-        int ix1 = sm_x + 10, iy1 = sm_y + 34;
-        fb_fillrect(ix1, iy1, 24, 24, rgb565(240,240,245));
-        fb_fillrect(ix1+4, iy1+14, 4, 6, rgb565(255,80,80));
-        fb_fillrect(ix1+10, iy1+10, 4, 10, rgb565(255,180,40));
-        fb_fillrect(ix1+16, iy1+6, 4, 14, rgb565(60,200,120));
-        draw_text(ix1 + 32, iy1 + 4, "Task Mgr", COLOR_WHITE);
+        draw_text(sm_x + 10, sm_y + 40, "Res: 800x600", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 70, "Res: 1024x768", COLOR_BLACK);
         
-        int ix2 = sm_x + 10, iy2 = sm_y + 74;
-        fb_fillrect(ix2, iy2, 24, 24, rgb565(30,40,30));
-        fb_fillrect(ix2+4, iy2+4, 4, 4, rgb565(80,220,80));
-        fb_fillrect(ix2+10, iy2+4, 4, 4, rgb565(80,220,80));
-        fb_fillrect(ix2+16, iy2+4, 4, 4, rgb565(80,220,80));
-        fb_fillrect(ix2+16, iy2+10, 4, 4, rgb565(80,220,80));
-        fb_fillrect(ix2+16, iy2+16, 4, 4, rgb565(120,255,120));
-        draw_text(ix2 + 32, iy2 + 4, "Snake", COLOR_WHITE);
-
-        int ix3 = sm_x + 10, iy3 = sm_y + 114;
-        fb_fillrect(ix3, iy3, 24, 24, rgb565(150,110,60));
-        fb_drawline(ix3, iy3, ix3+23, iy3+23, rgb565(100,60,30));
-        fb_drawline(ix3+23, iy3, ix3, iy3+23, rgb565(100,60,30));
-        draw_text(ix3 + 32, iy3 + 4, "Sokoban", COLOR_WHITE);
-
-        int ix4 = sm_x + 10, iy4 = sm_y + 154;
-        fb_fillrect(ix4, iy4, 24, 24, rgb565(200,200,200));
-        fb_fillrect(ix4+4, iy4+4, 16, 4, rgb565(100,100,100)); // screen
-        fb_fillrect(ix4+4, iy4+10, 4, 4, rgb565(50,50,50)); // keys
-        fb_fillrect(ix4+10, iy4+10, 4, 4, rgb565(50,50,50));
-        fb_fillrect(ix4+16, iy4+10, 4, 4, rgb565(50,50,50));
-        draw_text(ix4 + 32, iy4 + 4, "Calc", COLOR_WHITE);
+        fb_drawline(sm_x + 5, sm_y + 100, sm_x + sm_w - 5, sm_y + 100, rgb565(200,200,200));
         
-        int ix5 = sm_x + 10, iy5 = sm_y + 194;
-        fb_fillrect(ix5, iy5, 24, 24, rgb565(50,50,150));
-        fb_fillrect(ix5+8, iy5+4, 8, 4, COLOR_WHITE); // 'i' dot
-        fb_fillrect(ix5+8, iy5+10, 8, 10, COLOR_WHITE); // 'i' stem
-        draw_text(ix5 + 32, iy5 + 4, "SysInfo", COLOR_WHITE);
-
-        int ix6 = sm_x + 10, iy6 = sm_y + 234;
-        fb_fillrect(ix6, iy6, 24, 24, rgb565(80,30,80));
-        fb_fillrect(ix6+4, iy6+4, 16, 16, rgb565(200,200,200));
-        fb_fillrect(ix6+6, iy6+6, 4, 4, rgb565(0,0,0));
-        fb_fillrect(ix6+14, iy6+6, 4, 4, rgb565(0,0,0));
-        draw_text(ix6 + 32, iy6 + 4, "MemView", COLOR_WHITE);
+        draw_text(sm_x + 10, sm_y + 110, "Task Manager", COLOR_BLACK);
+        draw_text(sm_x + 10, sm_y + 135, "Force Quit...", COLOR_BLACK);
     }
     
     /* 4. Mouse Cursor */

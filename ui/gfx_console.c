@@ -190,8 +190,8 @@ void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch)
                     unsigned char bits = g[gr];
                     for (int gb = 0; gb < 8; gb++) {
                         if (bits & (0x80 >> gb)) {
-                            if (py+gr >= 0 && py+gr < (int)FB_HEIGHT && px+gb >= 0 && px+gb < (int)FB_WIDTH) {
-                                fbuf[(py+gr)*FB_WIDTH + (px+gb)] = color;
+                            if (py+gr >= 0 && py+gr < (int)fb_height && px+gb >= 0 && px+gb < (int)fb_width) {
+                                fbuf[(py+gr)*fb_width + (px+gb)] = color;
                             }
                         }
                     }

@@ -22,11 +22,11 @@ extern int bg_color_idx;
 extern uint16_t bg_colors[5];
 
 #define COL_DESKTOP     (bg_colors[bg_color_idx])
-#define COL_WIN_BG      rgb565(192, 192, 192)
-#define COL_WIN_TITLE   rgb565(0, 0, 128)
-#define COL_WIN_TITLE_TXT COLOR_WHITE
-#define COL_WIN_BORDER_LIGHT COLOR_WHITE
-#define COL_WIN_BORDER_DARK  rgb565(128, 128, 128)
+#define COL_WIN_BG      rgb565(240, 240, 245)
+#define COL_WIN_TITLE   rgb565(220, 220, 225)
+#define COL_WIN_TITLE_TXT COLOR_BLACK
+#define COL_WIN_BORDER_LIGHT rgb565(180, 180, 185)
+#define COL_WIN_BORDER_DARK  rgb565(150, 150, 155)
 #define COL_TASKBAR     rgb565(192, 192, 192)
 
 extern window_t *window_list;
