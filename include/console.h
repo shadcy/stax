@@ -12,8 +12,11 @@ void kput_uint(unsigned int n);
 
 /* Input functions */
 char kgetc(void);
-void kgets(char *buf, int max_len);
+/* Output redirection hook */
+typedef void (*console_hook_fn)(char c, void *ctx);
+void console_set_hook(console_hook_fn fn, void *ctx);
 
 #endif
 
 void kprintf(const char *fmt, ...);
+

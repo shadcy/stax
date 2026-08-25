@@ -6,12 +6,21 @@
 #include "console.h"
 #include "gfx_console.h"
 #include "keyboard.h"
+#include <stddef.h>
 
 #define UART0_BASE  0x101f1000UL
 #define UART_DR     (*(volatile unsigned int *)(UART0_BASE + 0x000))
 #define UART_FR     (*(volatile unsigned int *)(UART0_BASE + 0x018))
 #define UART_FR_TXFF (1 << 5)
 #define UART_FR_RXFE (1 << 4)
+
+static console_hook_fn g_console_hook = NULL;
+static void *g_console_hook_ctx = NULL;
+
+void console_set_hook(console_hook_fn fn, void *ctx) {
+    g_console_hook = fn;
+    g_console_hook_ctx = ctx;
+}
 
 void kputc(char c)
 {
@@ -23,8 +32,13 @@ void kputc(char c)
     while (UART_FR & UART_FR_TXFF);
     UART_DR = (unsigned int)c;
     
-    /* Also output to graphical console */
-    gfx_putc(c);
+    /* Output to active GUI terminal window hook if redirected */
+    if (g_console_hook) {
+        g_console_hook(c, g_console_hook_ctx);
+    } else {
+        /* Otherwise output to graphical boot console */
+        gfx_putc(c);
+    }
 }
 
 void kputs(const char *s)
