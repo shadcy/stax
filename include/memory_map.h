@@ -15,6 +15,13 @@
 #define BOOTLOADER_EXEC_ADDR 0x10000 /* QEMU -kernel loads bootloader here */
 #define KERNEL_EXEC_ADDR    0x100000 /* 1 MB mark, safely avoiding any overlaps */
 
+/* VersatilePB system controller. Writing the software-reset bit asks the
+ * board (and QEMU's versatilepb machine) to perform a complete platform
+ * reset, returning execution to the bootloader. */
+#define VERSATILE_SYS_CTRL_BASE       0x101E0000UL
+#define VERSATILE_SYS_RESETCTL        (*(volatile unsigned int *)(VERSATILE_SYS_CTRL_BASE + 0x040))
+#define VERSATILE_SYS_RESETCTL_SOFT   0x00010000UL
+
 /* Stack Addresses */
 #define BOOTLOADER_STACK    0x80000  /* Bootloader stack grows down from 512 KB, very safe */
 
