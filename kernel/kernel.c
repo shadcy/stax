@@ -93,7 +93,7 @@ void kernel_main(void)
                                        g_settings.boot_win_w, g_settings.boot_win_h,
                                        "Boot Log", gfx_console_draw_window);
     if (boot_win) {
-        boot_win->state = g_settings.show_boot_log_on_startup ? WM_STATE_ACTIVE : WM_STATE_MINIMIZED;
+        boot_win->state = g_settings.show_boot_log_on_startup ? WM_STATE_ACTIVE : WM_STATE_HIDDEN;
         boot_win->key_event = gfx_console_key_event;
         boot_win->mouse_click = gfx_console_mouse_click;
         boot_win->mouse_drag = gfx_console_mouse_drag;
@@ -107,7 +107,7 @@ void kernel_main(void)
     /* Load persisted settings from disk and update live window manager */
     settings_load();
     if (boot_win) {
-        boot_win->state = g_settings.show_boot_log_on_startup ? WM_STATE_ACTIVE : WM_STATE_MINIMIZED;
+        boot_win->state = g_settings.show_boot_log_on_startup ? WM_STATE_ACTIVE : WM_STATE_HIDDEN;
         boot_win->x = g_settings.boot_win_x;
         boot_win->y = g_settings.boot_win_y;
     }

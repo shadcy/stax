@@ -19,7 +19,7 @@ extern int bg_color_idx;
 sys_settings_t g_settings = {
     .magic = SETTINGS_MAGIC,
     .version = 1,
-    .show_boot_log_on_startup = 1,
+    .show_boot_log_on_startup = 0,
     .boot_win_x = 200,
     .boot_win_y = 44,
     .boot_win_w = 560,
@@ -34,7 +34,7 @@ sys_settings_t g_settings = {
 void settings_init(void) {
     g_settings.magic = SETTINGS_MAGIC;
     g_settings.version = 1;
-    g_settings.show_boot_log_on_startup = 1;
+    g_settings.show_boot_log_on_startup = 0;
     g_settings.boot_win_x = 200;
     g_settings.boot_win_y = 44;
     g_settings.boot_win_w = 560;
