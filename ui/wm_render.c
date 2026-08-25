@@ -194,7 +194,7 @@ static void draw_app_icon_gfx(int ix, int iy, int id) {
         fb_fillrect(ix + 18, iy + 28, 20, 2, rgb565(140, 145, 160));
         fb_fillrect(ix + 18, iy + 34, 12, 2, rgb565(140, 145, 160));
     } else if (id == 2) {
-        /* File Manager: Clean Theme-Matched Longish Ubuntu Yaru Folder */
+        /* File Manager: Clean Theme-Matched Tall Ubuntu Folder (36x40px) */
         uint16_t f_main = (bg_color_idx == 0) ? rgb565(38, 132, 226) :
                           (bg_color_idx == 1) ? rgb565(26, 150, 132) :
                           (bg_color_idx == 2) ? rgb565(88, 92, 104) :
@@ -207,12 +207,13 @@ static void draw_app_icon_gfx(int ix, int iy, int id) {
                           (bg_color_idx == 1) ? rgb565(110, 220, 200) :
                           (bg_color_idx == 2) ? rgb565(160, 165, 180) :
                           (bg_color_idx == 3) ? rgb565(255, 140, 120) : rgb565(255, 195, 110);
-        fb_fillrect(ix + 6, iy + 10, 18, 5, f_tab);
-        fb_fillrect(ix + 6, iy + 14, 52, 28, f_tab);
-        fb_fillrect(ix + 10, iy + 16, 44, 3, rgb565(250, 252, 255));
-        fb_fillrect(ix + 6, iy + 19, 52, 23, f_main);
-        fb_fillrect(ix + 6, iy + 19, 52, 1, f_hi);
-        fb_fillrect(ix + 20, iy + 29, 24, 2, f_hi);
+        fb_fillrect(ix + 14, iy + 6, 16, 4, f_tab);
+        fb_fillrect(ix + 14, iy + 6, 16, 1, f_hi);
+        fb_fillrect(ix + 14, iy + 9, 36, 37, f_tab);
+        fb_fillrect(ix + 18, iy + 11, 28, 5, rgb565(250, 252, 255));
+        fb_fillrect(ix + 14, iy + 15, 36, 31, f_main);
+        fb_fillrect(ix + 14, iy + 15, 36, 1, f_hi);
+        fb_fillrect(ix + 24, iy + 27, 16, 2, f_hi);
     } else if (id == 3) {
         /* Text Editor: Clean Off-White Document Card with Ubuntu Orange Header */
         fb_fillrect(ix + 12, iy + 4, 40, 44, rgb565(248, 249, 252));
@@ -311,22 +312,22 @@ void wm_render(void) {
         if (iy + DESK_ICON_H > (int)fb_height) continue;
 
         if (desk_files[i].is_dir) {
-            /* Modern Ubuntu Yaru Longish / Wide Landscape Folder */
+            /* Clean Ubuntu Tall Folder (Good Height, Low Width: 36x40px) */
             /* Top-left tab */
-            fb_fillrect(ix + 4, iy + 14, 20, 5, f_tab);
-            fb_fillrect(ix + 4, iy + 14, 20, 1, f_hi);
+            fb_fillrect(ix + 14, iy + 8, 16, 4, f_tab);
+            fb_fillrect(ix + 14, iy + 8, 16, 1, f_hi);
             /* Back flap */
-            fb_fillrect(ix + 4, iy + 18, 56, 28, f_tab);
-            /* Crisp interior paper peek */
-            fb_fillrect(ix + 9, iy + 20, 46, 3, rgb565(250, 252, 255));
-            /* Wide front pocket */
-            fb_fillrect(ix + 4, iy + 23, 56, 23, f_main);
-            fb_fillrect(ix + 4, iy + 23, 56, 1, f_hi);
-            /* Ubuntu signature horizontal accent bar */
-            fb_fillrect(ix + 18, iy + 33, 28, 2, f_hi);
-            /* Subtle shadows */
-            fb_drawline(ix + 4, iy + 46, ix + 59, iy + 46, f_shadow);
-            fb_drawline(ix + 59, iy + 23, ix + 59, iy + 46, f_shadow);
+            fb_fillrect(ix + 14, iy + 11, 36, 37, f_tab);
+            /* Clean white interior paper peek */
+            fb_fillrect(ix + 18, iy + 13, 28, 5, rgb565(250, 252, 255));
+            /* Front pocket */
+            fb_fillrect(ix + 14, iy + 17, 36, 31, f_main);
+            fb_fillrect(ix + 14, iy + 17, 36, 1, f_hi);
+            /* Front accent groove */
+            fb_fillrect(ix + 24, iy + 29, 16, 2, f_hi);
+            /* Drop shadow */
+            fb_drawline(ix + 14, iy + 48, ix + 49, iy + 48, f_shadow);
+            fb_drawline(ix + 49, iy + 17, ix + 49, iy + 48, f_shadow);
         } else {
             int nlen=0; while(desk_files[i].name[nlen]) nlen++;
             int is_b = nlen>4 &&
