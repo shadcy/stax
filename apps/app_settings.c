@@ -1,6 +1,6 @@
 /* ============================================================================
  * STAX — app_settings.c
- * Production-Ready System Settings & Control Center
+ * Production-Ready System Settings & Control Center with NVRAM/SD Persistence
  * ============================================================================ */
 
 #include "app_settings.h"
@@ -10,28 +10,69 @@
 #include "heap.h"
 #include "font8x16.h"
 #include "rtc.h"
+#include "fatfs/ff.h"
+#include "system.h"
 
 extern void wm_bring_to_front(struct window *win);
 extern int bg_color_idx;
 
 sys_settings_t g_settings = {
+    .magic = SETTINGS_MAGIC,
+    .version = 1,
     .show_boot_log_on_startup = 1,
     .boot_win_x = 200,
     .boot_win_y = 44,
     .boot_win_w = 560,
     .boot_win_h = 380,
     .time_format_24h = 1,
+    .bg_color_idx = 0,
+    .resolution_w = 1024,
+    .resolution_h = 768,
     .active_tab = 0
 };
 
 void settings_init(void) {
+    g_settings.magic = SETTINGS_MAGIC;
+    g_settings.version = 1;
     g_settings.show_boot_log_on_startup = 1;
     g_settings.boot_win_x = 200;
     g_settings.boot_win_y = 44;
     g_settings.boot_win_w = 560;
     g_settings.boot_win_h = 380;
     g_settings.time_format_24h = 1;
+    g_settings.bg_color_idx = 0;
+    g_settings.resolution_w = 1024;
+    g_settings.resolution_h = 768;
     g_settings.active_tab = 0;
+}
+
+void settings_load(void) {
+    FIL f;
+    if (f_open(&f, "/SETTINGS.CFG", FA_READ) == FR_OK) {
+        sys_settings_t loaded;
+        UINT br = 0;
+        if (f_read(&f, &loaded, sizeof(sys_settings_t), &br) == FR_OK && br == sizeof(sys_settings_t)) {
+            if (loaded.magic == SETTINGS_MAGIC) {
+                g_settings = loaded;
+                bg_color_idx = g_settings.bg_color_idx;
+            }
+        }
+        f_close(&f);
+    }
+}
+
+void settings_save(void) {
+    FIL f;
+    g_settings.magic = SETTINGS_MAGIC;
+    g_settings.version = 1;
+    g_settings.bg_color_idx = bg_color_idx;
+    g_settings.resolution_w = (int)fb_width;
+    g_settings.resolution_h = (int)fb_height;
+    if (f_open(&f, "/SETTINGS.CFG", FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
+        UINT bw = 0;
+        f_write(&f, &g_settings, sizeof(sys_settings_t), &bw);
+        f_close(&f);
+    }
 }
 
 #define SIDEBAR_W 120
@@ -66,6 +107,20 @@ static void draw_btn(int bx, int by, int bw, int bh, const char *label, int acti
     int tx = bx + (bw - tlen * 8) / 2;
     int ty = by + (bh - 16) / 2;
     draw_text(tx, ty, label, fg);
+}
+
+/* Helper: Draw danger button */
+static void draw_danger_btn(int bx, int by, int bw, int bh, const char *label) {
+    fb_fillrect(bx, by, bw, bh, rgb565(200, 45, 45));
+    fb_drawline(bx, by, bx + bw - 1, by, rgb565(240, 90, 90));
+    fb_drawline(bx, by, bx, by + bh - 1, rgb565(240, 90, 90));
+    fb_drawline(bx + bw - 1, by, bx + bw - 1, by + bh - 1, rgb565(140, 20, 20));
+    fb_drawline(bx, by + bh - 1, bx + bw - 1, by + bh - 1, rgb565(140, 20, 20));
+
+    int tlen = (int)strlen(label);
+    int tx = bx + (bw - tlen * 8) / 2;
+    int ty = by + (bh - 16) / 2;
+    draw_text(tx, ty, label, COLOR_WHITE);
 }
 
 /* Helper: Draw card group container */
@@ -125,18 +180,19 @@ void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         draw_btn(px + card_w - 180, cy + 84, 80, 24, "Left", g_settings.boot_win_x == 200);
         draw_btn(px + card_w - 90, cy + 84, 80, 24, "Center", g_settings.boot_win_x == 220);
 
-        /* Card 2: Live Window Control */
-        draw_card(px, cy + 148, card_w, 68);
+        /* Card 2: Live Window Control & Reboot */
+        draw_card(px, cy + 148, card_w, 72);
         draw_text(px + 14, cy + 158, "Boot Log Window", rgb565(30, 35, 45));
-        draw_text(px + 14, cy + 176, "Show or hide live terminal", rgb565(120, 125, 140));
-        draw_btn(px + card_w - 130, cy + 160, 120, 26, "Toggle Log", 0);
+        draw_text(px + 14, cy + 176, "Live terminal instance", rgb565(120, 125, 140));
+        draw_btn(px + card_w - 240, cy + 160, 110, 26, "Toggle Log", 0);
+        draw_danger_btn(px + card_w - 120, cy + 160, 110, 26, "Reboot OS");
 
         /* Info Card */
-        fb_fillrect(px, cy + 226, card_w, 56, rgb565(234, 242, 255));
-        fb_drawline(px, cy + 226, px + card_w - 1, cy + 226, rgb565(180, 205, 245));
-        fb_drawline(px, cy + 281, px + card_w - 1, cy + 281, rgb565(180, 205, 245));
-        draw_text(px + 12, cy + 234, "* Boot window docked at Y=44 (below nav bar)", rgb565(30, 75, 150));
-        draw_text(px + 12, cy + 252, "* App icons placed in left columns (X: 18..180)", rgb565(30, 75, 150));
+        fb_fillrect(px, cy + 230, card_w, 56, rgb565(234, 242, 255));
+        fb_drawline(px, cy + 230, px + card_w - 1, cy + 230, rgb565(180, 205, 245));
+        fb_drawline(px, cy + 285, px + card_w - 1, cy + 285, rgb565(180, 205, 245));
+        draw_text(px + 12, cy + 238, "* Settings auto-saved to /SETTINGS.CFG on SD", rgb565(0, 120, 30));
+        draw_text(px + 12, cy + 256, "* Boot window anchored below top nav bar (Y=44)", rgb565(30, 75, 150));
 
     } else if (g_settings.active_tab == 1) {
         /* ==== DISPLAY & APPEARANCE ==== */
@@ -218,6 +274,8 @@ void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         draw_text(px + 14, cy + 92, "Kernel     : ARM926EJ-S Monolithic Phase 6e", rgb565(50, 55, 70));
         draw_text(px + 14, cy + 114, "Compositor : Multi-Window GFX Compositor", rgb565(50, 55, 70));
         draw_text(px + 14, cy + 136, "Status     : All Subsystems Nominal", rgb565(0, 110, 25));
+
+        draw_danger_btn(px, cy + 196, 140, 28, "Reboot System");
     }
 }
 
@@ -244,6 +302,7 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
         /* Toggle Switch: Launch on Boot */
         if (my >= 46 && my < 70 && mx >= px + card_w - 80 && mx < px + card_w) {
             g_settings.show_boot_log_on_startup = !g_settings.show_boot_log_on_startup;
+            settings_save();
             return;
         }
         /* Position buttons */
@@ -251,14 +310,16 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
             if (mx >= px + card_w - 180 && mx < px + card_w - 95) {
                 g_settings.boot_win_x = 200;
                 g_settings.boot_win_y = 44;
+                settings_save();
             } else if (mx >= px + card_w - 90 && mx < px + card_w) {
                 g_settings.boot_win_x = 220;
                 g_settings.boot_win_y = 60;
+                settings_save();
             }
             return;
         }
         /* Toggle Boot Log Window Button */
-        if (my >= 158 && my < 188 && mx >= px + card_w - 130 && mx < px + card_w) {
+        if (my >= 158 && my < 188 && mx >= px + card_w - 240 && mx < px + card_w - 125) {
             extern struct window *window_list;
             struct window *curr = window_list;
             int found = 0;
@@ -291,6 +352,12 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
             }
             return;
         }
+        /* Reboot OS Button */
+        if (my >= 158 && my < 188 && mx >= px + card_w - 120 && mx < px + card_w) {
+            settings_save();
+            system_reboot();
+            return;
+        }
 
     } else if (g_settings.active_tab == 1) {
         /* Tab 1: Display & Themes */
@@ -303,6 +370,8 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
                 int bx = start_x + c * (btn_w + btn_gap);
                 if (mx >= bx && mx < bx + btn_w) {
                     bg_color_idx = c;
+                    g_settings.bg_color_idx = c;
+                    settings_save();
                     return;
                 }
             }
@@ -311,9 +380,11 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
             if (mx >= px + card_w - 195 && mx < px + card_w - 100) {
                 extern void fb_set_resolution(uint32_t, uint32_t);
                 fb_set_resolution(800, 600);
+                settings_save();
             } else if (mx >= px + card_w - 95 && mx < px + card_w) {
                 extern void fb_set_resolution(uint32_t, uint32_t);
                 fb_set_resolution(1024, 768);
+                settings_save();
             }
             return;
         }
@@ -323,9 +394,19 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
         if (my >= 142 && my < 168) {
             if (mx >= px + card_w - 175 && mx < px + card_w - 95) {
                 g_settings.time_format_24h = 1;
+                settings_save();
             } else if (mx >= px + card_w - 90 && mx < px + card_w) {
                 g_settings.time_format_24h = 0;
+                settings_save();
             }
+            return;
+        }
+
+    } else if (g_settings.active_tab == 4) {
+        /* Tab 4: About STAX -> Reboot Button */
+        if (my >= 196 && my < 224 && mx >= px && mx < px + 140) {
+            settings_save();
+            system_reboot();
             return;
         }
     }
