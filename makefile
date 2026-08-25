@@ -118,6 +118,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/app_firmware_viewer.o \
                 $(BUILD_DIR)/app_browser.o \
                 $(BUILD_DIR)/app_settings.o \
+                $(BUILD_DIR)/app_widgets.o \
                 $(BUILD_DIR)/browser_html.o \
                 $(BUILD_DIR)/framebuffer.o \
                 $(BUILD_DIR)/font8x16.o \
