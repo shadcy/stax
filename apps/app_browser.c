@@ -915,8 +915,9 @@ static void history_home(void) {
 
 static const char *start_page_html =
     "<html><head><title>STAX Web Browser</title></head><body>\n"
+    "<p><img src=\"BMP/LOGO.BMP\" alt=\"STAX OS\"></p>\n"
     "<h1>STAX Web Browser</h1>\n"
-    "<p>Fast, lightweight graphical web browser for STAX Operating System.</p>\n"
+    "<p>Fast, lightweight graphical web browser with inline image rendering for STAX OS.</p>\n"
     "<hr>\n"
     "<h2>Search the Web with Wiby</h2>\n"
     "<p>Wiby is a classic web search engine built for vintage, lightweight, and text browsers.</p>\n"
@@ -994,6 +995,7 @@ static uint16_t style_color(uint8_t st) {
         case HTML_ST_LINK: return rgb565(20, 40, 200);
         case HTML_ST_PRE: return rgb565(40, 40, 40);
         case HTML_ST_QUOTE: return rgb565(80, 80, 80);
+        case HTML_ST_IMG: return rgb565(70, 70, 90);
         default: return COLOR_BLACK;
     }
 }
@@ -1239,6 +1241,49 @@ static void browser_draw(struct window *win, int cx, int cy, int cw, int ch) {
                     r->w = uw;
                     r->h = 16;
                     r->url_id = s->url_id;
+                }
+            }
+        }
+
+        /* Render HTML Images */
+        for (i = 0; i < html_image_count(); i++) {
+            const html_image_t *img = html_image_at(i);
+            if (!img) continue;
+            int ix = cx + img->x;
+            int iy = cy + content_top + img->y - scroll_y;
+            int iw = img->w;
+            int ih = img->h;
+
+            if (iy + ih < clip_y0 || iy >= clip_y1) continue;
+
+            if (img->is_loaded && img->pixels) {
+                for (int py = 0; py < ih; py++) {
+                    int sy = iy + py;
+                    if (sy < clip_y0 || sy >= clip_y1) continue;
+                    for (int px = 0; px < iw; px++) {
+                        int sx = ix + px;
+                        if (sx < clip_x0 || sx >= clip_x1) continue;
+                        uint16_t col = img->pixels[py * iw + px];
+                        if (col == 0xF81F) continue; /* Transparent color key */
+                        vram[sy * (int)fb_width + sx] = col;
+                    }
+                }
+                /* Draw subtle image frame border */
+                fb_drawline(ix - 1, iy - 1, ix + iw, iy - 1, rgb565(200, 200, 210));
+                fb_drawline(ix - 1, iy + ih, ix + iw, iy + ih, rgb565(200, 200, 210));
+                fb_drawline(ix - 1, iy - 1, ix - 1, iy + ih, rgb565(200, 200, 210));
+                fb_drawline(ix + iw, iy - 1, ix + iw, iy + ih, rgb565(200, 200, 210));
+            } else {
+                int box_w = (iw < 140) ? 140 : (iw > 280 ? 280 : iw);
+                int box_h = 22;
+                if (ix + box_w <= clip_x1 && iy + box_h <= clip_y1 && iy >= clip_y0) {
+                    fb_fillrect(ix, iy, box_w, box_h, rgb565(245, 245, 250));
+                    fb_drawline(ix, iy, ix + box_w, iy, rgb565(190, 190, 200));
+                    fb_drawline(ix, iy + box_h - 1, ix + box_w, iy + box_h - 1, rgb565(190, 190, 200));
+                    fb_drawline(ix, iy, ix, iy + box_h - 1, rgb565(190, 190, 200));
+                    fb_drawline(ix + box_w, iy, ix + box_w, iy + box_h - 1, rgb565(190, 190, 200));
+                    draw_char_8x16(ix + 4, iy + 3, '#', rgb565(50, 90, 160), rgb565(245, 245, 250), vram, (int)fb_width);
+                    draw_string(ix + 16, iy + 3, img->alt[0] ? img->alt : "Image", rgb565(50, 50, 70), rgb565(245, 245, 250), vram, (int)fb_width);
                 }
             }
         }
