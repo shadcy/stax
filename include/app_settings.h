@@ -4,7 +4,7 @@
 #include "wm.h"
 #include <stdint.h>
 
-#define SETTINGS_MAGIC 0x53544158 /* 'STAX' */
+#define SETTINGS_MAGIC 0x53545832 /* 'STX2' */
 
 typedef struct {
     uint32_t magic;
