@@ -169,25 +169,30 @@ void wm_update(void) {
     
     if (pressed || right_pressed) {
         if (ctx_menu.active) {
-            if (pressed && mx >= ctx_menu.x && mx < ctx_menu.x + 150 && 
-                my >= ctx_menu.y && my < ctx_menu.y + 120) {
+            if (pressed && mx >= ctx_menu.x && mx < ctx_menu.x + 160 && 
+                my >= ctx_menu.y && my < ctx_menu.y + 180) {
                 
                 int item = (my - ctx_menu.y) / 30;
                 if (item == 0) {
-                    window_t *tw = wm_add_window(80, 60, 520, 340, "Terminal", terminal_draw_window);
+                    window_t *tw = wm_add_window(60, 50, 560, 360, "Terminal", terminal_draw_window);
                     if (tw) tw->key_event = terminal_key_event;
                 } else if (item == 1) {
-                    window_t *fw = wm_add_window(150, 150, 420, 320, "File Manager", file_manager_draw_window);
-                    if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
+                    extern void cmd_browser(int, char**);
+                    cmd_browser(0, 0);
                 } else if (item == 2) {
-                    f_mkdir("NEWDIR");
-                    file_manager_refresh();
+                    window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
+                    if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
                 } else if (item == 3) {
-                    FIL f;
-                    if (f_open(&f, "NEWFILE.TXT", FA_CREATE_NEW | FA_WRITE) == FR_OK) {
-                        f_close(&f);
-                    }
+                    extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    extern void editor_key_event(struct window *win, char c);
+                    window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
+                    if (ew) ew->key_event = editor_key_event;
                 } else if (item == 4) {
+                    extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
+                    window_t *cw = wm_add_window(160, 110, 200, 250, "Calculator", calculator_draw_window);
+                    if (cw) cw->mouse_click = calculator_mouse_click;
+                } else if (item == 5) {
                     bg_color_idx = (bg_color_idx + 1) % 5;
                 }
             }
@@ -199,7 +204,6 @@ void wm_update(void) {
                     start_menu_active = !start_menu_active;
                 } else {
                     start_menu_active = 0;
-                    /* Clicked on window title in taskbar? Or just ignore for now since Mac doesn't minimize on top bar */
                 }
             }
             drag_win = NULL;
@@ -208,23 +212,34 @@ void wm_update(void) {
                 int sm_x = 0;
                 int sm_y = TASKBAR_HEIGHT;
                 int sm_w = 200;
-                int sm_h = 160;
+                int sm_h = 210;
                 if (mx >= sm_x && mx < sm_x + sm_w && my >= sm_y && my < sm_y + sm_h) {
                     int rel_y = my - sm_y;
-                    if (rel_y >= 30 && rel_y <= 60) {
-                        extern void fb_set_resolution(uint32_t w, uint32_t h);
-                        fb_set_resolution(800, 600);
+                    if (rel_y >= 0 && rel_y < 30) {
+                        extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
                         start_menu_active = 0;
-                    } else if (rel_y >= 60 && rel_y <= 100) {
-                        extern void fb_set_resolution(uint32_t w, uint32_t h);
-                        fb_set_resolution(1024, 768);
+                    } else if (rel_y >= 30 && rel_y < 60) {
+                        extern void cmd_browser(int, char**);
+                        cmd_browser(0, 0);
                         start_menu_active = 0;
-                    } else if (rel_y >= 100 && rel_y <= 125) {
-                        extern void taskmgr_draw_window(struct window *win,int cx,int cy,int cw,int ch);
-                        wm_add_window(100,100,400,300,"Task Manager",taskmgr_draw_window);
+                    } else if (rel_y >= 60 && rel_y < 90) {
+                        window_t *tw = wm_add_window(60, 50, 560, 360, "Terminal", terminal_draw_window);
+                        if (tw) tw->key_event = terminal_key_event;
                         start_menu_active = 0;
-                    } else if (rel_y >= 125 && rel_y <= 150) {
-                        /* Force Quit Logic */
+                    } else if (rel_y >= 90 && rel_y < 120) {
+                        window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
+                        if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
+                        start_menu_active = 0;
+                    } else if (rel_y >= 120 && rel_y < 150) {
+                        extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
+                        start_menu_active = 0;
+                    } else if (rel_y >= 150 && rel_y < 180) {
+                        bg_color_idx = (bg_color_idx + 1) % 5;
+                        start_menu_active = 0;
+                    } else if (rel_y >= 180 && rel_y <= 210) {
+                        /* Force Quit */
                         extern void wm_close_window(window_t *win);
                         if (focused_window) {
                             wm_close_window(focused_window);
@@ -233,7 +248,6 @@ void wm_update(void) {
                         }
                         extern volatile int stax_doom_quit_requested;
                         stax_doom_quit_requested = 1;
-                        
                         start_menu_active = 0;
                     } else {
                         start_menu_active = 0;
@@ -408,18 +422,33 @@ desktop_hit_done:
             if (drag_type == 0 && drag_idx >= 0 && drag_idx < NUM_APPS) {
                 int i = drag_idx;
                 if (app_icons[i].id == 0) {
-                    window_t *gw = wm_add_window(40,40,560,360,"Boot Log",gfx_console_draw_window);
-                    if (gw) {
-                        gw->key_event = gfx_console_key_event;
-                        gw->mouse_click = gfx_console_mouse_click;
-                        gw->mouse_drag = gfx_console_mouse_drag;
-                    }
+                    extern void cmd_browser(int, char**);
+                    cmd_browser(0, 0);
                 } else if (app_icons[i].id == 1) {
-                    window_t *fw=wm_add_window(60,60,420,320,"File Manager",file_manager_draw_window);
-                    if (fw) { fw->mouse_click=file_manager_click; fw->update_client=file_manager_update; }
+                    window_t *tw = wm_add_window(60, 50, 560, 360, "Terminal", terminal_draw_window);
+                    if (tw) tw->key_event = terminal_key_event;
                 } else if (app_icons[i].id == 2) {
-                    extern void cmd_slime(int, char**);
-                    cmd_slime(0,0);
+                    window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
+                    if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
+                } else if (app_icons[i].id == 3) {
+                    extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    extern void editor_key_event(struct window *win, char c);
+                    window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
+                    if (ew) ew->key_event = editor_key_event;
+                } else if (app_icons[i].id == 4) {
+                    extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
+                    window_t *cw = wm_add_window(160, 110, 200, 250, "Calculator", calculator_draw_window);
+                    if (cw) cw->mouse_click = calculator_mouse_click;
+                } else if (app_icons[i].id == 5) {
+                    extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
+                } else if (app_icons[i].id == 6) {
+                    extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                    wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
+                } else if (app_icons[i].id == 7) {
+                    extern void cmd_doomgfx(int, char**);
+                    cmd_doomgfx(0, 0);
                 }
             } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
                 int i = drag_idx;
@@ -462,15 +491,20 @@ desktop_hit_done:
             }
         } else if (drag_type != -1 && drag_moved) {
             if (drag_type == 0 && drag_idx >= 0 && drag_idx < NUM_APPS) {
-                int nx = ((app_icons[drag_idx].x - 10 + ICON_SPACING/2) / ICON_SPACING) * ICON_SPACING + 10;
-                int ny = ((app_icons[drag_idx].y - 10 + ICON_SPACING/2) / ICON_SPACING) * ICON_SPACING + 10;
-                app_icons[drag_idx].x = nx < 10 ? 10 : nx;
-                app_icons[drag_idx].y = ny < 10 ? 10 : ny;
+                int col = (app_icons[drag_idx].x - 18 + ICON_GRID_W/2) / ICON_GRID_W;
+                if (col < 0) col = 0;
+                if (col > 1) col = 1;
+                int row = (app_icons[drag_idx].y - 42 + ICON_GRID_H/2) / ICON_GRID_H;
+                if (row < 0) row = 0;
+                app_icons[drag_idx].x = (col == 0) ? 18 : 104;
+                app_icons[drag_idx].y = 42 + row * 86;
             } else if (drag_type == 1 && drag_idx >= 0 && drag_idx < desk_count) {
-                int nx = ((desk_files[drag_idx].x - DESK_START_X + DESK_ICON_W/2) / DESK_ICON_W) * DESK_ICON_W + DESK_START_X;
-                int ny = ((desk_files[drag_idx].y - 10 + DESK_ICON_H/2) / DESK_ICON_H) * DESK_ICON_H + 10;
-                desk_files[drag_idx].x = nx < DESK_START_X ? DESK_START_X : nx;
-                desk_files[drag_idx].y = ny < 10 ? 10 : ny;
+                int col = (desk_files[drag_idx].x - DESK_START_X + DESK_ICON_W/2) / DESK_ICON_W;
+                if (col < 0) col = 0;
+                int row = (desk_files[drag_idx].y - 42 + DESK_ICON_H/2) / DESK_ICON_H;
+                if (row < 0) row = 0;
+                desk_files[drag_idx].x = DESK_START_X + col * DESK_ICON_W;
+                desk_files[drag_idx].y = 42 + row * DESK_ICON_H;
             }
         }
         drag_type = -1;
