@@ -35,9 +35,10 @@ extern window_t *focused_window;
 extern context_menu_t ctx_menu;
 extern int start_menu_active;
 
-#define ICON_W       64
-#define ICON_H       64
-#define ICON_SPACING 80
+#define ICON_W          64
+#define ICON_H          74
+#define ICON_GRID_W     86
+#define ICON_GRID_H     86
 
 typedef struct {
     int id;
@@ -45,14 +46,14 @@ typedef struct {
     const char *name;
 } app_icon_t;
 
-#define NUM_APPS 3
+#define NUM_APPS 8
 extern app_icon_t app_icons[NUM_APPS];
 
-#define DESK_MAX        20
+#define DESK_MAX        24
 #define DESK_REFRESH_MS 3000
-#define DESK_START_X    100
-#define DESK_ICON_W     74
-#define DESK_ICON_H     80
+#define DESK_START_X    190
+#define DESK_ICON_W     86
+#define DESK_ICON_H     86
 
 typedef struct {
     char name[16];

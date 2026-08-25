@@ -46,10 +46,10 @@ void desk_load_files(void) {
                     desk_files[slot].name[k] = '\0';
                     desk_files[slot].is_dir = (fno.fattrib & AM_DIR) ? 1 : 0;
                     
-                    int cols = (fb_width - DESK_START_X - 10) / DESK_ICON_W;
-                    if (cols < 1) cols = 1;
-                    desk_files[slot].x = DESK_START_X + (slot % cols) * DESK_ICON_W;
-                    desk_files[slot].y = TASKBAR_HEIGHT + 10 + (slot / cols) * DESK_ICON_H;
+                    int rows = (fb_height - TASKBAR_HEIGHT - 32) / DESK_ICON_H;
+                    if (rows < 1) rows = 1;
+                    desk_files[slot].x = DESK_START_X + (slot / rows) * DESK_ICON_W;
+                    desk_files[slot].y = TASKBAR_HEIGHT + 14 + (slot % rows) * DESK_ICON_H;
                     desk_files[slot].valid = 1;
                     desk_count++;
                 }
