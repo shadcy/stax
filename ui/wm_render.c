@@ -273,7 +273,7 @@ static void draw_app_icon_gfx(int ix, int iy, int id) {
 }
 
 void wm_render(void) {
-    /* ---- 1. Desktop background ---- */
+    /* ---- 1. Desktop background (Clean Minimalist Surface) ---- */
     if (desktop_bg_image) {
         extern uint16_t *fb_get_buffer(void);
         uint16_t *fbuf = fb_get_buffer();
@@ -283,24 +283,8 @@ void wm_render(void) {
     } else {
         fb_clear(COL_DESKTOP);
     }
-
-    /* ---- 2a. App shortcut icons ---- */
-    for (int i = 0; i < NUM_APPS; i++) {
-        int ix = app_icons[i].x;
-        int iy = app_icons[i].y;
-
-        draw_app_icon_gfx(ix, iy, app_icons[i].id);
-
-        int nlen = (int)strlen(app_icons[i].name);
-        int pill_w = nlen * 8 + 8;
-        int pill_x = ix + (ICON_W - pill_w) / 2;
-        int pill_y = iy + 52;
-        fb_fillrect(pill_x, pill_y, pill_w, 16, rgb565(20, 25, 35));
-        fb_drawline(pill_x, pill_y, pill_x + pill_w - 1, pill_y, rgb565(60, 70, 90));
-        draw_text(pill_x + 4, pill_y, app_icons[i].name, COLOR_WHITE);
-    }
     
-    /* ---- 2b. Filesystem icons ---- */
+    /* ---- 2. Filesystem icons (from SD card) ---- */
     extern volatile int doom_running;
     extern volatile int doom_loading;
     if (!desk_loaded && !doom_running && !doom_loading) desk_load_files();
@@ -353,7 +337,6 @@ void wm_render(void) {
                                        rgb565(150,150,160);
                                        
             fb_fillrect(ix+14, iy+6, 32, 42, page_col);
-            
             fb_drawline(ix+14, iy+6, ix+34, iy+6, border);
             fb_drawline(ix+14, iy+6, ix+14, iy+47, border);
             fb_drawline(ix+14, iy+47, ix+45, iy+47, border);
@@ -394,12 +377,12 @@ void wm_render(void) {
         draw_window(arr[i]);
     }
     
-    /* 3. Top Menu Bar (Mac-Style) */
+    /* 3. Top Navigation Bar (Mac/Ubuntu Hybrid Style) */
     int ty = 0;
     fb_fillrect(0, ty, fb_width, TASKBAR_HEIGHT, rgb565(230, 230, 230)); /* Light gray bar */
-    fb_drawline(0, ty + TASKBAR_HEIGHT - 1, fb_width, ty + TASKBAR_HEIGHT - 1, rgb565(150, 150, 150)); /* Bottom border */
+    fb_drawline(0, ty + TASKBAR_HEIGHT - 1, fb_width, ty + TASKBAR_HEIGHT - 1, rgb565(150, 150, 150));
     
-    /* STAX Menu Logo (Instead of Start button) */
+    /* STAX Logo */
     static uint16_t *stax_logo = NULL;
     static int logo_w = 0, logo_h = 0, logo_attempted = 0;
     if (!stax_logo && !logo_attempted) {
@@ -411,16 +394,36 @@ void wm_render(void) {
         for (int fy = 0; fy < logo_h; fy++) {
             for (int fx = 0; fx < logo_w; fx++) {
                 uint16_t p = stax_logo[fy * logo_w + fx];
-                fb_putpixel(12 + fx, ty + (TASKBAR_HEIGHT - logo_h) / 2 + fy, p);
+                fb_putpixel(8 + fx, ty + (TASKBAR_HEIGHT - logo_h) / 2 + fy, p);
             }
         }
     } else {
-        fb_fillrect(8, ty + 6, 16, 16, COLOR_BLACK); /* STAX Logo placeholder */
-        draw_text(32, ty + 6, "STAX", COLOR_BLACK);
+        fb_fillrect(8, ty + 6, 16, 16, COLOR_BLACK);
+        draw_text(10, ty + 6, "S", COLOR_WHITE);
     }
     
-    /* Open Window Tabs in Navigation Bar (Mac/Modern OS Style) */
-    int nav_x = 75;
+    /* Apps Launcher Button (Next to Logo) */
+    int app_btn_x = 34;
+    int app_btn_w = 66;
+    uint16_t app_bg = start_menu_active ? rgb565(35, 110, 225) : rgb565(215, 218, 228);
+    uint16_t app_fg = start_menu_active ? COLOR_WHITE : rgb565(30, 35, 45);
+    fb_fillrect(app_btn_x, ty + 3, app_btn_w, 22, app_bg);
+    fb_drawline(app_btn_x, ty + 3, app_btn_x + app_btn_w - 1, ty + 3, start_menu_active ? rgb565(70, 150, 255) : rgb565(190, 195, 205));
+    fb_drawline(app_btn_x, ty + 24, app_btn_x + app_btn_w - 1, ty + 24, start_menu_active ? rgb565(20, 80, 180) : rgb565(190, 195, 205));
+    fb_drawline(app_btn_x, ty + 3, app_btn_x, ty + 24, start_menu_active ? rgb565(70, 150, 255) : rgb565(190, 195, 205));
+    fb_drawline(app_btn_x + app_btn_w - 1, ty + 3, app_btn_x + app_btn_w - 1, ty + 24, start_menu_active ? rgb565(20, 80, 180) : rgb565(190, 195, 205));
+
+    /* 9-dot grid icon (3x3 dots) */
+    int mx0 = app_btn_x + 6, my0 = ty + 7;
+    for (int dr = 0; dr < 3; dr++) {
+        for (int dc = 0; dc < 3; dc++) {
+            fb_fillrect(mx0 + dc * 4, my0 + dr * 4, 2, 2, app_fg);
+        }
+    }
+    draw_text(app_btn_x + 22, ty + 6, "Apps", app_fg);
+
+    /* Open Window Tabs in Navigation Bar */
+    int nav_x = 106;
     int max_nav_x = (int)fb_width - 280;
     int avail_w = max_nav_x - nav_x;
     
@@ -503,7 +506,6 @@ void wm_render(void) {
             draw_text(ox + 6, ty + 6, ovf_str, rgb565(40, 50, 70));
         }
     }
-
     
     /* Real-Time Date & Time (IST Mumbai) */
     char dt_str[32];
@@ -554,32 +556,72 @@ void wm_render(void) {
         draw_text(ctx_menu.x + 10, ctx_menu.y + 188, "Reboot System", rgb565(190, 40, 40));
     }
     
-    /* STAX System Menu Dropdown */
+    /* Ubuntu GNOME / Modern Applications Launcher Window */
     if (start_menu_active) {
-        int sm_x = 0;
-        int sm_y = TASKBAR_HEIGHT; /* Dropdown from top bar */
-        int sm_w = 200;
-        int sm_h = 240;
+        int sm_x = 6;
+        int sm_y = TASKBAR_HEIGHT + 2;
+        int sm_w = 340;
+        int sm_h = 390;
         
-        fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(245, 245, 250));
-        fb_drawline(sm_x, sm_y, sm_x + sm_w, sm_y, rgb565(160, 160, 170));
-        fb_drawline(sm_x + sm_w, sm_y, sm_x + sm_w, sm_y + sm_h, rgb565(160, 160, 170));
-        fb_drawline(sm_x, sm_y + sm_h, sm_x + sm_w, sm_y + sm_h, rgb565(160, 160, 170));
+        /* Drop shadow */
+        fb_fillrect(sm_x + 4, sm_y + 4, sm_w, sm_h, rgb565(20, 22, 28));
+
+        /* Card background */
+        fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(32, 34, 42));
+        fb_drawline(sm_x, sm_y, sm_x + sm_w - 1, sm_y, rgb565(65, 70, 85));
+        fb_drawline(sm_x, sm_y, sm_x, sm_y + sm_h - 1, rgb565(65, 70, 85));
+        fb_drawline(sm_x + sm_w - 1, sm_y, sm_x + sm_w - 1, sm_y + sm_h - 1, rgb565(18, 20, 26));
+        fb_drawline(sm_x, sm_y + sm_h - 1, sm_x + sm_w - 1, sm_y + sm_h - 1, rgb565(18, 20, 26));
         
-        /* Options */
-        draw_text(sm_x + 10, sm_y + 8, "About STAX OS", COLOR_BLACK);
-        fb_drawline(sm_x + 5, sm_y + 30, sm_x + sm_w - 5, sm_y + 30, rgb565(200, 200, 210));
+        /* Header */
+        draw_text(sm_x + 14, sm_y + 10, "Applications & Tools", COLOR_WHITE);
+        draw_text(sm_x + sm_w - 110, sm_y + 10, "STAX OS", rgb565(140, 150, 175));
+        fb_drawline(sm_x + 10, sm_y + 30, sm_x + sm_w - 10, sm_y + 30, rgb565(50, 54, 66));
+
+        /* 3 Columns x 3 Rows App Grid */
+        const char *app_names[9] = {
+            "Browser", "Terminal", "Files",
+            "Editor",  "Calc",     "Sys Info",
+            "Tasks",   "DOOM",     "Settings"
+        };
+
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++) {
+                int aid = r * 3 + c;
+                int ix = sm_x + 12 + c * 106;
+                int iy = sm_y + 38 + r * 98;
+                int tile_w = 98;
+                int tile_h = 90;
+
+                /* Tile frame */
+                fb_fillrect(ix, iy, tile_w, tile_h, rgb565(42, 45, 56));
+                fb_drawline(ix, iy, ix + tile_w - 1, iy, rgb565(60, 65, 80));
+                fb_drawline(ix, iy, ix, iy + tile_h - 1, rgb565(60, 65, 80));
+                fb_drawline(ix + tile_w - 1, iy, ix + tile_w - 1, iy + tile_h - 1, rgb565(25, 28, 36));
+                fb_drawline(ix, iy + tile_h - 1, ix + tile_w - 1, iy + tile_h - 1, rgb565(25, 28, 36));
+
+                /* Graphical App Icon */
+                draw_app_icon_gfx(ix + 17, iy + 6, aid);
+
+                /* App Label */
+                const char *lbl = app_names[aid];
+                int llen = (int)strlen(lbl);
+                int lx = ix + (tile_w - llen * 8) / 2;
+                draw_text(lx, iy + 64, lbl, COLOR_WHITE);
+            }
+        }
+
+        /* Bottom System Controls */
+        fb_drawline(sm_x + 10, sm_y + 342, sm_x + sm_w - 10, sm_y + 342, rgb565(50, 54, 66));
         
-        draw_text(sm_x + 10, sm_y + 38, "Web Browser", COLOR_BLACK);
-        draw_text(sm_x + 10, sm_y + 68, "Terminal", COLOR_BLACK);
-        draw_text(sm_x + 10, sm_y + 98, "File Manager", COLOR_BLACK);
-        draw_text(sm_x + 10, sm_y + 128, "Task Manager", COLOR_BLACK);
-        draw_text(sm_x + 10, sm_y + 158, "Settings", COLOR_BLACK);
-        
-        fb_drawline(sm_x + 5, sm_y + 180, sm_x + sm_w - 5, sm_y + 180, rgb565(200, 200, 210));
-        
-        draw_text(sm_x + 10, sm_y + 188, "Reboot System", rgb565(190, 40, 40));
-        draw_text(sm_x + 10, sm_y + 216, "Force Quit...", rgb565(120, 120, 130));
+        fb_fillrect(sm_x + 12, sm_y + 352, 98, 26, rgb565(45, 48, 60));
+        draw_text(sm_x + 22, sm_y + 357, "About STAX", rgb565(200, 205, 220));
+
+        fb_fillrect(sm_x + 118, sm_y + 352, 104, 26, rgb565(190, 45, 45));
+        draw_text(sm_x + 126, sm_y + 357, "Reboot OS", COLOR_WHITE);
+
+        fb_fillrect(sm_x + 230, sm_y + 352, 98, 26, rgb565(45, 48, 60));
+        draw_text(sm_x + 242, sm_y + 357, "Force Quit", rgb565(200, 205, 220));
     }
     
     /* 4. Mouse Cursor */
@@ -599,3 +641,4 @@ void wm_render(void) {
     /* 5. Swap */
     fb_swap();
 }
+
