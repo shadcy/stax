@@ -1,0 +1,7 @@
+name=DOOM
+version=1.10
+author=id Software / shadcy
+entry=app.elf
+icon=icon.bmp
+data=data/doom1.wad
+description=The Ultimate DOOM - Shareware Episode 1

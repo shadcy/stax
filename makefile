@@ -100,6 +100,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/mmu.o \
                 $(BUILD_DIR)/page.o \
                 $(BUILD_DIR)/elf.o \
+                $(BUILD_DIR)/stapp.o \
                 $(BUILD_DIR)/vfs.o \
                 $(BUILD_DIR)/devfs.o \
                 $(BUILD_DIR)/pipe.o \
@@ -156,9 +157,8 @@ KERNEL_OBJS  += $(BUILD_DIR)/math_fixed.o \
 # Core/Apps
 KERNEL_OBJS  += $(BUILD_DIR)/sokoban.o
 
-# Games
+# Games (kernel-resident: snake, slime, craft only - DOOM runs via .stapp userspace)
 KERNEL_OBJS  += $(BUILD_DIR)/snake.o
-KERNEL_OBJS  += $(BUILD_DIR)/doom.o
 KERNEL_OBJS  += $(BUILD_DIR)/slime.o
 KERNEL_OBJS  += $(BUILD_DIR)/craft.o
 KERNEL_OBJS  += $(BUILD_DIR)/firmware_update.o
@@ -237,7 +237,7 @@ all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR) $(BUILD_DIR)/doom_objs
 
-$(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.elf tools/stax-sign/stax-sign scripts/create_mbr.py
+$(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.elf $(BUILD_DIR)/doom.stapp tools/stax-sign/stax-sign tools/stapp-pack/stapp-pack scripts/create_mbr.py
 	@echo ""
 	@if [ ! -f $@ ]; then \
 		echo "Creating new Flash Image → $@"; \
@@ -253,9 +253,7 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.el
 		if [ ! -f stax_key.priv ]; then \
 			./tools/stax-sign/stax-sign --gen-key stax_key; \
 		fi; \
-		if [ -f $(GAMES_DIR)/em-doom/doom.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom.wad ::/DOOM.WAD; fi; \
-		if [ -f $(GAMES_DIR)/em-doom/doom1.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom1.wad ::/DOOM1.WAD; fi; \
-		if [ -f $(GAMES_DIR)/em-doom/doom2.wad ]; then mcopy -i $@@@2098688 $(GAMES_DIR)/em-doom/doom2.wad ::/DOOM2.WAD; fi; \
+		if [ -f $(BUILD_DIR)/doom.stapp ]; then mcopy -i $@@@2098688 $(BUILD_DIR)/doom.stapp ::/DOOM.STAPP; fi; \
 		mmd -i $@@@2098688 ::/BMP; \
 		if [ -d assets/bmp ]; then mcopy -i $@@@2098688 assets/bmp/*.BMP ::/BMP/; fi; \
 	fi
@@ -267,7 +265,7 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.el
 	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
 	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
 	@if [ -f $(BUILD_DIR)/hello.elf ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/HELLO.ELF; mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/hello.elf; fi
-	@if [ -f $(BUILD_DIR)/doom.elf ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.elf ::/DOOM.ELF; mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.elf ::/doom.elf; fi
+	@if [ -f $(BUILD_DIR)/doom.stapp ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.stapp ::/DOOM.STAPP; fi
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -426,6 +424,21 @@ $(BUILD_DIR)/doom_objs/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DI
 $(BUILD_DIR)/doom.elf: $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(DOOM_OBJS) user/user.ld
 	$(LD) -T user/user.ld $(LDFLAGS) -z max-page-size=4096 $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(DOOM_OBJS) $(LIBGCC) -o $@
 	@echo "Built Standalone Userland DOOM ELF → $@"
+
+# Build host-side stapp-pack tool
+tools/stapp-pack/stapp-pack: tools/stapp-pack/stapp-pack.c
+	@echo "Building host tool: stapp-pack"
+	gcc -O2 -Wall -o tools/stapp-pack/stapp-pack tools/stapp-pack/stapp-pack.c
+
+# Package doom.stapp — requires doom.elf and doom1.wad
+$(BUILD_DIR)/doom.stapp: $(BUILD_DIR)/doom.elf tools/stapp-pack/stapp-pack $(GAMES_DIR)/em-doom/manifest.txt
+	@echo "Packaging doom.stapp..."
+	@if [ -f $(GAMES_DIR)/em-doom/doom1.wad ]; then \
+		tools/stapp-pack/stapp-pack $@ $(GAMES_DIR)/em-doom/manifest.txt $(BUILD_DIR)/doom.elf $(GAMES_DIR)/em-doom/doom1.wad; \
+	else \
+		tools/stapp-pack/stapp-pack $@ $(GAMES_DIR)/em-doom/manifest.txt $(BUILD_DIR)/doom.elf; \
+	fi
+	@echo "Built DOOM package → $@"
 
 # ---------------------------------------------------------------------------
 # Utilities

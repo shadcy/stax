@@ -10,7 +10,6 @@
 #include "scheduler.h"
 #include "timer.h"
 #include "snake.h"
-#include "doom.h"
 #include "framebuffer.h"
 #include "bmp.h"
 #include "gfx_console.h"
@@ -49,7 +48,8 @@ static const command_t commands[] = {
     {"mkdir",   "Create dir", cmd_mkdir},
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
     {"exec",    "Load and execute standalone ELF-32 binary", cmd_exec},
-    {"game",    "Play a game (use --doom, --doom2, --snake, --slime)", cmd_game},
+    {"run",     "Run a .stapp application package (e.g. run doom.stapp)", cmd_run},
+    {"game",    "Play a game (use --doom, --snake, --slime)", cmd_game},
     {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
     {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
@@ -77,26 +77,21 @@ void cmd_game(int argc, char *argv[])
         kputs("Usage:\n");
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom   ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM Graphics\n");
-        
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
-        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom2  ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play DOOM 2 Graphics\n");
-        
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Launch DOOM (doom.stapp)\n");
+
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Graphical Snake\n");
-        
+
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--slime  ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Slime Escape\n");
         return;
     }
     if (strcmp(argv[1], "--doom") == 0) cmd_doomgfx(argc, argv);
-    else if (strcmp(argv[1], "--doom2") == 0) cmd_doom2gfx(argc, argv);
     else if (strcmp(argv[1], "--snake") == 0) cmd_snake(argc, argv);
     else if (strcmp(argv[1], "--slime") == 0) cmd_slime(argc, argv);
-    else kputs("Unknown game.\n");
+    else kputs("Unknown game. Try: game --doom | game --snake | game --slime\n");
 }
 
 /* ------------------------------------------------------------------------
@@ -607,40 +602,44 @@ void command_init(void)
 }
 
 /* ============================================================================
- * cmd_doomgfx — launch standalone userland DOOM game
+ * cmd_run — launch a .stapp application package
+ * ============================================================================ */
+void cmd_run(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: run <app.stapp>\n");
+        kputs("  e.g. run doom.stapp\n");
+        return;
+    }
+    extern int stapp_exec(const char *path);
+    /* Try with and without leading slash */
+    int rc = stapp_exec(argv[1]);
+    if (rc < 0) {
+        char path2[64];
+        path2[0] = '/';
+        int i = 0;
+        while (argv[1][i] && i < 60) { path2[i+1] = argv[1][i]; i++; }
+        path2[i+1] = '\0';
+        rc = stapp_exec(path2);
+    }
+    if (rc < 0)
+        kputs("Error: package not found or failed to launch.\n");
+}
+
+/* ============================================================================
+ * cmd_doomgfx — launch DOOM via .stapp package
  * ============================================================================ */
 void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
-    extern int elf_exec(const char *path, int argc, char **argv);
-    kputs("Launching standalone userland DOOM process (doom.elf)...\n");
-    char *d_argv[2] = {(char *)"DOOM1.WAD", NULL};
-    int rc = elf_exec("doom.elf", 1, d_argv);
-    if (rc != 0) {
-        rc = elf_exec("/DOOM.ELF", 1, d_argv);
-    }
-    if (rc != 0) {
-        kputs("Error: doom.elf executable not found or failed to load.\n");
-    }
+    extern int stapp_exec(const char *path);
+    kputs("Launching DOOM...\n");
+    if (stapp_exec("/DOOM.STAPP") == 0) return;
+    if (stapp_exec("doom.stapp")  == 0) return;
+    kputs("Error: doom.stapp not found. Run 'make' to build.\n");
 }
 
-/* ============================================================================
- * cmd_doom2gfx — launch standalone userland DOOM 2 game
- * ============================================================================ */
-void cmd_doom2gfx(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    extern int elf_exec(const char *path, int argc, char **argv);
-    kputs("Launching standalone userland DOOM II process (doom.elf)...\n");
-    char *d_argv[2] = {(char *)"DOOM2.WAD", NULL};
-    int rc = elf_exec("doom.elf", 1, d_argv);
-    if (rc != 0) {
-        rc = elf_exec("/DOOM.ELF", 1, d_argv);
-    }
-    if (rc != 0) {
-        kputs("Error: doom.elf executable not found or failed to load.\n");
-    }
-}
+void cmd_doom2gfx(int argc, char *argv[]) { (void)argc; (void)argv; }
 
 /* ============================================================================
  * cmd_fbtest — test framebuffer

@@ -7,9 +7,13 @@
 #include "app_file_manager.h"
 #include "app_terminal.h"
 #include "app_editor.h"
-#include "doom.h"
 #include "gfx_console.h"
 #include "keyboard.h"
+
+/* Marker used to identify .stapp/DOOM windows in the WM (previously from doom.h) */
+#ifndef DOOM_WIN_MARKER
+#define DOOM_WIN_MARKER ((void *)0xD00D0001u)
+#endif
 
 window_t *window_list = NULL;
 static int next_id = 1;
@@ -644,6 +648,23 @@ desktop_hit_done:
                         int k=0; while(desk_files[i].name[k]) { nw->path[k]=desk_files[i].name[k]; k++; }
                         nw->path[k]='\0';
                     }
+                } else if (nlen>5 &&
+                    (desk_files[i].name[nlen-5]=='S'||desk_files[i].name[nlen-5]=='s') &&
+                    (desk_files[i].name[nlen-4]=='T'||desk_files[i].name[nlen-4]=='t') &&
+                    (desk_files[i].name[nlen-3]=='A'||desk_files[i].name[nlen-3]=='a') &&
+                    (desk_files[i].name[nlen-2]=='P'||desk_files[i].name[nlen-2]=='p') &&
+                    (desk_files[i].name[nlen-1]=='P'||desk_files[i].name[nlen-1]=='p')) {
+
+                    /* .stapp — launch as application package */
+                    extern int stapp_exec(const char *path);
+                    char stapp_path[64];
+                    stapp_path[0] = '/';
+                    int k = 0;
+                    while (desk_files[i].name[k] && k < 60) {
+                        stapp_path[k+1] = desk_files[i].name[k]; k++;
+                    }
+                    stapp_path[k+1] = '\0';
+                    stapp_exec(stapp_path);
                 } else if (nlen>4 &&
                     (desk_files[i].name[nlen-3]=='B'||desk_files[i].name[nlen-3]=='b') &&
                     (desk_files[i].name[nlen-2]=='M'||desk_files[i].name[nlen-2]=='m') &&
