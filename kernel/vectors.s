@@ -351,31 +351,40 @@ svc_handler:
     msr     spsr_cxsf, r12
     ldmfd   sp!, {r4-r12, pc}^
 
+    .global prefetch_handler
+    .type prefetch_handler, %function
 prefetch_handler:
-    ldr r0, =stax_fault_lr
-    /* LR in abort mode points to fault + 4 */
-    sub r1, lr, #4
-    str r1, [r0]
-    ldr r0, =stax_fault_pc
-    str r1, [r0]
-    UART_PUTS stax_msg_prefetch
-    mov r2, r1
-    UART_HEX
-    UART_PUTS stax_msg_hang
-    b .
+    /* In prefetch abort mode, LR = faulting instruction + 4 */
+    sub     r0, lr, #4       /* r0 = faulting PC */
+    mov     r1, lr           /* r1 = lr */
+    mrs     r2, spsr         /* r2 = spsr (caller mode) */
+    
+    /* Switch to SVC mode to run handler with valid C stack */
+    mrs     r3, cpsr
+    bic     r12, r3, #0x1F
+    orr     r12, r12, #0x13
+    msr     cpsr_c, r12
+    
+    bl      prefetch_abort_handler_c
+    b       .
 
+    .global data_handler
+    .type data_handler, %function
 data_handler:
     /* In data abort mode, LR = faulting instruction + 8 */
-    sub r1, lr, #8
-    ldr r0, =stax_fault_pc
-    str r1, [r0]
-    ldr r0, =stax_fault_lr
-    str lr, [r0]
-    UART_PUTS stax_msg_data
-    mov r2, r1
-    UART_HEX
-    UART_PUTS stax_msg_hang
-    b .
+    sub     r2, lr, #8       /* r2 = faulting PC */
+    mrc     p15, 0, r0, c6, c0, 0 /* r0 = FAR (Fault Address Register) */
+    mrc     p15, 0, r1, c5, c0, 0 /* r1 = FSR (Fault Status Register) */
+    mrs     r3, spsr         /* r3 = spsr (caller mode) */
+    
+    /* Switch to SVC mode to run handler with valid C stack */
+    mrs     r12, cpsr
+    bic     r12, r12, #0x1F
+    orr     r12, r12, #0x13
+    msr     cpsr_c, r12
+    
+    bl      data_abort_handler_c
+    b       .
 
 reserved_handler:
     ldr r0, =stax_fault_lr
