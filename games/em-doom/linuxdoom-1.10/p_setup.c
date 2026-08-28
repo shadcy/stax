@@ -451,13 +451,6 @@ void P_LoadSideDefs (int lump)
     sd = sides;
     for (i=0 ; i<numsides ; i++, msd++, sd++)
     {
-	if (i == 0) {
-	    printf("[DOOM DEBUG] SIDEDEF 0 raw toptexture: %c%c%c%c%c%c%c%c\n", 
-		msd->toptexture[0], msd->toptexture[1], msd->toptexture[2], msd->toptexture[3],
-		msd->toptexture[4], msd->toptexture[5], msd->toptexture[6], msd->toptexture[7]);
-	    printf("[DOOM DEBUG] Hex: %02x %02x %02x %02x\n", 
-		msd->toptexture[0], msd->toptexture[1], msd->toptexture[2], msd->toptexture[3]);
-	}
 	sd->textureoffset = SHORT(msd->textureoffset)<<FRACBITS;
 	sd->rowoffset = SHORT(msd->rowoffset)<<FRACBITS;
 	sd->toptexture = R_TextureNumForName(msd->toptexture);

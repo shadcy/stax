@@ -325,9 +325,7 @@ void wm_render(void) {
     }
     
     /* ---- 2. Filesystem icons (from SD card) ---- */
-    extern volatile int doom_running;
-    extern volatile int doom_loading;
-    if (!desk_loaded && !doom_running && !doom_loading) desk_load_files();
+    if (!desk_loaded) desk_load_files();
 
     /* Theme-matched folder palette (macOS / Ubuntu Yaru Style) */
     uint16_t f_main = (bg_color_idx == 0) ? rgb565(38, 132, 226) :

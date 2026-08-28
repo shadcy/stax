@@ -97,9 +97,7 @@ boolean         nomonsters;	// checkparm of -nomonsters
 boolean         respawnparm;	// checkparm of -respawn
 boolean         fastparm;	// checkparm of -fast
 
-boolean         drone;
-
-boolean		singletics = false; // debug flag to cancel adaptiveness
+boolean		singletics = true; // standalone user-mode single-player execution
 
 
 
@@ -219,14 +217,8 @@ void D_Display (void)
 	borderdrawcount = 3;
     }
 
-    // save the current screen if about to wipe
-    if (gamestate != wipegamestate)
-    {
-	wipe = true;
-	wipe_StartScreen(0, 0, SCREENWIDTH, SCREENHEIGHT);
-    }
-    else
-	wipe = false;
+    /* Bypass wipe effect for instant fluid rendering */
+    wipe = false;
 
     if (gamestate == GS_LEVEL && gametic)
 	HU_Erase();
@@ -365,6 +357,23 @@ void D_DoomLoop (void)
     }
 	
     I_InitGraphics ();
+
+    printf ("\n[DOOM] ========================================\n");
+    printf ("[DOOM] Game Loop Running! Rendering to /dev/fb0\n");
+    printf ("[DOOM] Controls: W/A/S/D = Move, Space = Use, Ctrl/F = Shoot, Esc = Menu\n");
+    printf ("[DOOM] ========================================\n\n");
+
+    int lasttic = I_GetTime();
+    while (1)
+    {
+        int tic = I_GetTime();
+        if (tic <= lasttic) {
+            u_yield();
+            continue;
+        }
+        lasttic = tic;
+        D_DoomStep ();
+    }
 }
 
 void D_DoomStep (void)

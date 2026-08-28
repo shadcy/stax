@@ -102,6 +102,9 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/elf.o \
                 $(BUILD_DIR)/vfs.o \
                 $(BUILD_DIR)/devfs.o \
+                $(BUILD_DIR)/pipe.o \
+                $(BUILD_DIR)/signal.o \
+                $(BUILD_DIR)/process.o \
                 $(BUILD_DIR)/fat.o \
                 $(BUILD_DIR)/disk.o \
                 $(BUILD_DIR)/irq.o \
@@ -185,12 +188,12 @@ KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
                 $(BUILD_DIR)/fault_campaign.o
 endif
 
-# em-doom objects
+# Standalone Userland em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
-# Filter out the original platform files, we use stax_platform.c instead
+# Filter out original platform files, we use stax_platform.c
 DOOM_SRCS := $(filter-out %/i_main.c %/i_system.c %/i_sound.c %/i_video.c %/i_net.c, $(DOOM_SRCS))
-DOOM_OBJS := $(patsubst $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c, $(BUILD_DIR)/%.o, $(DOOM_SRCS))
-KERNEL_OBJS  += $(DOOM_OBJS)
+DOOM_OBJS := $(patsubst $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c, $(BUILD_DIR)/doom_objs/%.o, $(DOOM_SRCS))
+
 KERNEL_LD_IN := linker.ld.in
 KERNEL_LD    := $(BUILD_DIR)/linker.ld
 KERNEL_ELF   := $(BUILD_DIR)/kernel.elf
@@ -232,9 +235,9 @@ QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),i
 all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR) $(BUILD_DIR)/doom_objs
 
-$(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf tools/stax-sign/stax-sign scripts/create_mbr.py
+$(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.elf tools/stax-sign/stax-sign scripts/create_mbr.py
 	@echo ""
 	@if [ ! -f $@ ]; then \
 		echo "Creating new Flash Image → $@"; \
@@ -264,6 +267,7 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf tools/stax-sign/stax
 	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
 	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
 	@if [ -f $(BUILD_DIR)/hello.elf ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/HELLO.ELF; mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/hello.elf; fi
+	@if [ -f $(BUILD_DIR)/doom.elf ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.elf ::/DOOM.ELF; mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.elf ::/doom.elf; fi
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -414,6 +418,14 @@ $(BUILD_DIR)/hello.o: user/hello.c | $(BUILD_DIR)
 $(BUILD_DIR)/hello.elf: $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(BUILD_DIR)/hello.o user/user.ld
 	$(LD) -T user/user.ld $(LDFLAGS) -z max-page-size=4096 $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(BUILD_DIR)/hello.o $(LIBGCC) -o $@
 	@echo "Built Userland ELF → $@"
+
+$(BUILD_DIR)/doom_objs/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/doom_objs
+	$(CC) -mcpu=arm926ej-s -march=armv5te -mthumb-interwork -ffreestanding -nostdlib -nostartfiles -O3 -fomit-frame-pointer -ffast-math -w -std=gnu89 -Iinclude -I$(GAMES_DIR)/em-doom/linuxdoom-1.10 -include $(GAMES_DIR)/em-doom/linuxdoom-1.10/stax_compat.h -c $< -o $@
+
+$(BUILD_DIR)/doom.elf: $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(DOOM_OBJS) user/user.ld
+	$(LD) -T user/user.ld $(LDFLAGS) -z max-page-size=4096 $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(DOOM_OBJS) $(LIBGCC) -o $@
+	@echo "Built Standalone Userland DOOM ELF → $@"
 
 # ---------------------------------------------------------------------------
 # Utilities

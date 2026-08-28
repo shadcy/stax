@@ -24,14 +24,19 @@
 #define SYS_WRITE       4
 #define SYS_OPEN        5
 #define SYS_CLOSE       6
+#define SYS_WAITPID     7
 #define SYS_EXECVE      11
 #define SYS_LSEEK       19
 #define SYS_GETPID      20
 #define SYS_UPTIME      25
+#define SYS_KILL        37
+#define SYS_PIPE        42
+#define SYS_SIGNAL      48
 #define SYS_IOCTL       54
 #define SYS_ISATTY      55
 #define SYS_OPENPTY     56
 #define SYS_REBOOT      88
+#define SYS_SLEEP       162
 
 /* Standard file descriptors */
 #define STDIN_FILENO    0
@@ -150,6 +155,26 @@ static inline int32_t u_ioctl(int fd, uint32_t cmd, void *arg) {
 
 static inline int32_t u_isatty(int fd) {
     return _syscall1(SYS_ISATTY, (uint32_t)fd);
+}
+
+static inline int32_t u_waitpid(int pid, int *status, int options) {
+    return _syscall3(SYS_WAITPID, (uint32_t)pid, (uint32_t)status, (uint32_t)options);
+}
+
+static inline int32_t u_kill(int pid, int signum) {
+    return _syscall2(SYS_KILL, (uint32_t)pid, (uint32_t)signum);
+}
+
+static inline int32_t u_pipe(int pipefd[2]) {
+    return _syscall1(SYS_PIPE, (uint32_t)pipefd);
+}
+
+static inline int32_t u_signal(int signum, void (*handler)(int)) {
+    return _syscall2(SYS_SIGNAL, (uint32_t)signum, (uint32_t)handler);
+}
+
+static inline int32_t u_sleep(uint32_t ms) {
+    return _syscall1(SYS_SLEEP, ms);
 }
 
 #ifdef __cplusplus

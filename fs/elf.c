@@ -155,9 +155,9 @@ int elf_load_binary(const char *path, elf_process_t *proc)
         }
     }
 
-    /* 4. Allocate and map 64KB User Stack at USER_STACK_TOP */
+    /* 4. Allocate and map 256KB User Stack at USER_STACK_TOP */
     uint32_t stack_base = USER_STACK_TOP - USER_STACK_SIZE;
-    for (uint32_t sp_vaddr = stack_base; sp_vaddr < USER_STACK_TOP; sp_vaddr += PAGE_SIZE) {
+    for (uint32_t sp_vaddr = stack_base; sp_vaddr <= USER_STACK_TOP; sp_vaddr += PAGE_SIZE) {
         void *stack_page = alloc_page();
         if (!stack_page) {
             mmu_destroy_address_space(proc->page_dir);

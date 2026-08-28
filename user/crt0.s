@@ -19,6 +19,16 @@
 _start:
     /* Stack is initialized at USER_STACK_TOP by ELF loader */
     mov     fp, #0
+
+    /* Clear .bss section */
+    ldr     r0, =__bss_start
+    ldr     r1, =__bss_end
+    mov     r2, #0
+1:
+    cmp     r0, r1
+    strlt   r2, [r0], #4
+    blt     1b
+
     mov     r0, #0      /* argc = 0 */
     mov     r1, #0      /* argv = NULL */
 

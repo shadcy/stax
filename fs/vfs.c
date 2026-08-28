@@ -230,17 +230,23 @@ int32_t vfs_read(int fd, void *buf, size_t count) {
         pty_t *p = pty_get_active();
         if (p) {
             int n = pty_slave_read(p, (char *)buf, count);
-            if (n > 0) return n;
+            if (n > 0) return (int32_t)n;
         }
-        char *s = (char *)buf;
-        size_t read_bytes = 0;
-        while (read_bytes < count) {
-            int c = kgetc();
-            if (c < 0) break;
-            s[read_bytes++] = (char)c;
-            if (c == '\n' || c == '\r') break;
+        #define UART0_BASE_V  0x101f1000UL
+        #define UART_DR_V     (*(volatile unsigned int *)(UART0_BASE_V + 0x000))
+        #define UART_FR_V     (*(volatile unsigned int *)(UART0_BASE_V + 0x018))
+        #define UART_RXFE_V   (1 << 4)
+        if (!(UART_FR_V & UART_RXFE_V)) {
+            ((char *)buf)[0] = (char)(UART_DR_V & 0xFF);
+            return 1;
         }
-        return (int32_t)read_bytes;
+        extern char kb_getc(void);
+        char k = kb_getc();
+        if (k) {
+            ((char *)buf)[0] = k;
+            return 1;
+        }
+        return 0;
     }
 
     vfs_node_t *node = g_fd_table[fd].node;

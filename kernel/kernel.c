@@ -119,6 +119,12 @@ void kernel_main(void)
     extern void devfs_init(void);
     vfs_init();
     devfs_init();
+
+    /* Initialize Signals & Process Control */
+    extern void signal_init(void);
+    extern void process_init(void);
+    signal_init();
+    process_init();
     
     /* Load persisted settings from disk and update live window manager */
     settings_load();
@@ -140,9 +146,7 @@ void kernel_main(void)
     ifconfig_init();
     ping_init();
     
-    extern void net_thread_entry(void);
-    extern int task_create(void (*entry)(void));
-    task_create(net_thread_entry);
+
 
     /* ---- Phase 6b: Timer ---- */
     irq_register(VIC_TIMER0_INT, timer_isr);

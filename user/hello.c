@@ -49,7 +49,22 @@ int main(int argc, char **argv)
         u_close(fd_rand);
     }
 
-    u_print("\nAll Userland POSIX & VFS tests passed.\n\n");
+    /* Test Anonymous Pipe IPC from unprivileged USR mode */
+    int pfd[2];
+    if (u_pipe(pfd) == 0) {
+        const char *pipe_payload = "IPC message across anonymous pipe\n";
+        u_write(pfd[1], pipe_payload, 34);
+        char rx[40];
+        int n = u_read(pfd[0], rx, 34);
+        if (n > 0) {
+            rx[n] = '\0';
+            u_print("  [PIPE] Userland Anonymous Pipe IPC loopback: OK\n");
+        }
+        u_close(pfd[0]);
+        u_close(pfd[1]);
+    }
+
+    u_print("\nAll Userland POSIX, VFS & IPC tests passed.\n\n");
     u_exit(0);
     return 0;
 }

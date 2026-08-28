@@ -79,26 +79,37 @@ typedef struct _FILE FILE;
 #define fflush(f) ((void)0)
 #define fclose(f) ((void)0)
 #define fopen(name, mode) ((FILE*)0)
+#define fseek(f, off, w) ((int)0)
+#define ftell(f) ((long)0)
+#define fread(buf, size, n, f) ((size_t)0)
 
 /* ---- String functions ---- */
 void  *stax_memset(void *s, int c, size_t n);
 void  *stax_memcpy(void *d, const void *s, size_t n);
 int    stax_memcmp(const void *s1, const void *s2, size_t n);
 size_t stax_strlen(const char *s);
+char  *stax_strcpy(char *d, const char *s);
 char  *stax_strncpy(char *d, const char *s, size_t n);
+int    stax_strcmp(const char *s1, const char *s2);
 int    stax_strncmp(const char *s1, const char *s2, size_t n);
+char  *stax_strcat(char *d, const char *s);
 int    stax_strcasecmp(const char *s1, const char *s2);
 char  *stax_strchr(const char *s, int c);
 int    stax_atoi(const char *s);
 int    stax_sprintf(char *buf, const char *fmt, ...);
 int    stax_vsprintf(char *buf, const char *fmt, va_list args);
+void   stax_kprintf(const char *fmt, ...);
+char   kgetc(void);
 
 #define memset   stax_memset
 #define memcpy   stax_memcpy
 #define memcmp   stax_memcmp
 #define strlen   stax_strlen
+#define strcpy   stax_strcpy
 #define strncpy  stax_strncpy
+#define strcmp   stax_strcmp
 #define strncmp  stax_strncmp
+#define strcat   stax_strcat
 #define strcasecmp stax_strcasecmp
 #define strcmpi  stax_strcasecmp
 #define strchr   stax_strchr
@@ -158,7 +169,9 @@ extern int stax_errno;
 static inline int stax_abs(int x) { return x < 0 ? -x : x; }
 #define abs(x) stax_abs(x)
 
-/* ---- usleep / sleep ---- */
+/* ---- usleep / sleep / yield ---- */
+#include "syscall.h"
+
 static inline void stax_usleep(unsigned int us) {
     volatile unsigned int n = us * 20;
     while (n--) __asm__ volatile("nop");

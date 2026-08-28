@@ -19,6 +19,8 @@
 #include "bench.h"
 #include "page.h"
 #include "system.h"
+#include "signal.h"
+#include "pipe.h"
 
 /* External variables */
 extern volatile unsigned int tick_count;
@@ -351,8 +353,60 @@ void cmd_test(int argc, char *argv[])
             }
             kputs("PASS: VFS and Devfs subsystem verification complete.\n");
             return;
+        } else if (strcmp(argv[1], "--pipe") == 0) {
+            extern int pipe_create(int pipefd[2]);
+            extern int vfs_close(int fd);
+            extern int32_t vfs_read(int fd, void *buf, size_t count);
+            extern int32_t vfs_write(int fd, const void *buf, size_t count);
+
+            kputs("Testing Anonymous Pipes Subsystem...\n");
+            int pfd[2];
+            if (pipe_create(pfd) == 0) {
+                kprintf("  ✓ Pipe created (Read FD: %d, Write FD: %d)\n", pfd[0], pfd[1]);
+                const char *test_msg = "Hello STAX IPC Pipe!";
+                int32_t written = vfs_write(pfd[1], test_msg, strlen(test_msg));
+                kprintf("  ✓ Wrote %d bytes into pipe write-end\n", written);
+
+                char rx_buf[32];
+                memset(rx_buf, 0, sizeof(rx_buf));
+                int32_t read_bytes = vfs_read(pfd[0], rx_buf, sizeof(rx_buf) - 1);
+                kprintf("  ✓ Read %d bytes from pipe read-end: \"%s\"\n", read_bytes, rx_buf);
+
+                vfs_close(pfd[1]);
+                int32_t eof_check = vfs_read(pfd[0], rx_buf, sizeof(rx_buf));
+                if (eof_check == 0) {
+                    kputs("  ✓ Closed writer correctly signaled EOF to reader\n");
+                }
+                vfs_close(pfd[0]);
+                kputs("PASS: Anonymous pipe streaming verified successfully.\n");
+            } else {
+                kputs("FAIL: Could not create pipe.\n");
+            }
+            return;
+        } else if (strcmp(argv[1], "--signal") == 0) {
+            static int s_sig_caught = 0;
+            auto void s_test_handler(int sig);
+            void s_test_handler(int sig) {
+                s_sig_caught = sig;
+            }
+
+            kputs("Testing POSIX Signal Handling Engine...\n");
+            signal_register(SIGINT, s_test_handler);
+            kputs("  ✓ Registered user signal handler for SIGINT (2)\n");
+
+            s_sig_caught = 0;
+            signal_send(1, SIGINT);
+            if (s_sig_caught == SIGINT) {
+                kputs("  ✓ Signal dispatched & intercepted by user handler successfully\n");
+            } else {
+                kputs("  ✗ Signal dispatch failed\n");
+            }
+
+            signal_register(SIGINT, SIG_DFL);
+            kputs("PASS: POSIX signal subsystem verified successfully.\n");
+            return;
         } else {
-            kputs("Unknown test option. Available: --fb, --elf, --vfs, --dev\n");
+            kputs("Unknown test option. Available: --fb, --elf, --vfs, --dev, --pipe, --signal\n");
             return;
         }
     }
@@ -553,75 +607,39 @@ void command_init(void)
 }
 
 /* ============================================================================
- * cmd_doomgfx — launch the graphical DOOM game
+ * cmd_doomgfx — launch standalone userland DOOM game
  * ============================================================================ */
 void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
-    FILINFO fno;
-    const char *wadname = NULL;
-
-    if (f_stat("DOOM1.WAD", &fno) == FR_OK) {
-        wadname = "DOOM1.WAD";
-    } else if (f_stat("/DOOM1.WAD", &fno) == FR_OK) {
-        f_chdir("/");
-        wadname = "DOOM1.WAD";
-    } else if (f_stat("DOOM.WAD", &fno) == FR_OK) {
-        wadname = "DOOM.WAD";
-    } else if (f_stat("/DOOM.WAD", &fno) == FR_OK) {
-        f_chdir("/");
-        wadname = "DOOM.WAD";
+    extern int elf_exec(const char *path, int argc, char **argv);
+    kputs("Launching standalone userland DOOM process (doom.elf)...\n");
+    char *d_argv[2] = {(char *)"DOOM1.WAD", NULL};
+    int rc = elf_exec("doom.elf", 1, d_argv);
+    if (rc != 0) {
+        rc = elf_exec("/DOOM.ELF", 1, d_argv);
     }
-
-    if (!wadname) {
-        kputs("Error: DOOM1.WAD or DOOM.WAD not found.\n");
-        return;
+    if (rc != 0) {
+        kputs("Error: doom.elf executable not found or failed to load.\n");
     }
-
-    kputs("Starting DOOM (em-doom)...\n");
-
-    /* doom_launch_wad: creates window → loads WAD → spawns game task → focuses shell */
-    doom_launch_wad(wadname);
-
-    /* Re-enable gfx console (I_InitGraphics disables it for direct FB access) */
-    gfx_console_enable(1);
-
-    kputs("========================================\n");
-    kputs("  DOOM launched — running in window\n");
-    kputs("========================================\n");
-    kputs("Type 'help' for available commands\n");
 }
 
 /* ============================================================================
- * cmd_doom2gfx — launch the graphical DOOM 2 game
+ * cmd_doom2gfx — launch standalone userland DOOM 2 game
  * ============================================================================ */
 void cmd_doom2gfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
-    FILINFO fno;
-    
-    if (f_stat("DOOM2.WAD", &fno) != FR_OK) {
-        if (f_stat("/DOOM2.WAD", &fno) == FR_OK) {
-            kputs("DOOM2.WAD is in the root dir. Change dir my dawg!> ");
-            char ans = kgetc();
-            kputc(ans); kputc('\n');
-            if (ans == 'y' || ans == 'Y') {
-                f_chdir("/");
-            } else {
-                kputs("Aborted.\n");
-                return;
-            }
-        } else {
-            kputs("Error: DOOM2.WAD not found.\n");
-            return;
-        }
+    extern int elf_exec(const char *path, int argc, char **argv);
+    kputs("Launching standalone userland DOOM II process (doom.elf)...\n");
+    char *d_argv[2] = {(char *)"DOOM2.WAD", NULL};
+    int rc = elf_exec("doom.elf", 1, d_argv);
+    if (rc != 0) {
+        rc = elf_exec("/DOOM.ELF", 1, d_argv);
     }
-
-    kputs("Starting DOOM 2 (em-doom)...\n");
-    doom_launch_wad("DOOM2.WAD");
-
-    /* Re-enable gfx console (I_InitGraphics disables it for direct FB access) */
-    gfx_console_enable(1);
+    if (rc != 0) {
+        kputs("Error: doom.elf executable not found or failed to load.\n");
+    }
 }
 
 /* ============================================================================

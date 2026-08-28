@@ -58,8 +58,8 @@
 
 /* User-space Virtual Memory Layout Defaults (128MB Region, isolated from Kernel 0..32MB) */
 #define USER_TEXT_BASE  0x08000000  /* User Virtual Base: 128 MB */
-#define USER_STACK_TOP  0x08100000  /* Top of User Stack */
-#define USER_STACK_SIZE 0x00010000  /* 64 KB Stack */
+#define USER_STACK_TOP  0x09000000  /* Top of User Stack: 144 MB mark */
+#define USER_STACK_SIZE 0x00040000  /* 256 KB Stack */
 
 /* ELF-32 Type Definitions */
 typedef uint32_t Elf32_Addr;

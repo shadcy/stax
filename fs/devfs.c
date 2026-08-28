@@ -206,8 +206,7 @@ static int dev_fb_ioctl(vfs_node_t *node, uint32_t cmd, void *arg) {
         fb_var_screeninfo_t *info = (fb_var_screeninfo_t *)arg;
         info->xres = fb_width;
         info->yres = fb_height;
-        info->bits_per_pixel = 16;
-        info->smem_start = (uint32_t)fb_get_buffer();
+        info->smem_start = 0x01C00000; /* Direct physical LCD scanout (PL110 FB_BASE) */
         info->smem_len = fb_width * fb_height * 2;
         return 0;
     }

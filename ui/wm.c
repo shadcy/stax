@@ -139,7 +139,7 @@ int wm_dispatch_key(char c) {
         if (c == 'w' || c == 'W' || c == 0x17) { /* Ctrl+W: Close active window */
             if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
                 if (focused_window->app_data == DOOM_WIN_MARKER) {
-                    doom_force_cleanup();
+                    focused_window->state = WM_STATE_HIDDEN;
                     focused_window = NULL;
                     return 1;
                 }
@@ -248,11 +248,9 @@ void wm_update(void) {
         }
         last_tick = current_tick;
         /* Desktop filesystem icons: periodic refresh */
-        extern volatile int doom_running;
-        extern volatile int doom_loading;
         desk_refresh += dt_ms;
         if (desk_refresh >= DESK_REFRESH_MS) {
-            if (!doom_running && !doom_loading) desk_loaded = 0;
+            desk_loaded = 0;
             desk_refresh = 0;
         }
     }
@@ -383,8 +381,6 @@ void wm_update(void) {
                         } else if (window_list) {
                             wm_close_window(window_list);
                         }
-                        extern volatile int stax_doom_quit_requested;
-                        stax_doom_quit_requested = 1;
                     }
                 }
                 stax_menu_active = 0;
@@ -461,8 +457,6 @@ void wm_update(void) {
                             } else if (window_list) {
                                 wm_close_window(window_list);
                             }
-                            extern volatile int stax_doom_quit_requested;
-                            stax_doom_quit_requested = 1;
                         }
                     }
                 }
@@ -495,7 +489,7 @@ void wm_update(void) {
                             if (mx >= close_x - 2 && mx < close_x + btn_w) {
                                 btn_handled = 1;
                                 if (curr->app_data == DOOM_WIN_MARKER) {
-                                    doom_force_cleanup();
+                                    curr->state = WM_STATE_HIDDEN;
                                     if (focused_window == curr)
                                         focused_window = NULL;
                                 } else {
