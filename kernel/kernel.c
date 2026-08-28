@@ -56,14 +56,14 @@ static void timer_isr(void)
 void print_prompt(void) {
     char cwd[128];
     if (f_getcwd(cwd, sizeof(cwd)) == FR_OK) {
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
+        gfx_set_color(rgb565(75, 175, 255)); kputs("\x1b[34m");
         kputs("STAX:");
-        gfx_set_color(COLOR_CYAN); kputs("\x1b[36m");
+        gfx_set_color(rgb565(120, 210, 255)); kputs("\x1b[36m");
         kputs(cwd);
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
         kputs("> ");
     } else {
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m");
+        gfx_set_color(rgb565(75, 175, 255)); kputs("\x1b[34m");
         kputs("STAX> ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m");
     }
@@ -141,27 +141,25 @@ void kernel_main(void)
     irq_enable();
 
     kputs("========================================\n");
-    kputs("  STAX Kernel - Graphical Mode\n");
+    kputs("  STAX Operating System (v2.0)\n");
     kputs("========================================\n");
-    kputs("Status : running\n");
-    kputs("IRQs   : enabled\n");
-    kputs("Timer  : SP804 Timer0, 1000 Hz (1 ms ticks)\n");
-    kputs("MMU    : Enabled (32MB RAM, D/I Caches ON)\n");
-    kputs("Heap   : Paging-backed block allocator\n");
-    kputs("FS     : FAT12/16 driver (test image)\n");
-    kputs("Display: 1024x768 framebuffer (128x48 text)\n");
+    kputs("Status : Running\n");
+    kputs("IRQs   : Enabled\n");
+    kputs("Timer  : SP804 Timer0 (1000 Hz)\n");
+    kputs("MMU    : 2-Level 4KB Paging (Caches ON)\n");
+    kputs("Heap   : Dynamic Memory Allocator\n");
+    kputs("FS     : FAT16 SD Block Storage\n");
+    kputs("Display: 1024x768 Composited GUI\n");
     kputs("----------------------------------------\n");
 
     /* Initialize command system */
     command_init();
     
     kputs("Type 'help' for available commands\n");
-    kputs("Type 'game --doom' to play graphical DOOM\n");
+    kputs("Type 'game --doom' for DOOM\n");
     kputs("========================================\n");
 
-    kputs("System initialized.\n");
-
-    kputs("STAX> Interactive command interface ready\n");
+    kputs("STAX> System initialized.\n");
 
     /* ---- Command history ---- */
 #define HIST_MAX  8

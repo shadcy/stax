@@ -14,6 +14,35 @@ uint16_t bg_colors[5] = {
     RGB565_C(70, 75, 85)     /* 4: Warm Slate Gray */
 };
 
+uint16_t theme_get_primary_accent(void) {
+    switch (bg_color_idx) {
+        case 0: return rgb565(80, 185, 255);  /* Electric Blue */
+        case 1: return rgb565(75, 225, 200);  /* Emerald Teal */
+        case 2: return rgb565(210, 220, 235); /* Silver Slate */
+        case 3: return rgb565(255, 95, 115);  /* Crimson Coral */
+        case 4: return rgb565(190, 200, 215); /* Warm Slate */
+        default: return rgb565(80, 185, 255);
+    }
+}
+
+uint16_t theme_get_secondary_accent(void) {
+    switch (bg_color_idx) {
+        case 0: return rgb565(140, 205, 255); /* Ice Blue */
+        case 1: return rgb565(130, 240, 220); /* Mint Ice */
+        case 2: return rgb565(160, 170, 190); /* Muted Silver */
+        case 3: return rgb565(255, 160, 175); /* Soft Rose */
+        case 4: return rgb565(220, 225, 235); /* Soft White */
+        default: return rgb565(140, 205, 255);
+    }
+}
+
+uint16_t theme_get_desktop_bg(void) {
+    if (bg_color_idx >= 0 && bg_color_idx < 5) {
+        return bg_colors[bg_color_idx];
+    }
+    return bg_colors[0];
+}
+
 app_icon_t app_icons[NUM_APPS] = {
     {0, 18, 42,  "Browser"},
     {1, 18, 128, "Terminal"},
@@ -80,18 +109,29 @@ void draw_window(window_t *win) {
     /* Background */
     fb_fillrect(wx, wy, ww, wh, COL_WIN_BG);
     
-    /* Borders */
-    fb_drawline(wx, wy, wx+ww-1, wy, COL_WIN_BORDER_LIGHT);
-    fb_drawline(wx, wy, wx, wy+wh-1, COL_WIN_BORDER_LIGHT);
-    fb_drawline(wx+ww-1, wy, wx+ww-1, wy+wh-1, COL_WIN_BORDER_DARK);
-    fb_drawline(wx, wy+wh-1, wx+ww-1, wy+wh-1, COL_WIN_BORDER_DARK);
+    int is_focused = (focused_window == win);
+    uint16_t theme_pri = theme_get_primary_accent();
+    uint16_t theme_sec = theme_get_secondary_accent();
+
+    /* Borders (Focused window gets dynamic theme accent border) */
+    if (is_focused) {
+        fb_drawline(wx, wy, wx+ww-1, wy, theme_pri);
+        fb_drawline(wx, wy, wx, wy+wh-1, theme_pri);
+        fb_drawline(wx+ww-1, wy, wx+ww-1, wy+wh-1, theme_pri);
+        fb_drawline(wx, wy+wh-1, wx+ww-1, wy+wh-1, theme_pri);
+    } else {
+        fb_drawline(wx, wy, wx+ww-1, wy, COL_WIN_BORDER_LIGHT);
+        fb_drawline(wx, wy, wx, wy+wh-1, COL_WIN_BORDER_LIGHT);
+        fb_drawline(wx+ww-1, wy, wx+ww-1, wy+wh-1, COL_WIN_BORDER_DARK);
+        fb_drawline(wx, wy+wh-1, wx+ww-1, wy+wh-1, COL_WIN_BORDER_DARK);
+    }
     
-    /* Titlebar (Ubuntu Yaru Dark / Aubergine Theme) */
+    /* Titlebar (Ubuntu Yaru Dark / Aubergine Theme with Dynamic Theme Accent) */
     int tbx = wx + BORDER_WIDTH;
     int tby = wy + BORDER_WIDTH;
     int tbw = ww - BORDER_WIDTH*2;
-    fb_fillrect(tbx, tby, tbw, TITLEBAR_HEIGHT, rgb565(44, 44, 44));
-    fb_drawline(tbx, tby, tbx + tbw - 1, tby, rgb565(68, 68, 68));
+    fb_fillrect(tbx, tby, tbw, TITLEBAR_HEIGHT, is_focused ? rgb565(38, 40, 48) : rgb565(44, 44, 44));
+    fb_drawline(tbx, tby, tbx + tbw - 1, tby, is_focused ? theme_pri : rgb565(68, 68, 68));
     fb_drawline(tbx, tby + TITLEBAR_HEIGHT - 1, tbx + tbw - 1, tby + TITLEBAR_HEIGHT - 1, rgb565(25, 25, 25));
     
     /* Ubuntu Window Controls (Right Aligned: Minimize _, Maximize □, Close ✕) */
@@ -148,7 +188,7 @@ void draw_window(window_t *win) {
         title_buf[tl] = win->title[tl];
     }
     title_buf[tl] = '\0';
-    draw_text(tbx + 10, tby + 2, title_buf, COLOR_WHITE);
+    draw_text(tbx + 10, tby + 2, title_buf, is_focused ? theme_sec : rgb565(195, 200, 210));
 
     
     /* Client Area */
@@ -431,13 +471,13 @@ void wm_render(void) {
     /* 2. Apps Launcher Button */
     int app_btn_x = 50;
     int app_btn_w = 70;
-    uint16_t app_bg = apps_menu_active ? rgb565(35, 110, 225) : rgb565(215, 218, 228);
+    uint16_t app_bg = apps_menu_active ? theme_get_desktop_bg() : rgb565(215, 218, 228);
     uint16_t app_fg = apps_menu_active ? COLOR_WHITE : rgb565(30, 35, 45);
     fb_fillrect(app_btn_x, ty + 3, app_btn_w, 22, app_bg);
-    fb_drawline(app_btn_x, ty + 3, app_btn_x + app_btn_w - 1, ty + 3, apps_menu_active ? rgb565(70, 150, 255) : rgb565(190, 195, 205));
-    fb_drawline(app_btn_x, ty + 24, app_btn_x + app_btn_w - 1, ty + 24, apps_menu_active ? rgb565(20, 80, 180) : rgb565(190, 195, 205));
-    fb_drawline(app_btn_x, ty + 3, app_btn_x, ty + 24, apps_menu_active ? rgb565(70, 150, 255) : rgb565(190, 195, 205));
-    fb_drawline(app_btn_x + app_btn_w - 1, ty + 3, app_btn_x + app_btn_w - 1, ty + 24, apps_menu_active ? rgb565(20, 80, 180) : rgb565(190, 195, 205));
+    fb_drawline(app_btn_x, ty + 3, app_btn_x + app_btn_w - 1, ty + 3, apps_menu_active ? theme_get_primary_accent() : rgb565(190, 195, 205));
+    fb_drawline(app_btn_x, ty + 24, app_btn_x + app_btn_w - 1, ty + 24, apps_menu_active ? rgb565(20, 22, 28) : rgb565(190, 195, 205));
+    fb_drawline(app_btn_x, ty + 3, app_btn_x, ty + 24, apps_menu_active ? theme_get_primary_accent() : rgb565(190, 195, 205));
+    fb_drawline(app_btn_x + app_btn_w - 1, ty + 3, app_btn_x + app_btn_w - 1, ty + 24, apps_menu_active ? rgb565(20, 22, 28) : rgb565(190, 195, 205));
 
     /* 9-dot grid icon (3x3 dots) */
     int mx0 = app_btn_x + 7, my0 = ty + 7;
@@ -483,9 +523,9 @@ void wm_render(void) {
             int is_active = (i == 0 && w->state == WM_STATE_ACTIVE);
             int is_min = (w->state == WM_STATE_MINIMIZED);
 
-            uint16_t bg = is_active ? rgb565(35, 110, 225) : (is_min ? rgb565(215, 218, 225) : rgb565(238, 240, 246));
+            uint16_t bg = is_active ? theme_get_desktop_bg() : (is_min ? rgb565(215, 218, 225) : rgb565(238, 240, 246));
             uint16_t fg = is_active ? COLOR_WHITE : (is_min ? rgb565(130, 135, 145) : rgb565(35, 40, 55));
-            uint16_t border = is_active ? rgb565(20, 80, 180) : rgb565(200, 205, 215);
+            uint16_t border = is_active ? theme_get_primary_accent() : rgb565(200, 205, 215);
 
             fb_fillrect(tx, ty + 3, tab_w, 22, bg);
             fb_drawline(tx, ty + 3, tx + tab_w - 1, ty + 3, border);
@@ -494,7 +534,7 @@ void wm_render(void) {
             fb_drawline(tx, ty + 24, tx + tab_w - 1, ty + 24, border);
 
             /* Status dot */
-            uint16_t dot_col = is_active ? rgb565(80, 240, 100) : (is_min ? rgb565(170, 175, 185) : rgb565(80, 150, 240));
+            uint16_t dot_col = is_active ? theme_get_primary_accent() : (is_min ? rgb565(170, 175, 185) : rgb565(140, 145, 155));
             fb_fillrect(tx + 5, ty + 12, 4, 4, dot_col);
 
             /* Truncate title cleanly to prevent any text overflow */
@@ -581,8 +621,8 @@ void wm_render(void) {
         /* Background (Ubuntu Dark Slate Theme) */
         fb_fillrect(cm_x, cm_y, cm_w, cm_h, rgb565(36, 38, 46));
 
-        /* Border */
-        fb_drawline(cm_x, cm_y, cm_x + cm_w - 1, cm_y, rgb565(70, 75, 90));
+        /* Border (Top border has dynamic theme accent) */
+        fb_drawline(cm_x, cm_y, cm_x + cm_w - 1, cm_y, theme_get_primary_accent());
         fb_drawline(cm_x, cm_y, cm_x, cm_y + cm_h - 1, rgb565(70, 75, 90));
         fb_drawline(cm_x + cm_w - 1, cm_y, cm_x + cm_w - 1, cm_y + cm_h - 1, rgb565(20, 22, 28));
         fb_drawline(cm_x, cm_y + cm_h - 1, cm_x + cm_w - 1, cm_y + cm_h - 1, rgb565(20, 22, 28));
@@ -596,7 +636,7 @@ void wm_render(void) {
         fb_drawline(cm_x + 8, cm_y + 55, cm_x + cm_w - 8, cm_y + 55, rgb565(50, 54, 65));
 
         /* Item 2: Refresh Desktop */
-        draw_text(cm_x + 12, cm_y + 62, "Refresh Desktop", rgb565(180, 200, 225));
+        draw_text(cm_x + 12, cm_y + 62, "Refresh Desktop", theme_get_secondary_accent());
         fb_drawline(cm_x + 8, cm_y + 83, cm_x + cm_w - 8, cm_y + 83, rgb565(50, 54, 65));
 
         /* Item 3: Settings */
@@ -615,7 +655,7 @@ void wm_render(void) {
 
         /* Menu card */
         fb_fillrect(sm_x, sm_y, sm_w, sm_h, rgb565(36, 38, 46));
-        fb_drawline(sm_x, sm_y, sm_x + sm_w - 1, sm_y, rgb565(70, 75, 90));
+        fb_drawline(sm_x, sm_y, sm_x + sm_w - 1, sm_y, theme_get_primary_accent());
         fb_drawline(sm_x, sm_y, sm_x, sm_y + sm_h - 1, rgb565(70, 75, 90));
         fb_drawline(sm_x + sm_w - 1, sm_y, sm_x + sm_w - 1, sm_y + sm_h - 1, rgb565(20, 22, 28));
         fb_drawline(sm_x, sm_y + sm_h - 1, sm_x + sm_w - 1, sm_y + sm_h - 1, rgb565(20, 22, 28));
@@ -624,7 +664,7 @@ void wm_render(void) {
         draw_text(sm_x + 12, sm_y + 8, "About STAX OS", COLOR_WHITE);
         fb_drawline(sm_x + 6, sm_y + 30, sm_x + sm_w - 6, sm_y + 30, rgb565(55, 58, 70));
 
-        draw_text(sm_x + 12, sm_y + 38, "Retro Widgets", rgb565(80, 210, 255));
+        draw_text(sm_x + 12, sm_y + 38, "Retro Widgets", theme_get_secondary_accent());
         draw_text(sm_x + 12, sm_y + 68, "System Settings", COLOR_WHITE);
         draw_text(sm_x + 12, sm_y + 98, "Task Manager", COLOR_WHITE);
         draw_text(sm_x + 12, sm_y + 128, "System Info", COLOR_WHITE);
@@ -647,13 +687,13 @@ void wm_render(void) {
 
         /* Card background */
         fb_fillrect(app_x, app_y, app_w, app_h, rgb565(32, 34, 42));
-        fb_drawline(app_x, app_y, app_x + app_w - 1, app_y, rgb565(65, 70, 85));
+        fb_drawline(app_x, app_y, app_x + app_w - 1, app_y, theme_get_primary_accent());
         fb_drawline(app_x, app_y, app_x, app_y + app_h - 1, rgb565(65, 70, 85));
         fb_drawline(app_x + app_w - 1, app_y, app_x + app_w - 1, app_y + app_h - 1, rgb565(18, 20, 26));
         fb_drawline(app_x, app_y + app_h - 1, app_x + app_w - 1, app_y + app_h - 1, rgb565(18, 20, 26));
         
         /* Header */
-        draw_text(app_x + 14, app_y + 10, "Applications & Tools", COLOR_WHITE);
+        draw_text(app_x + 14, app_y + 10, "Applications & Tools", theme_get_primary_accent());
         draw_text(app_x + app_w - 110, app_y + 10, "STAX OS", rgb565(140, 150, 175));
         fb_drawline(app_x + 10, app_y + 30, app_x + app_w - 10, app_y + 30, rgb565(50, 54, 66));
 

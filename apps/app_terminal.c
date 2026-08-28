@@ -71,12 +71,12 @@ static void term_putc(terminal_state_t *st, char c, uint16_t default_col) {
             return;
         } else if (c == 'm') {
             if (st->ansi_param == 0) st->cur_col = COLOR_WHITE;
-            else if (st->ansi_param == 31) st->cur_col = rgb565(255, 80, 80);    /* Red */
-            else if (st->ansi_param == 32) st->cur_col = rgb565(80, 240, 80);    /* Green */
-            else if (st->ansi_param == 33) st->cur_col = rgb565(255, 220, 80);   /* Yellow */
-            else if (st->ansi_param == 34) st->cur_col = rgb565(80, 160, 255);   /* Blue */
-            else if (st->ansi_param == 35) st->cur_col = rgb565(230, 100, 255);  /* Magenta */
-            else if (st->ansi_param == 36) st->cur_col = rgb565(80, 240, 240);   /* Cyan */
+            else if (st->ansi_param == 31) st->cur_col = rgb565(255, 85, 85);       /* Red / Error */
+            else if (st->ansi_param == 32) st->cur_col = theme_get_primary_accent();  /* Dynamic Active Theme Primary */
+            else if (st->ansi_param == 33) st->cur_col = rgb565(250, 215, 90);      /* Yellow / Warning */
+            else if (st->ansi_param == 34) st->cur_col = rgb565(90, 150, 255);      /* Deep Blue */
+            else if (st->ansi_param == 35) st->cur_col = theme_get_secondary_accent();/* Dynamic Active Theme Secondary */
+            else if (st->ansi_param == 36) st->cur_col = rgb565(100, 220, 255);     /* Cyan */
             else if (st->ansi_param == 37) st->cur_col = COLOR_WHITE;
             st->ansi_state = 0;
             return;
@@ -141,14 +141,15 @@ static void term_init(terminal_state_t *st) {
     st->blink_n = 0;
     st->cur_on = 1;
 
-    term_puts(st, "  ____ _____  _  __  __   ____  _   _ _____ _     _     \n", rgb565(80, 190, 255));
-    term_puts(st, " / ___|_   _|/ \\| \\ \\/ /  / ___|| | | | ____| |   | |    \n", rgb565(80, 210, 255));
-    term_puts(st, " \\___ \\ | | / _ \\  \\  /   \\___ \\| |_| |  _| | |   | |    \n", rgb565(70, 230, 210));
-    term_puts(st, "  ___) || |/ ___ \\ /  \\    ___) |  _  | |___| |___| |___ \n", rgb565(60, 240, 160));
-    term_puts(st, " |____/ |_/_/   \\_/_/\\_\\  |____/|_| |_|_____|_____|_____|\n", rgb565(50, 250, 120));
-    term_puts(st, " ---------------------------------------------------------\n", rgb565(60, 75, 105));
-    term_puts(st, "  STAX OS v2.0 • ARM926EJ-S • 32MB MMU • Concurrent Shell \n", rgb565(240, 200, 50));
-    term_puts(st, "  Type 'help' for commands | 'clear' to reset terminal    \n\n", rgb565(170, 180, 200));
+    /* STAX ASCII Banner in Smooth White -> Gray Gradient */
+    term_puts(st, "  ____ _____  _  __  __   ____  _   _ _____ _     _     \n", rgb565(255, 255, 255));
+    term_puts(st, " / ___|_   _|/ \\| \\ \\/ /  / ___|| | | | ____| |   | |    \n", rgb565(220, 225, 235));
+    term_puts(st, " \\___ \\ | | / _ \\  \\  /   \\___ \\| |_| |  _| | |   | |    \n", rgb565(185, 190, 205));
+    term_puts(st, "  ___) || |/ ___ \\ /  \\    ___) |  _  | |___| |___| |___ \n", rgb565(150, 155, 170));
+    term_puts(st, " |____/ |_/_/   \\_/_/\\_\\  |____/|_| |_|_____|_____|_____|\n", rgb565(115, 120, 135));
+    term_puts(st, " ---------------------------------------------------------\n", rgb565(65, 70, 85));
+    term_puts(st, "  STAX OS v2.0 | ARM926EJ-S | 32MB Memory | Concurrent Shell\n", rgb565(210, 215, 230));
+    term_puts(st, "  Type 'help' for commands | 'clear' to reset terminal\n\n", rgb565(130, 135, 150));
 }
 
 /* Redirection hook for console output */
@@ -188,15 +189,17 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         win->app_data = st;
     }
 
+    uint16_t theme_pri = theme_get_primary_accent();
+
     /* Terminal Window Background (Dark Midnight Slate) */
-    fb_fillrect(cx, cy, cw, ch, rgb565(14, 16, 22));
+    fb_fillrect(cx, cy, cw, ch, rgb565(16, 18, 24));
 
     /* Top Shell Info Bar */
-    int top_bar_h = 20;
-    fb_fillrect(cx, cy, cw, top_bar_h, rgb565(20, 23, 32));
-    fb_drawline(cx, cy + top_bar_h - 1, cx + cw - 1, cy + top_bar_h - 1, rgb565(36, 42, 58));
-    draw_text(cx + 8, cy + 2, "• STAX CONCURRENT SHELL (tty0)", rgb565(80, 190, 255));
-    draw_text(cx + cw - 130, cy + 2, "UTF-8 | 1000Hz", rgb565(130, 140, 160));
+    int top_bar_h = 22;
+    fb_fillrect(cx, cy, cw, top_bar_h, rgb565(24, 27, 36));
+    fb_drawline(cx, cy + top_bar_h - 1, cx + cw - 1, cy + top_bar_h - 1, rgb565(42, 48, 65));
+    draw_text(cx + 10, cy + 3, "STAX Shell (tty0)", theme_pri);
+    draw_text(cx + cw - 65, cy + 3, "1000Hz", rgb565(140, 150, 170));
 
     /* Cursor blink */
     if (++st->blink_n >= 30) {
@@ -209,7 +212,7 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
 
     int text_area_h = ch - top_bar_h - 26;
     int max_rows = text_area_h / 16;
-    int max_cols = (cw - 8) / 8;
+    int max_cols = (cw - 12) / 8;
     if (max_cols > TERM_COLS) max_cols = TERM_COLS;
     if (max_rows > TERM_ROWS) max_rows = TERM_ROWS;
 
@@ -220,21 +223,21 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         for (int c = 0; c < max_cols; c++) {
             char ch_val = st->text[ring_row][c];
             if (ch_val >= 32 && ch_val <= 126) {
-                draw_glyph(fbuf, cx + 6 + c * 8, py, ch_val, st->color[ring_row][c]);
+                draw_glyph(fbuf, cx + 8 + c * 8, py, ch_val, st->color[ring_row][c]);
             }
         }
     }
 
     /* Bottom Command Input Bar */
     int bar_y = cy + ch - 24;
-    fb_fillrect(cx, bar_y, cw, 24, rgb565(22, 25, 36));
-    fb_drawline(cx, bar_y, cx + cw - 1, bar_y, rgb565(40, 50, 75));
+    fb_fillrect(cx, bar_y, cw, 24, rgb565(22, 25, 35));
+    fb_drawline(cx, bar_y, cx + cw - 1, bar_y, rgb565(42, 50, 70));
 
-    /* Prompt + Input Line */
+    /* Prompt + Input Line (Dynamic Theme Accent) */
     const char *prompt = "stax@kernel:~$ ";
-    int px = cx + 6, py2 = bar_y + 4;
+    int px = cx + 8, py2 = bar_y + 4;
     for (const char *p = prompt; *p; p++) {
-        draw_glyph(fbuf, px, py2, *p, rgb565(80, 240, 100));
+        draw_glyph(fbuf, px, py2, *p, theme_pri);
         px += 8;
     }
 
@@ -244,7 +247,7 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     }
 
     if (st->cur_on) {
-        fb_fillrect(px, py2, 8, 16, rgb565(80, 240, 100));
+        fb_fillrect(px, py2, 8, 16, theme_pri);
     }
 }
 
@@ -256,8 +259,8 @@ void terminal_key_event(struct window *win, char c) {
     if (c == '\r' || c == '\n') {
         st->input[st->input_pos] = '\0';
 
-        /* Echo typed command */
-        term_puts(st, "stax@kernel:~$ ", rgb565(80, 240, 100));
+        /* Echo typed command with dynamic theme accent */
+        term_puts(st, "stax@kernel:~$ ", theme_get_primary_accent());
         term_puts(st, st->input, COLOR_WHITE);
         term_putc(st, '\n', COLOR_WHITE);
 

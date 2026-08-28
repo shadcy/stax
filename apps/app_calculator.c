@@ -242,9 +242,9 @@ void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch) 
             /* Operator styling */
             if (strcmp(label, "÷") == 0 || strcmp(label, "×") == 0 ||
                 strcmp(label, "−") == 0 || strcmp(label, "+") == 0) {
-                bg = rgb565(40, 115, 225); /* Vibrant Blue */
+                bg = theme_get_primary_accent(); /* Dynamic Active Theme Accent */
             } else if (strcmp(label, "=") == 0) {
-                bg = rgb565(245, 130, 20); /* Safety Orange */
+                bg = theme_get_secondary_accent(); /* Dynamic Active Theme Secondary Accent */
             } else if (strcmp(label, "AC") == 0) {
                 bg = rgb565(190, 45, 45);  /* Crimson */
             } else if (strcmp(label, "MC") == 0 || strcmp(label, "MR") == 0 ||

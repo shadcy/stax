@@ -179,13 +179,13 @@ void file_manager_draw_window(struct window *win, int cx, int cy, int cw, int ch
 
     /* ---- Address bar ---- */
     fb_fillrect(cx, cy, cw, ADDR_H, rgb565(245,245,250));
-    fb_drawline(cx, cy+ADDR_H-1, cx+cw-1, cy+ADDR_H-1, rgb565(180,180,200));
+    fb_drawline(cx, cy+ADDR_H-1, cx+cw-1, cy+ADDR_H-1, theme_get_primary_accent());
     /* folder icon */
     fb_fillrect(cx+4, cy+4, 12, 10, rgb565(255,200,0));
     fb_fillrect(cx+4, cy+2,  6,  3, rgb565(200,150,0));
     /* path text */
     const char *path_label = win->path[0] ? win->path : "C:\\  (Root)";
-    draw_text(cx+20, cy+2, path_label, rgb565(30,30,100));
+    draw_text(cx+20, cy+2, path_label, rgb565(30,30,60));
 
     /* ---- Column header ---- */
     int hy = cy + ADDR_H;
@@ -202,7 +202,7 @@ void file_manager_draw_window(struct window *win, int cx, int cy, int cw, int ch
 
         /* Row highlight */
         if (i == st->selected_idx)
-            fb_fillrect(cx, item_y, cw, ITEM_H, rgb565(205,225,255));
+            fb_fillrect(cx, item_y, cw, ITEM_H, theme_get_secondary_accent());
         else if (i & 1)
             fb_fillrect(cx, item_y, cw, ITEM_H, rgb565(248,248,255));
 

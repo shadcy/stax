@@ -57,10 +57,10 @@ void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     fb_fillrect(cx, cy, cw, ch, rgb565(30, 30, 40)); /* VS Code dark theme */
     
     /* Top Toolbar */
-    fb_fillrect(cx, cy, cw, 24, rgb565(50, 50, 60));
-    draw_text(cx + 8, cy + 4, win->path[0] ? win->path : "Untitled", COLOR_WHITE);
-    draw_text(cx + cw - 130, cy + 4, "[ Ctrl+S Save ]", rgb565(150, 150, 150));
-    fb_drawline(cx, cy + 24, cx + cw - 1, cy + 24, rgb565(20, 20, 30));
+    fb_fillrect(cx, cy, cw, 24, rgb565(40, 42, 52));
+    draw_text(cx + 8, cy + 4, win->path[0] ? win->path : "Untitled", theme_get_primary_accent());
+    draw_text(cx + cw - 130, cy + 4, "[ Ctrl+S Save ]", rgb565(150, 160, 180));
+    fb_drawline(cx, cy + 24, cx + cw - 1, cy + 24, theme_get_primary_accent());
     
     /* Render text */
     int tx = cx + 8;
@@ -96,10 +96,9 @@ void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         }
     }
     
-    /* Cursor block */
+    /* Cursor block (Dynamic Theme Accent) */
     if (cy_pos >= cy + 28 && cy_pos + 16 < cy + ch) {
-        /* Blink logic (using global tick_count? just solid for now) */
-        fb_fillrect(cx_pos, cy_pos, 8, 16, rgb565(100, 200, 255));
+        fb_fillrect(cx_pos, cy_pos, 8, 16, theme_get_primary_accent());
     }
 }
 

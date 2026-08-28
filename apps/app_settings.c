@@ -87,10 +87,10 @@ void settings_save(void) {
 
 /* Helper: Draw toggle pill switch */
 static void draw_switch(int sx, int sy, int is_on) {
-    uint16_t track_col = is_on ? rgb565(50, 180, 80) : rgb565(170, 175, 185);
+    uint16_t track_col = is_on ? theme_get_desktop_bg() : rgb565(170, 175, 185);
     fb_fillrect(sx, sy, 44, 20, track_col);
-    fb_drawline(sx, sy, sx + 43, sy, is_on ? rgb565(70, 200, 100) : rgb565(190, 195, 205));
-    fb_drawline(sx, sy + 19, sx + 43, sy + 19, is_on ? rgb565(30, 140, 60) : rgb565(140, 145, 155));
+    fb_drawline(sx, sy, sx + 43, sy, is_on ? theme_get_primary_accent() : rgb565(190, 195, 205));
+    fb_drawline(sx, sy + 19, sx + 43, sy + 19, is_on ? theme_get_primary_accent() : rgb565(140, 145, 155));
 
     int knob_x = is_on ? (sx + 24) : (sx + 2);
     fb_fillrect(knob_x, sy + 2, 18, 16, COLOR_WHITE);
@@ -98,18 +98,18 @@ static void draw_switch(int sx, int sy, int is_on) {
     fb_drawline(knob_x + 17, sy + 2, knob_x + 17, sy + 17, rgb565(180, 180, 190));
     fb_drawline(knob_x, sy + 17, knob_x + 17, sy + 17, rgb565(180, 180, 190));
 
-    draw_text(sx + 48, sy + 2, is_on ? "ON" : "OFF", is_on ? rgb565(30, 140, 60) : rgb565(100, 105, 115));
+    draw_text(sx + 48, sy + 2, is_on ? "ON" : "OFF", is_on ? theme_get_primary_accent() : rgb565(100, 105, 115));
 }
 
 /* Helper: Draw action button */
 static void draw_btn(int bx, int by, int bw, int bh, const char *label, int active) {
-    uint16_t bg = active ? rgb565(35, 110, 225) : rgb565(225, 228, 235);
+    uint16_t bg = active ? theme_get_desktop_bg() : rgb565(225, 228, 235);
     uint16_t fg = active ? COLOR_WHITE : rgb565(30, 35, 45);
     fb_fillrect(bx, by, bw, bh, bg);
-    fb_drawline(bx, by, bx + bw - 1, by, active ? rgb565(70, 150, 255) : COLOR_WHITE);
-    fb_drawline(bx, by, bx, by + bh - 1, active ? rgb565(70, 150, 255) : COLOR_WHITE);
-    fb_drawline(bx + bw - 1, by, bx + bw - 1, by + bh - 1, active ? rgb565(20, 70, 160) : rgb565(160, 165, 175));
-    fb_drawline(bx, by + bh - 1, bx + bw - 1, by + bh - 1, active ? rgb565(20, 70, 160) : rgb565(160, 165, 175));
+    fb_drawline(bx, by, bx + bw - 1, by, active ? theme_get_primary_accent() : COLOR_WHITE);
+    fb_drawline(bx, by, bx, by + bh - 1, active ? theme_get_primary_accent() : COLOR_WHITE);
+    fb_drawline(bx + bw - 1, by, bx + bw - 1, by + bh - 1, active ? rgb565(20, 22, 28) : rgb565(160, 165, 175));
+    fb_drawline(bx, by + bh - 1, bx + bw - 1, by + bh - 1, active ? rgb565(20, 22, 28) : rgb565(160, 165, 175));
 
     int tlen = (int)strlen(label);
     int tx = bx + (bw - tlen * 8) / 2;
@@ -159,8 +159,8 @@ void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         int item_y = cy + 42 + t * 34;
         int is_sel = (g_settings.active_tab == t);
         if (is_sel) {
-            fb_fillrect(cx + 8, item_y, SIDEBAR_W - 16, 26, rgb565(40, 115, 225));
-            fb_drawline(cx + 8, item_y, cx + SIDEBAR_W - 9, item_y, rgb565(75, 145, 255));
+            fb_fillrect(cx + 8, item_y, SIDEBAR_W - 16, 26, theme_get_desktop_bg());
+            fb_drawline(cx + 8, item_y, cx + SIDEBAR_W - 9, item_y, theme_get_primary_accent());
             draw_text(cx + 14, item_y + 5, tabs[t], COLOR_WHITE);
         } else {
             draw_text(cx + 14, item_y + 5, tabs[t], rgb565(55, 60, 75));

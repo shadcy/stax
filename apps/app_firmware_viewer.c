@@ -15,8 +15,9 @@ void fwviewer_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     fb_fillrect(cx, cy, cw, ch, rgb565(240, 240, 240));
     
     /* Header */
-    fb_fillrect(cx + 10, cy + 10, 64, 64, rgb565(0, 100, 200));
-    draw_text(cx + 20, cy + 34, "FW", COLOR_WHITE);
+    fb_fillrect(cx + 10, cy + 10, 64, 64, theme_get_desktop_bg());
+    fb_drawline(cx + 10, cy + 10, cx + 73, cy + 10, theme_get_primary_accent());
+    draw_text(cx + 20, cy + 34, "FW", theme_get_primary_accent());
     
     draw_text(cx + 90, cy + 20, "STAX Firmware Package", COLOR_BLACK);
     
@@ -58,7 +59,7 @@ void fwviewer_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
                 while (ti > 0) buf[i++] = temp[--ti];
             }
             buf[i] = '\0';
-            draw_text(cx + 100, cy + 130, buf, rgb565(0, 128, 0));
+            draw_text(cx + 100, cy + 130, buf, theme_get_primary_accent());
             
             draw_text(cx + 10, cy + 150, "Size:", COLOR_BLACK);
             val = hdr->image_size;
@@ -73,7 +74,7 @@ void fwviewer_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
             draw_text(cx + 100, cy + 150, buf, COLOR_BLACK);
             
             draw_text(cx + 10, cy + 170, "Signature:", COLOR_BLACK);
-            draw_text(cx + 100, cy + 170, "Ed25519 (Signed)", rgb565(0, 128, 0));
+            draw_text(cx + 100, cy + 170, "Ed25519 (Signed)", theme_get_primary_accent());
             
             draw_text(cx + 10, cy + 200, "This file contains a secure STAX", COLOR_BLACK);
             draw_text(cx + 10, cy + 215, "firmware update payload.", COLOR_BLACK);

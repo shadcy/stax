@@ -155,8 +155,19 @@ void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch)
     (void)win;
     if (!enabled) return;
     
-    int max_cols = cw / 8;
-    int max_rows = ch / 16;
+    /* Background (Dark Midnight Slate) */
+    fb_fillrect(cx, cy, cw, ch, rgb565(14, 16, 22));
+
+    /* Top Info Bar */
+    int top_bar_h = 20;
+    fb_fillrect(cx, cy, cw, top_bar_h, rgb565(22, 25, 34));
+    fb_drawline(cx, cy + top_bar_h - 1, cx + cw - 1, cy + top_bar_h - 1, rgb565(38, 44, 60));
+    draw_text(cx + 8, cy + 2, "[STAX] Kernel Boot Log", theme_get_primary_accent());
+    draw_text(cx + cw - 90, cy + 2, "Live Stream", rgb565(120, 135, 160));
+
+    int text_area_h = ch - top_bar_h - 4;
+    int max_cols = (cw - 20) / 8;
+    int max_rows = text_area_h / 16;
     if (max_cols > COLS) max_cols = COLS;
     if (max_rows > ROWS) max_rows = ROWS;
 
@@ -174,6 +185,7 @@ void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch)
     }
 
     uint16_t *fbuf = fb_get_buffer();
+    if (!fbuf) return;
     
     for (int r = 0; r < max_rows; r++) {
         int buf_line = start_line + r;
@@ -184,8 +196,8 @@ void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch)
             if (ch_val >= 32) {
                 uint16_t color = term_color[buf_line % MAX_LINES][c];
                 const unsigned char *g = font8x16_data[(unsigned char)ch_val];
-                int px = cx + c * 8;
-                int py = cy + r * 16;
+                int px = cx + 8 + c * 8;
+                int py = cy + top_bar_h + 4 + r * 16;
                 for (int gr = 0; gr < 16; gr++) {
                     unsigned char bits = g[gr];
                     for (int gb = 0; gb < 8; gb++) {
@@ -200,26 +212,29 @@ void gfx_console_draw_window(struct window *win, int cx, int cy, int cw, int ch)
         }
     }
     
-    /* Draw scrollbar if needed */
+    /* Draw refined sleek scrollbar if needed */
     if (head_line >= max_rows) {
-        int track_x = cx + cw - 16;
-        int track_h = ch;
+        int track_x = cx + cw - 12;
+        int track_y = cy + top_bar_h;
+        int track_h = ch - top_bar_h;
         int total_rows = head_line + 1;
         int max_scroll = head_line - (max_rows - 1);
         
         int thumb_h = (max_rows * track_h) / total_rows;
-        if (thumb_h < 10) thumb_h = 10;
+        if (thumb_h < 14) thumb_h = 14;
         
         int scroll_pos = max_scroll - view_offset; /* 0 at top, max_scroll at bottom */
-        int thumb_y = cy;
+        int thumb_y = track_y;
         if (max_scroll > 0) {
-            thumb_y = cy + (scroll_pos * (track_h - thumb_h)) / max_scroll;
+            thumb_y = track_y + (scroll_pos * (track_h - thumb_h)) / max_scroll;
         }
         
         /* Track */
-        fb_fillrect(track_x, cy, 16, track_h, rgb565(40, 40, 40));
+        fb_fillrect(track_x, track_y, 12, track_h, rgb565(20, 23, 32));
+        fb_drawline(track_x, track_y, track_x, track_y + track_h - 1, rgb565(32, 38, 52));
         /* Thumb */
-        fb_fillrect(track_x + 2, thumb_y + 2, 12, thumb_h - 4, rgb565(120, 120, 120));
+        fb_fillrect(track_x + 2, thumb_y + 2, 8, thumb_h - 4, rgb565(60, 72, 98));
+        fb_drawline(track_x + 2, thumb_y + 2, track_x + 9, thumb_y + 2, theme_get_primary_accent());
     }
 }
 

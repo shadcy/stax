@@ -18,10 +18,10 @@ void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     fb_fillrect(cx, cy, cw, ch, rgb565(240, 240, 240));
     
     /* Header */
-    fb_fillrect(cx, cy, cw, 24, rgb565(200, 200, 200));
+    fb_fillrect(cx, cy, cw, 24, rgb565(220, 224, 232));
     draw_text(cx + 8, cy + 4, "Application", COLOR_BLACK);
     draw_text(cx + 200, cy + 4, "Status", COLOR_BLACK);
-    fb_drawline(cx, cy + 24, cx + cw - 1, cy + 24, rgb565(128, 128, 128));
+    fb_drawline(cx, cy + 24, cx + cw - 1, cy + 24, theme_get_primary_accent());
     
     int item_y = cy + 28;
     
@@ -36,7 +36,7 @@ void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         
         if (curr->state == WM_STATE_ACTIVE) {
             state_str = "Running";
-            state_color = rgb565(0, 150, 0);
+            state_color = theme_get_primary_accent();
         } else if (curr->state == WM_STATE_MINIMIZED) {
             state_str = "Minimized";
             state_color = rgb565(150, 150, 0);

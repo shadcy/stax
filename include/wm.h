@@ -55,7 +55,11 @@ void wm_close_window(window_t *win);
 void wm_focus_shell(void);
 void wm_render(void);
 void wm_update(void); /* handles input */
-int wm_dispatch_key(char c);
 void draw_text(int x, int y, const char *s, uint16_t color);
+
+/* Dynamic Theme Color Accessors (updates in real-time when theme is changed in Settings) */
+uint16_t theme_get_primary_accent(void);
+uint16_t theme_get_secondary_accent(void);
+uint16_t theme_get_desktop_bg(void);
 
 #endif
