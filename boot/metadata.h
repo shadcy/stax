@@ -1,3 +1,14 @@
+/**
+ * @file    metadata.h
+ * @author  shadcy
+ * @brief   A/B dual-slot firmware metadata structures and slot definitions.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+ */
+
 #ifndef METADATA_H
 #define METADATA_H
 

@@ -1,10 +1,16 @@
+/**
+ * @file    scheduler.c
+ * @author  shadcy
+ * @brief   Preemptive round-robin task scheduler and context management.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+ */
+
 #include <stddef.h>
 #include "irq.h"
-/* ============================================================================
- * STAX — scheduler.c
- * Minimal preemptive round-robin scheduler implementation
- * ============================================================================ */
-
 #include "scheduler.h"
 
 static task_t task_table[MAX_TASKS];

@@ -1,3 +1,14 @@
+/*
+ * @file    boot_startup.s
+ * @author  shadcy
+ * @brief   Initial assembly entry point and stack setup for STAX bootloader.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+ */
+
 #include "memory_map.h"
 
 .global _start

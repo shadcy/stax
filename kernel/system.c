@@ -1,6 +1,12 @@
-/* ==========================================================================
- * STAX — platform reset for the ARM VersatilePB board
- * ==========================================================================
+/**
+ * @file    system.c
+ * @author  shadcy
+ * @brief   Platform reset and system reboot/shutdown for ARM VersatilePB.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
  */
 
 #include <stdint.h>

@@ -1,3 +1,14 @@
+/**
+ * @file    mmu.c
+ * @author  shadcy
+ * @brief   ARM MMU section translation table setup and cache policy configuration.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+ */
+
 #include "mmu.h"
 #include <stdint.h>
 #include "console.h"

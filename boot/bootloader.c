@@ -1,3 +1,14 @@
+/**
+ * @file    bootloader.c
+ * @author  shadcy
+ * @brief   STAX Second-Stage Secure Bootloader (A/B slot verification & kernel handoff).
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+ */
+
 #include "memory_map.h"
 #include <stdint.h>
 

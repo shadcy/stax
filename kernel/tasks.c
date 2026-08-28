@@ -1,7 +1,13 @@
-/* ============================================================================
- * STAX — tasks.c
- * User tasks for testing scheduler and filesystem
- * ============================================================================ */
+/**
+ * @file    tasks.c
+ * @author  shadcy
+ * @brief   Initial kernel demo tasks and scheduler execution tests.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+ */
 
 #include "console.h"
 #include "scheduler.h"

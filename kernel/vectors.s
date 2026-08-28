@@ -1,23 +1,16 @@
 /* ============================================================================
- * TIOS — irq.s
- * ARM Exception Vector Table + IRQ entry/exit stubs
+ * STAX — vectors.s
+ * @file    vectors.s
+ * @author  shadcy
+ * @brief   ARM Exception Vector Table, IRQ context saving, and task switching.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
  *
  * Architecture: ARM926EJ-S (ARMv5TE)
  * The vector table lives at address 0x00000000 by default.
- *
- * Vector layout (each slot = 4 bytes):
- *   0x00  Reset
- *   0x04  Undefined Instruction
- *   0x08  Software Interrupt (SVC)
- *   0x0C  Prefetch Abort
- *   0x10  Data Abort
- *   0x14  Reserved
- *   0x18  IRQ  ← timer, UART, etc.
- *   0x1C  FIQ
- *
- * Each entry is an `ldr pc, =label` pseudo-instruction which the assembler
- * expands to a PC-relative literal pool load.  This lets us branch to any
- * 32-bit address, not just nearby ones.
  * ============================================================================ */
 
     .section .vectors, "ax"

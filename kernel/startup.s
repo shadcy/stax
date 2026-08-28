@@ -1,14 +1,13 @@
 @ ============================================================================
-@ TIOS — startup.s
-@ Reset vector & early boot code for ARM926EJ-S (ARMv5TE)
+@ STAX — startup.s
+@ @file    startup.s
+@ @author  shadcy
+@ @brief   Reset vector & early boot code for ARM926EJ-S (ARMv5TE).
 @
-@ Responsibilities:
-@   1. Set up the stack pointer
-@   2. Zero the BSS segment
-@   3. Copy exception vector table to 0x00000000 (required for real hardware)
-@   4. Set up IRQ / FIQ mode stacks
-@   5. Call kernel_main()
-@   6. Hang forever if kernel_main() ever returns
+@ Part of the STAX Operating System.
+@
+@ @license MIT
+@ Copyright (c) 2026 Shreyash Wanjari (Shadcy)
 @ ============================================================================
 
 .global _start

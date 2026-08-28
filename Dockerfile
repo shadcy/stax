@@ -1,0 +1,34 @@
+
+
+
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install ARM cross-compiler toolchain, QEMU with ARM support & GUI, build tools, and utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc-arm-none-eabi \
+    binutils-arm-none-eabi \
+    libnewlib-arm-none-eabi \
+    gdb-multiarch \
+    qemu-system-arm \
+    qemu-system-gui \
+    mtools \
+    dosfstools \
+    python3 \
+    python3-pip \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxtst6 \
+    libpulse0 \
+    alsa-utils \
+    git \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /stax
+
+CMD ["bash"]

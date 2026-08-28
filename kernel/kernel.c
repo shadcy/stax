@@ -1,7 +1,13 @@
-/* ============================================================================
- * STAX — kernel.c
- * Phase 6e — FAT filesystem driver added + Graphical console
- * ============================================================================ */
+/**
+ * @file    kernel.c
+ * @author  shadcy
+ * @brief   Core kernel initialization, main execution loop, and subsystem orchestrator.
+ *
+ * Part of the STAX Operating System.
+ *
+ * @license MIT
+ * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+ */
 
 #include "irq.h"
 #include "timer.h"
