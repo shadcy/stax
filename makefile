@@ -264,6 +264,17 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) tools/stax-sign/stax-sign scripts/create_mb
 	@echo ""
 
 # ---------------------------------------------------------------------------
+# Cryptographic Signing Keys
+# ---------------------------------------------------------------------------
+stax_key.priv: tools/stax-sign/stax-sign
+	@if [ ! -f stax_key.priv ]; then \
+		echo "Generating signing key pair..."; \
+		./tools/stax-sign/stax-sign --gen-key stax_key; \
+	fi
+
+stax_key.pub.h: stax_key.priv
+
+# ---------------------------------------------------------------------------
 # Bootloader
 # ---------------------------------------------------------------------------
 $(BUILD_DIR)/boot_startup.o: $(BOOT_STARTUP) | $(BUILD_DIR)
