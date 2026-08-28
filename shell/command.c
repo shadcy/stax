@@ -24,6 +24,7 @@
 extern volatile unsigned int tick_count;
 extern void cmd_browser(int argc, char *argv[]);
 void cmd_widgets(int argc, char *argv[]);
+void cmd_exec(int argc, char *argv[]);
 
 /* Command table */
 static const command_t commands[] = {
@@ -41,6 +42,7 @@ static const command_t commands[] = {
     {"cat",     "Print file contents", cmd_cat},
     {"mkdir",   "Create dir", cmd_mkdir},
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
+    {"exec",    "Load and execute standalone ELF-32 binary", cmd_exec},
     {"game",    "Play a game (use --doom, --doom2, --snake, --slime)", cmd_game},
     {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
     {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
@@ -291,8 +293,18 @@ void cmd_test(int argc, char *argv[])
         if (strcmp(argv[1], "--fb") == 0) {
             cmd_fbtest(argc, argv);
             return;
+        } else if (strcmp(argv[1], "--elf") == 0) {
+            extern int elf_exec(const char *path, int argc, char **argv);
+            kputs("Testing ELF Loader on hello.elf...\n");
+            int rc = elf_exec("hello.elf", 0, NULL);
+            if (rc == 0) {
+                kputs("PASS: ELF Loader executed successfully in USR mode.\n");
+            } else {
+                kputs("FAIL: ELF Loader returned error code.\n");
+            }
+            return;
         } else {
-            kputs("Unknown test option.\n");
+            kputs("Unknown test option. Available: --fb, --elf\n");
             return;
         }
     }
@@ -1177,5 +1189,24 @@ void cmd_widgets(int argc, char *argv[])
     extern struct window *widgets_open_window(void);
     widgets_open_window();
     kputs("Launched Retro Internet Widgets & HTTP Telemetry Dashboard.\n");
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_exec — load and run a dynamic ELF-32 executable
+ * --------------------------------------------------------------------------- */
+void cmd_exec(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: exec <binary.elf> [args...]\n");
+        return;
+    }
+    extern int elf_exec(const char *path, int argc, char **argv);
+    kputs("Loading ELF binary: "); kputs(argv[1]); kputs("\n");
+    int rc = elf_exec(argv[1], argc - 1, &argv[1]);
+    if (rc == 0) {
+        kputs("ELF Process launched successfully.\n");
+    } else {
+        kputs("Failed to execute ELF binary.\n");
+    }
 }
 

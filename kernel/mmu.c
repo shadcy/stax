@@ -121,7 +121,7 @@ void mmu_init(void) {
  * ============================================================================ */
 
 pagedir_t *mmu_create_address_space(void) {
-    pagedir_t *pd = (pagedir_t *)kmalloc(sizeof(pagedir_t));
+    pagedir_t *pd = (pagedir_t *)alloc_pages_aligned(4, 4); /* 16KB block, 16KB-aligned */
     if (!pd) return NULL;
     
     /* Copy kernel mappings (Sections 0..31 and MMIO 0x100..0x101) */
@@ -138,10 +138,10 @@ void mmu_destroy_address_space(pagedir_t *pd) {
         uint32_t entry = pd->entries[i];
         if ((entry & 0x3) == L1_TYPE_COARSE) {
             uint32_t pt_phys = entry & 0xFFFFFC00;
-            kfree((void *)pt_phys);
+            free_page((void *)pt_phys);
         }
     }
-    kfree(pd);
+    free_pages(pd, 4);
     mmu_flush_tlb();
 }
 
@@ -157,10 +157,10 @@ int mmu_map_page(pagedir_t *pd, uint32_t vaddr, uint32_t paddr, uint32_t flags) 
     if ((l1_desc & 0x3) == L1_TYPE_COARSE) {
         pt = (pagetable_t *)(l1_desc & 0xFFFFFC00);
     } else {
-        /* Allocate a new L2 Coarse Page Table (1024 bytes, 1KB aligned) */
-        pt = (pagetable_t *)kmalloc(sizeof(pagetable_t));
+        /* Allocate a 4KB page (naturally 1KB aligned) for L2 Coarse Page Table */
+        pt = (pagetable_t *)alloc_page();
         if (!pt) return -1;
-        memset(pt, 0, sizeof(pagetable_t));
+        memset(pt, 0, PAGE_SIZE);
         
         pd->entries[l1_idx] = ((uint32_t)pt & 0xFFFFFC00) | MMU_DESC_DOMAIN(0) | L1_TYPE_COARSE;
     }

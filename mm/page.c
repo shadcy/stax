@@ -84,6 +84,34 @@ void *alloc_pages(int count) {
     return NULL; /* Out of memory */
 }
 
+void *alloc_pages_aligned(int count, int align_pages) {
+    if (count <= 0) return NULL;
+    if (align_pages <= 1) return alloc_pages(count);
+    
+    irq_disable();
+    for (int i = first_managed_page; i <= NUM_PAGES - count; i++) {
+        if (i % align_pages != 0) continue; /* Must be page aligned to align_pages */
+        
+        int ok = 1;
+        for (int j = 0; j < count; j++) {
+            if ((page_bitmap[(i + j) / 8] & (1 << ((i + j) % 8))) != 0) {
+                ok = 0;
+                break;
+            }
+        }
+        if (ok) {
+            for (int j = 0; j < count; j++) {
+                page_bitmap[(i + j) / 8] |= (1 << ((i + j) % 8));
+            }
+            total_free_pages -= count;
+            irq_enable();
+            return (void *)(i * PAGE_SIZE);
+        }
+    }
+    irq_enable();
+    return NULL;
+}
+
 void *alloc_page(void) {
     return alloc_pages(1);
 }

@@ -6,6 +6,7 @@
 void page_init(void);
 void *alloc_page(void);
 void *alloc_pages(int count);
+void *alloc_pages_aligned(int count, int align_pages);
 void free_page(void *ptr);
 void free_pages(void *ptr, int count);
 int get_free_memory(void);

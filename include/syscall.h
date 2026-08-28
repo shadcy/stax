@@ -24,6 +24,7 @@
 #define SYS_WRITE       4
 #define SYS_OPEN        5
 #define SYS_CLOSE       6
+#define SYS_EXECVE      11
 #define SYS_GETPID      20
 #define SYS_UPTIME      25
 #define SYS_REBOOT      88
@@ -121,6 +122,10 @@ static inline int32_t u_getpid(void) {
 
 static inline uint32_t u_uptime(void) {
     return (uint32_t)_syscall0(SYS_UPTIME);
+}
+
+static inline int32_t u_execve(const char *path, char *const argv[], char *const envp[]) {
+    return _syscall3(SYS_EXECVE, (uint32_t)path, (uint32_t)argv, (uint32_t)envp);
 }
 
 #ifdef __cplusplus

@@ -60,10 +60,8 @@ static int32_t ksys_yield(void) {
 }
 
 static int32_t ksys_exit(int code) {
-    (void)code;
-    kprintf("[SYSCALL] Task exit (PID %d)\n", current_task ? current_task->state : 0);
-    task_exit();
-    return 0;
+    kprintf("[SYSCALL] Task exit (status code: %d)\n", code);
+    return (int32_t)code;
 }
 
 static int32_t ksys_getpid(void) {
@@ -78,6 +76,16 @@ static int32_t ksys_uptime(void) {
 static int32_t ksys_reboot(void) {
     system_reboot();
     return 0;
+}
+
+static int32_t ksys_execve(const char *path, char *const argv[], char *const envp[]) {
+    (void)envp;
+    extern int elf_exec(const char *path, int argc, char **argv);
+    int argc = 0;
+    if (argv) {
+        while (argv[argc]) argc++;
+    }
+    return elf_exec(path, argc, (char **)argv);
 }
 
 /* ============================================================================
@@ -98,6 +106,9 @@ int32_t syscall_dispatch(uint32_t sys_num, uint32_t arg0, uint32_t arg1, uint32_
             
         case SYS_WRITE:
             return ksys_write((int)arg0, (const void *)arg1, (size_t)arg2);
+
+        case SYS_EXECVE:
+            return ksys_execve((const char *)arg0, (char *const *)arg1, (char *const *)arg2);
             
         case SYS_GETPID:
             return ksys_getpid();

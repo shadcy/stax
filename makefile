@@ -99,6 +99,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/heap.o \
                 $(BUILD_DIR)/mmu.o \
                 $(BUILD_DIR)/page.o \
+                $(BUILD_DIR)/elf.o \
                 $(BUILD_DIR)/fat.o \
                 $(BUILD_DIR)/disk.o \
                 $(BUILD_DIR)/irq.o \
@@ -230,7 +231,7 @@ all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) tools/stax-sign/stax-sign scripts/create_mbr.py
+$(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf tools/stax-sign/stax-sign scripts/create_mbr.py
 	@echo ""
 	@if [ ! -f $@ ]; then \
 		echo "Creating new Flash Image → $@"; \
@@ -259,6 +260,7 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) tools/stax-sign/stax-sign scripts/create_mb
 	@dd if=$(BUILD_DIR)/firmware.stax of=$@ bs=512 seek=3 conv=notrunc 2>/dev/null
 	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
 	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
+	@if [ -f $(BUILD_DIR)/hello.elf ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/HELLO.ELF; mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/hello.elf; fi
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"
@@ -393,6 +395,22 @@ $(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_LD)
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 	@echo "Binary → $@ ($$(wc -c < $@) bytes)"
+
+# ---------------------------------------------------------------------------
+# Userland Standalone ELF-32 Binaries
+# ---------------------------------------------------------------------------
+$(BUILD_DIR)/crt0.o: user/crt0.s | $(BUILD_DIR)
+	$(AS) $(ASFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/ulib.o: user/ulib.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/hello.o: user/hello.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/hello.elf: $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(BUILD_DIR)/hello.o user/user.ld
+	$(LD) -T user/user.ld $(LDFLAGS) -z max-page-size=4096 $(BUILD_DIR)/crt0.o $(BUILD_DIR)/ulib.o $(BUILD_DIR)/hello.o $(LIBGCC) -o $@
+	@echo "Built Userland ELF → $@"
 
 # ---------------------------------------------------------------------------
 # Utilities

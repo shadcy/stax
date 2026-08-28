@@ -169,15 +169,31 @@ sched_do_switch:
     str     r10, [r0, #24]
     str     r11, [r0, #28]
 
-    /* Save current task SVC sp and lr */
+    /* Save current task sp and lr according to its mode */
     mrs     r2, cpsr
+    ldr     r3, [sp, #4]            /* spsr (mode before interrupt) */
+    and     r3, r3, #0x1F
+    cmp     r3, #0x10               /* Was it in USR mode? */
+    beq     sched_save_usr
+
+    /* Save SVC sp/lr */
     bic     r3, r2, #0x1F
-    orr     r3, r3, #0x13           /* Switch to SVC mode */
+    orr     r3, r3, #0x13
     msr     cpsr_c, r3
     str     sp,  [r0, #32]
     str     lr,  [r0, #36]
-    msr     cpsr_c, r2              /* Back to IRQ mode */
+    msr     cpsr_c, r2
+    b       sched_save_done
 
+sched_save_usr:
+    bic     r3, r2, #0x1F
+    orr     r3, r3, #0x1F           /* SYS mode to access USR sp/lr */
+    msr     cpsr_c, r3
+    str     sp,  [r0, #32]
+    str     lr,  [r0, #36]
+    msr     cpsr_c, r2
+
+sched_save_done:
     /* Save caller-saved registers from IRQ stack */
     /* Stack: [sp,#4]=spsr, [sp,#8]=r0, [sp,#12]=r1, [sp,#16]=r2, [sp,#20]=r3, [sp,#24]=r12, [sp,#28]=pc */
     ldr     r3, [sp, #4]
@@ -201,7 +217,7 @@ sched_do_switch:
     mov     r3, #0
     str     r3, [r0, #52]
     mov     r3, #1
-    str     r3, [r1, #52]
+    str     r1, [r1, #52]
 
     /* Restore next task caller-saved registers to IRQ stack */
     ldr     r3, [r1, #44]
@@ -219,15 +235,31 @@ sched_do_switch:
     ldr     r3, [r1, #40]
     str     r3, [sp, #28]           /* pc */
 
-    /* Restore next task SVC sp and lr */
+    /* Restore next task sp and lr according to its target mode */
     mrs     r2, cpsr
+    ldr     r3, [r1, #44]           /* target cpsr */
+    and     r3, r3, #0x1F
+    cmp     r3, #0x10               /* USR mode? */
+    beq     sched_rest_usr
+
+    /* Restore SVC sp/lr */
     bic     r3, r2, #0x1F
-    orr     r3, r3, #0x13           /* Switch to SVC mode */
+    orr     r3, r3, #0x13
     msr     cpsr_c, r3
     ldr     sp,  [r1, #32]
     ldr     lr,  [r1, #36]
-    msr     cpsr_c, r2              /* Back to IRQ mode */
+    msr     cpsr_c, r2
+    b       sched_rest_done
 
+sched_rest_usr:
+    bic     r3, r2, #0x1F
+    orr     r3, r3, #0x1F           /* SYS mode to access USR sp/lr */
+    msr     cpsr_c, r3
+    ldr     sp,  [r1, #32]
+    ldr     lr,  [r1, #36]
+    msr     cpsr_c, r2
+
+sched_rest_done:
     /* Restore next task r4-r11 */
     ldr     r4,  [r1, #0]
     ldr     r5,  [r1, #4]
@@ -257,11 +289,39 @@ sched_return:
     .global stax_fault_lr
     .global stax_fault_pc
     .global stax_fault_cpsr
+    .global svc_kernel_sp
 stax_fault_lr:   .word 0
 stax_fault_pc:   .word 0
 stax_fault_cpsr: .word 0
+svc_kernel_sp:   .word 0
 
     .section .text
+    .global arch_enter_user
+    .type arch_enter_user, %function
+arch_enter_user:
+    /* r0 = entry point, r1 = user_stack_top */
+    /* Save SVC callee-saved registers and return address */
+    stmfd   sp!, {r4-r11, lr}
+    ldr     r2, =svc_kernel_sp
+    str     sp, [r2]
+
+    /* Switch to SYS mode (0x1F) to set User SP */
+    mrs     r2, cpsr
+    bic     r3, r2, #0x1F
+    orr     r3, r3, #0x1F
+    msr     cpsr_c, r3
+    mov     sp, r1
+    mov     lr, #0
+
+    /* Switch back to SVC mode (0x13) to prepare SPSR */
+    msr     cpsr_c, r2
+
+    /* Set SPSR for USR mode (0x10) with IRQs enabled */
+    mov     r3, #0x10
+    msr     spsr_cxsf, r3
+
+    /* Jump to user entry point in USR mode */
+    movs    pc, r0
 
 /* Macro: print a null-terminated string literal to UART0 */
 .macro UART_PUTS str_label
@@ -325,6 +385,33 @@ undef_handler:
     .global svc_handler
     .type svc_handler, %function
 svc_handler:
+    /* Check if syscall is SYS_EXIT (r7 == 1) */
+    cmp     r7, #1
+    bne     svc_normal
+
+    /* SYS_EXIT: dispatch syscall to log/handle exit */
+    stmfd   sp!, {r4-r12, lr}
+    stmfd   sp!, {r3}        /* 5th argument */
+    mov     r3, r2           /* arg2 */
+    mov     r2, r1           /* arg1 */
+    mov     r1, r0           /* arg0 */
+    mov     r0, r7           /* sys_num = 1 */
+    bl      syscall_dispatch
+    add     sp, sp, #4
+    ldmfd   sp!, {r4-r12, lr}
+
+    /* If we have a saved svc_kernel_sp from arch_enter_user, return back to kernel */
+    ldr     r1, =svc_kernel_sp
+    ldr     r2, [r1]
+    cmp     r2, #0
+    beq     svc_normal
+
+    mov     r3, #0
+    str     r3, [r1]        /* Clear saved sp */
+    mov     sp, r2          /* Restore kernel stack pointer */
+    ldmfd   sp!, {r4-r11, pc} /* Return straight to C caller with r0 = exit code! */
+
+svc_normal:
     /* Save callee-saved registers, lr, and caller SPSR on the SVC stack */
     stmfd   sp!, {r4-r12, lr}
     mrs     r12, spsr
