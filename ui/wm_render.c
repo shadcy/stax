@@ -72,8 +72,10 @@ void draw_window(window_t *win) {
     int ww = win->width;
     int wh = win->height;
     
-    /* Drop shadow */
-    fb_fillrect(wx + 4, wy + 4, ww, wh, rgb565(32, 32, 32));
+    /* Drop shadow (only for floating windows) */
+    if (!win->is_maximized) {
+        fb_fillrect(wx + 4, wy + 4, ww, wh, rgb565(32, 32, 32));
+    }
     
     /* Background */
     fb_fillrect(wx, wy, ww, wh, COL_WIN_BG);

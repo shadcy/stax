@@ -37,14 +37,22 @@ window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*dr
     window_t *win = (window_t*)kmalloc(sizeof(window_t));
     if (!win) return NULL;
     
+    memset(win, 0, sizeof(window_t));
+    
     win->id = next_id++;
     win->x = x;
     win->y = y;
     win->width = w;
     win->height = h;
     
+    win->saved_x = x;
+    win->saved_y = y;
+    win->saved_width = (w > 0) ? w : 400;
+    win->saved_height = (h > 0) ? h : 300;
+    win->is_maximized = 0;
+    
     int i;
-    for (i = 0; i < 31 && title[i] != '\0'; i++) {
+    for (i = 0; i < 31 && title && title[i] != '\0'; i++) {
         win->title[i] = title[i];
     }
     win->title[i] = '\0';
@@ -52,12 +60,6 @@ window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*dr
     win->state = WM_STATE_ACTIVE;
     win->draw_client = draw_cb;
     
-    win->update_client = NULL;
-    win->key_event = NULL;
-    win->mouse_click = NULL;
-    win->mouse_drag = NULL;
-    win->path[0] = '\0';
-    win->app_data = NULL;
     win->next = window_list;
     window_list = win;
     focused_window = win;
@@ -154,10 +156,10 @@ int wm_dispatch_key(char c) {
         if (c == 'f' || c == 'F' || c == 0x06) { /* Ctrl+F: Maximize / Restore Toggle */
             if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
                 if (focused_window->is_maximized) {
-                    focused_window->x = focused_window->saved_x;
-                    focused_window->y = focused_window->saved_y;
-                    focused_window->width = focused_window->saved_width;
-                    focused_window->height = focused_window->saved_height;
+                    focused_window->x = (focused_window->saved_x >= 0 && focused_window->saved_x < (int)fb_width - 50) ? focused_window->saved_x : 50;
+                    focused_window->y = (focused_window->saved_y >= TASKBAR_HEIGHT && focused_window->saved_y < (int)fb_height - 50) ? focused_window->saved_y : TASKBAR_HEIGHT + 20;
+                    focused_window->width = (focused_window->saved_width > 100 && focused_window->saved_width <= (int)fb_width) ? focused_window->saved_width : 500;
+                    focused_window->height = (focused_window->saved_height > 100 && focused_window->saved_height <= (int)fb_height) ? focused_window->saved_height : 350;
                     focused_window->is_maximized = 0;
                 } else {
                     focused_window->saved_x = focused_window->x;
@@ -506,36 +508,37 @@ void wm_update(void) {
                         int max_x   = close_x - 18;
                         int min_x   = max_x - 18;
                         int btn_w   = 16;
+                        int btn_handled = 0;
                         
                         if (my >= tby + 2 && my < tby + TITLEBAR_HEIGHT - 2) {
                             if (mx >= close_x - 2 && mx < close_x + btn_w) {
+                                btn_handled = 1;
                                 if (curr->app_data == DOOM_WIN_MARKER) {
                                     doom_force_cleanup();
                                     if (focused_window == curr)
                                         focused_window = NULL;
-                                    break;
+                                } else {
+                                    extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                                    if (curr->draw_client == editor_draw_window) {
+                                        editor_autosave(curr);
+                                        file_manager_refresh();
+                                    }
+                                    curr->state = WM_STATE_HIDDEN;
+                                    extern void image_viewer_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                                    if (curr->draw_client == image_viewer_draw_window && curr->app_data && curr->app_data != (void*)1) {
+                                        extern void kfree(void*);
+                                        kfree(curr->app_data);
+                                        curr->app_data = NULL;
+                                    }
+                                    if (focused_window == curr) focused_window = NULL;
                                 }
-                                extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                if (curr->draw_client == editor_draw_window) {
-                                    editor_autosave(curr);
-                                    file_manager_refresh();
-                                }
-                                curr->state = WM_STATE_HIDDEN;
-                                extern void image_viewer_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                if (curr->draw_client == image_viewer_draw_window && curr->app_data && curr->app_data != (void*)1) {
-                                    extern void kfree(void*);
-                                    kfree(curr->app_data);
-                                    curr->app_data = NULL;
-                                }
-                                if (focused_window == curr) focused_window = NULL;
-                                break;
-                            }
-                            if (mx >= max_x - 2 && mx < max_x + btn_w) {
+                            } else if (mx >= max_x - 2 && mx < max_x + btn_w) {
+                                btn_handled = 1;
                                 if (curr->is_maximized) {
-                                    curr->x = curr->saved_x;
-                                    curr->y = curr->saved_y;
-                                    curr->width = curr->saved_width;
-                                    curr->height = curr->saved_height;
+                                    curr->x = (curr->saved_x >= 0 && curr->saved_x < (int)fb_width - 50) ? curr->saved_x : 50;
+                                    curr->y = (curr->saved_y >= TASKBAR_HEIGHT && curr->saved_y < (int)fb_height - 50) ? curr->saved_y : TASKBAR_HEIGHT + 20;
+                                    curr->width = (curr->saved_width > 100 && curr->saved_width <= (int)fb_width) ? curr->saved_width : 500;
+                                    curr->height = (curr->saved_height > 100 && curr->saved_height <= (int)fb_height) ? curr->saved_height : 350;
                                     curr->is_maximized = 0;
                                 } else {
                                     curr->saved_x = curr->x;
@@ -548,49 +551,51 @@ void wm_update(void) {
                                     curr->height = fb_height - TASKBAR_HEIGHT;
                                     curr->is_maximized = 1;
                                 }
-                                break;
-                            }
-                            if (mx >= min_x - 2 && mx < min_x + btn_w) {
+                            } else if (mx >= min_x - 2 && mx < min_x + btn_w) {
+                                btn_handled = 1;
                                 curr->state = WM_STATE_MINIMIZED;
                                 if (focused_window == curr) focused_window = NULL;
-                                break;
                             }
                         }
                         
-                        if (my >= curr->y && my < curr->y + BORDER_WIDTH + TITLEBAR_HEIGHT) {
-                            extern volatile unsigned int tick_count;
-                            static unsigned int last_click = 0;
-                            static window_t *last_win = NULL;
-                            if (last_win == curr && (tick_count - last_click) < 300) {
-                                if (curr->is_maximized) {
-                                    curr->x = curr->saved_x;
-                                    curr->y = curr->saved_y;
-                                    curr->width = curr->saved_width;
-                                    curr->height = curr->saved_height;
-                                    curr->is_maximized = 0;
+                        if (!btn_handled) {
+                            if (my >= curr->y && my < curr->y + BORDER_WIDTH + TITLEBAR_HEIGHT) {
+                                extern volatile unsigned int tick_count;
+                                static unsigned int last_click = 0;
+                                static window_t *last_win = NULL;
+                                if (last_win == curr && (tick_count - last_click) < 300) {
+                                    if (curr->is_maximized) {
+                                        curr->x = (curr->saved_x >= 0 && curr->saved_x < (int)fb_width - 50) ? curr->saved_x : 50;
+                                        curr->y = (curr->saved_y >= TASKBAR_HEIGHT && curr->saved_y < (int)fb_height - 50) ? curr->saved_y : TASKBAR_HEIGHT + 20;
+                                        curr->width = (curr->saved_width > 100 && curr->saved_width <= (int)fb_width) ? curr->saved_width : 500;
+                                        curr->height = (curr->saved_height > 100 && curr->saved_height <= (int)fb_height) ? curr->saved_height : 350;
+                                        curr->is_maximized = 0;
+                                    } else {
+                                        curr->saved_x = curr->x;
+                                        curr->saved_y = curr->y;
+                                        curr->saved_width = curr->width;
+                                        curr->saved_height = curr->height;
+                                        curr->x = 0;
+                                        curr->y = TASKBAR_HEIGHT;
+                                        curr->width = fb_width;
+                                        curr->height = fb_height - TASKBAR_HEIGHT;
+                                        curr->is_maximized = 1;
+                                    }
+                                    last_click = 0;
                                 } else {
-                                    curr->saved_x = curr->x;
-                                    curr->saved_y = curr->y;
-                                    curr->saved_width = curr->width;
-                                    curr->saved_height = curr->height;
-                                    curr->x = 0;
-                                    curr->y = TASKBAR_HEIGHT;
-                                    curr->width = fb_width;
-                                    curr->height = fb_height - TASKBAR_HEIGHT;
-                                    curr->is_maximized = 1;
+                                    if (!curr->is_maximized) {
+                                        drag_win = curr;
+                                        drag_off_x = mx - curr->x;
+                                        drag_off_y = my - curr->y;
+                                    }
+                                    last_click = tick_count;
+                                    last_win = curr;
                                 }
-                                last_click = 0;
                             } else {
-                                drag_win = curr;
-                                drag_off_x = mx - curr->x;
-                                drag_off_y = my - curr->y;
-                                last_click = tick_count;
-                                last_win = curr;
-                            }
-                        } else {
-                            drag_client_win = curr;
-                            if (curr->mouse_click) {
-                                curr->mouse_click(curr, mx - curr->x, my - curr->y - BORDER_WIDTH - TITLEBAR_HEIGHT, mb & 3);
+                                drag_client_win = curr;
+                                if (curr->mouse_click) {
+                                    curr->mouse_click(curr, mx - curr->x, my - curr->y - BORDER_WIDTH - TITLEBAR_HEIGHT, mb & 3);
+                                }
                             }
                         }
                     } else if (right_pressed) {
