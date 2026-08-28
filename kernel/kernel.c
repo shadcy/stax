@@ -281,9 +281,6 @@ void kernel_main(void)
             kputc('\n');
             if (input_pos > 0) {
                 /* save to history (avoid duplicate of last entry) */
-                int dup = (hist_count > 0 &&
-                           hist[hist_count > 0 ? hist_count - 1 : 0][0] != '\0');
-                /* simple duplicate check */
                 int is_dup = 0;
                 if (hist_count > 0) {
                     int prev = hist_count - 1;
@@ -293,7 +290,6 @@ void kernel_main(void)
                         if (hist[prev][i] == '\0') break;
                     }
                 }
-                (void)dup;
                 if (!is_dup) {
                     if (hist_count < HIST_MAX) {
                         /* append */

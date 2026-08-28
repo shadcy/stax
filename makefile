@@ -269,7 +269,7 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) tools/stax-sign/stax-sign scripts/create_mb
 $(BUILD_DIR)/boot_startup.o: $(BOOT_STARTUP) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/bootloader.o: $(BOOT_SRC) $(INC_DIR)/memory_map.h | $(BUILD_DIR)
+$(BUILD_DIR)/bootloader.o: $(BOOT_SRC) $(INC_DIR)/memory_map.h stax_key.pub.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BOOT_LD): $(BOOT_LD_IN) $(INC_DIR)/memory_map.h | $(BUILD_DIR)

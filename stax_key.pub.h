@@ -1,6 +1,9 @@
 #ifndef STAX_KEY_PUB_H
 #define STAX_KEY_PUB_H
 
+// TODO: This needs to be changed, each token should have its own pub key
+// hexdump -C stax_key.priv && hexdump -C stax_key.pub
+// The values from the hexdump need to be placed in the array
 const uint8_t STAX_PUBLIC_KEY[32] = {
     0x43, 0x60, 0x7E, 0x0C, 0xC8, 0xA8, 0xAC, 0xB2, 
     0xE3, 0xD1, 0x11, 0x2F, 0x37, 0x10, 0x36, 0x17, 
