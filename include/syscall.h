@@ -25,8 +25,12 @@
 #define SYS_OPEN        5
 #define SYS_CLOSE       6
 #define SYS_EXECVE      11
+#define SYS_LSEEK       19
 #define SYS_GETPID      20
 #define SYS_UPTIME      25
+#define SYS_IOCTL       54
+#define SYS_ISATTY      55
+#define SYS_OPENPTY     56
 #define SYS_REBOOT      88
 
 /* Standard file descriptors */
@@ -124,8 +128,28 @@ static inline uint32_t u_uptime(void) {
     return (uint32_t)_syscall0(SYS_UPTIME);
 }
 
+static inline int32_t u_open(const char *path, int flags) {
+    return _syscall2(SYS_OPEN, (uint32_t)path, (uint32_t)flags);
+}
+
+static inline int32_t u_close(int fd) {
+    return _syscall1(SYS_CLOSE, (uint32_t)fd);
+}
+
+static inline int32_t u_lseek(int fd, int32_t offset, int whence) {
+    return _syscall3(SYS_LSEEK, (uint32_t)fd, (uint32_t)offset, (uint32_t)whence);
+}
+
 static inline int32_t u_execve(const char *path, char *const argv[], char *const envp[]) {
     return _syscall3(SYS_EXECVE, (uint32_t)path, (uint32_t)argv, (uint32_t)envp);
+}
+
+static inline int32_t u_ioctl(int fd, uint32_t cmd, void *arg) {
+    return _syscall3(SYS_IOCTL, (uint32_t)fd, (uint32_t)cmd, (uint32_t)arg);
+}
+
+static inline int32_t u_isatty(int fd) {
+    return _syscall1(SYS_ISATTY, (uint32_t)fd);
 }
 
 #ifdef __cplusplus

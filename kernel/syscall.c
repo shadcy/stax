@@ -17,40 +17,40 @@
 
 extern volatile unsigned int tick_count;
 
+#include "pty.h"
+#include "vfs.h"
+#include "string.h"
+
 /* ============================================================================
- * Kernel Syscall Handlers
+ * Kernel Syscall Handlers (VFS Backed)
  * ============================================================================ */
 
-static int32_t ksys_write(int fd, const void *buf, size_t count) {
-    if (!buf || count == 0) return 0;
-    
-    /* For stdout and stderr, write directly to kernel console / UART */
-    if (fd == STDOUT_FILENO || fd == STDERR_FILENO) {
-        const char *p = (const char *)buf;
-        for (size_t i = 0; i < count; i++) {
-            kputc(p[i]);
-        }
-        return (int32_t)count;
-    }
-    return -1; /* Unsupported FD for now */
+static int32_t ksys_open(const char *path, int flags) {
+    return vfs_open(path, flags);
+}
+
+static int32_t ksys_close(int fd) {
+    return vfs_close(fd);
 }
 
 static int32_t ksys_read(int fd, void *buf, size_t count) {
-    if (!buf || count == 0) return 0;
-    
-    /* For stdin, read from keyboard buffer / console */
-    if (fd == STDIN_FILENO) {
-        char *p = (char *)buf;
-        size_t read_bytes = 0;
-        while (read_bytes < count) {
-            int c = kgetc();
-            if (c < 0) break;
-            p[read_bytes++] = (char)c;
-            if (c == '\n' || c == '\r') break;
-        }
-        return (int32_t)read_bytes;
-    }
-    return -1;
+    return vfs_read(fd, buf, count);
+}
+
+static int32_t ksys_write(int fd, const void *buf, size_t count) {
+    return vfs_write(fd, buf, count);
+}
+
+static int32_t ksys_lseek(int fd, int32_t offset, int whence) {
+    return vfs_lseek(fd, offset, whence);
+}
+
+static int32_t ksys_ioctl(int fd, uint32_t cmd, void *arg) {
+    return vfs_ioctl(fd, cmd, arg);
+}
+
+static int32_t ksys_isatty(int fd) {
+    return vfs_isatty(fd);
 }
 
 static int32_t ksys_yield(void) {
@@ -100,6 +100,12 @@ int32_t syscall_dispatch(uint32_t sys_num, uint32_t arg0, uint32_t arg1, uint32_
             
         case SYS_YIELD:
             return ksys_yield();
+
+        case SYS_OPEN:
+            return ksys_open((const char *)arg0, (int)arg1);
+
+        case SYS_CLOSE:
+            return ksys_close((int)arg0);
             
         case SYS_READ:
             return ksys_read((int)arg0, (void *)arg1, (size_t)arg2);
@@ -107,9 +113,18 @@ int32_t syscall_dispatch(uint32_t sys_num, uint32_t arg0, uint32_t arg1, uint32_
         case SYS_WRITE:
             return ksys_write((int)arg0, (const void *)arg1, (size_t)arg2);
 
+        case SYS_LSEEK:
+            return ksys_lseek((int)arg0, (int32_t)arg1, (int)arg2);
+
         case SYS_EXECVE:
             return ksys_execve((const char *)arg0, (char *const *)arg1, (char *const *)arg2);
             
+        case SYS_IOCTL:
+            return ksys_ioctl((int)arg0, (uint32_t)arg1, (void *)arg2);
+
+        case SYS_ISATTY:
+            return ksys_isatty((int)arg0);
+
         case SYS_GETPID:
             return ksys_getpid();
             

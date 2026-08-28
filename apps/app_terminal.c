@@ -1,8 +1,3 @@
-/* ============================================================================
- * STAX — app_terminal.c
- * Concurrent Graphical Terminal with Full Shell Command Execution & ANSI Colors
- * ============================================================================ */
-
 #include "app_terminal.h"
 #include "wm.h"
 #include "framebuffer.h"
@@ -11,6 +6,7 @@
 #include "string.h"
 #include "command.h"
 #include "console.h"
+#include "pty.h"
 
 #define TERM_COLS       80
 #define TERM_ROWS       64
@@ -38,6 +34,8 @@ typedef struct {
     
     int      blink_n;
     int      cur_on;
+
+    pty_t   *pty;                   /* Attached POSIX pseudo-terminal device */
 } terminal_state_t;
 
 /* Advance to the next line in circular ring buffer */
@@ -132,6 +130,15 @@ static void term_clear(terminal_state_t *st) {
     }
 }
 
+static void pty_terminal_on_output(pty_t *pty, const char *buf, size_t len) {
+    terminal_state_t *st = (terminal_state_t *)pty->user_data;
+    if (st && buf) {
+        for (size_t i = 0; i < len; i++) {
+            term_putc(st, buf[i], COLOR_WHITE);
+        }
+    }
+}
+
 static void term_init(terminal_state_t *st) {
     term_clear(st);
     st->input_pos = 0;
@@ -140,6 +147,13 @@ static void term_init(terminal_state_t *st) {
     st->history_idx = 0;
     st->blink_n = 0;
     st->cur_on = 1;
+
+    /* Allocate dedicated POSIX Pseudo-TTY pair */
+    st->pty = pty_create();
+    if (st->pty) {
+        st->pty->user_data = st;
+        st->pty->on_output = pty_terminal_on_output;
+    }
 
     /* STAX ASCII Banner in Smooth White -> Gray Gradient */
     term_puts(st, "  ____ _____  _  __  __   ____  _   _ _____ _     _     \n", rgb565(255, 255, 255));
@@ -198,7 +212,13 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     int top_bar_h = 22;
     fb_fillrect(cx, cy, cw, top_bar_h, rgb565(24, 27, 36));
     fb_drawline(cx, cy + top_bar_h - 1, cx + cw - 1, cy + top_bar_h - 1, rgb565(42, 48, 65));
-    draw_text(cx + 10, cy + 3, "STAX Shell (tty0)", theme_pri);
+    
+    char pty_title[32];
+    strcpy(pty_title, "STAX Shell (pty0)");
+    if (st->pty) {
+        pty_title[15] = '0' + (st->pty->id % 10);
+    }
+    draw_text(cx + 10, cy + 3, pty_title, theme_pri);
     draw_text(cx + cw - 65, cy + 3, "1000Hz", rgb565(140, 150, 170));
 
     /* Cursor blink */
@@ -256,6 +276,10 @@ void terminal_key_event(struct window *win, char c) {
     terminal_state_t *st = (terminal_state_t *)win->app_data;
     if (!st) return;
 
+    if (st->pty) {
+        pty_set_active(st->pty);
+    }
+
     if (c == '\r' || c == '\n') {
         st->input[st->input_pos] = '\0';
 
@@ -280,7 +304,8 @@ void terminal_key_event(struct window *win, char c) {
             if (strcmp(st->input, "clear") == 0 || strcmp(st->input, "cls") == 0) {
                 term_clear(st);
             } else {
-                /* Redirect all kernel and shell output to this terminal instance */
+                /* Route active PTY and console hook to this terminal instance */
+                if (st->pty) pty_set_active(st->pty);
                 console_set_hook(term_console_hook, st);
                 command_process(st->input);
                 console_set_hook(NULL, NULL);

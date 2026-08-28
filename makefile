@@ -100,11 +100,14 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/mmu.o \
                 $(BUILD_DIR)/page.o \
                 $(BUILD_DIR)/elf.o \
+                $(BUILD_DIR)/vfs.o \
+                $(BUILD_DIR)/devfs.o \
                 $(BUILD_DIR)/fat.o \
                 $(BUILD_DIR)/disk.o \
                 $(BUILD_DIR)/irq.o \
                 $(BUILD_DIR)/keyboard.o \
                 $(BUILD_DIR)/mouse.o \
+                $(BUILD_DIR)/pty.o \
                 $(BUILD_DIR)/wm.o \
                 $(BUILD_DIR)/wm_render.o \
                 $(BUILD_DIR)/wm_desktop.o \

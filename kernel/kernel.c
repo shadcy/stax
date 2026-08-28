@@ -109,6 +109,16 @@ void kernel_main(void)
 
     /* ---- Phase 6e: FAT filesystem ---- */
     fat_init();
+
+    /* Initialize POSIX Pseudo-TTY Subsystem */
+    extern void pty_init(void);
+    pty_init();
+
+    /* Initialize Virtual File System & Devfs */
+    extern void vfs_init(void);
+    extern void devfs_init(void);
+    vfs_init();
+    devfs_init();
     
     /* Load persisted settings from disk and update live window manager */
     settings_load();

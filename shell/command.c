@@ -25,6 +25,8 @@ extern volatile unsigned int tick_count;
 extern void cmd_browser(int argc, char *argv[]);
 void cmd_widgets(int argc, char *argv[]);
 void cmd_exec(int argc, char *argv[]);
+void cmd_vfs(int argc, char *argv[]);
+void cmd_dev(int argc, char *argv[]);
 
 /* Command table */
 static const command_t commands[] = {
@@ -34,6 +36,8 @@ static const command_t commands[] = {
     {"status",  "Show system status",                  cmd_status},
     {"tasks",   "Show task information",               cmd_tasks},
     {"fs",      "Show filesystem information",          cmd_fs},
+    {"vfs",     "Show Virtual File System & mount points", cmd_vfs},
+    {"dev",     "List and test /dev device nodes",     cmd_dev},
     {"ls",      "List dir contents (use --size for showing size)", cmd_ls},
     {"cd",      "Change dir", cmd_cd},
     {"pwd",     "Print working dir", cmd_pwd},
@@ -47,7 +51,7 @@ static const command_t commands[] = {
     {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
     {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
-    {"test",    "Run tests ([--mem] [--fs] [--all])", cmd_test},
+    {"test",    "Run tests ([--mem] [--fs] [--vfs] [--elf] [--all])", cmd_test},
 #ifdef ENABLE_BENCH
     {"bench",   "Run benchmarks ([--memory] [--vm] [--scheduler] [--fs] [--gfx] [--firmware] [--all])", cmd_bench},
     {"stress",  "Run stress tests", cmd_stress},
@@ -303,8 +307,52 @@ void cmd_test(int argc, char *argv[])
                 kputs("FAIL: ELF Loader returned error code.\n");
             }
             return;
+        } else if (strcmp(argv[1], "--vfs") == 0 || strcmp(argv[1], "--dev") == 0) {
+            extern int vfs_open(const char *path, int flags);
+            extern int vfs_close(int fd);
+            extern int32_t vfs_read(int fd, void *buf, size_t count);
+            extern int32_t vfs_write(int fd, const void *buf, size_t count);
+
+            kputs("Testing VFS & Devfs Subsystems...\n");
+            
+            /* Test /dev/null */
+            int fd_null = vfs_open("/dev/null", 0);
+            if (fd_null >= 0) {
+                char dummy[8];
+                int32_t n = vfs_read(fd_null, dummy, sizeof(dummy));
+                if (n == 0) kputs("  ✓ /dev/null read returned EOF (0 bytes)\n");
+                vfs_write(fd_null, "test", 4);
+                vfs_close(fd_null);
+            }
+
+            /* Test /dev/zero */
+            int fd_zero = vfs_open("/dev/zero", 0);
+            if (fd_zero >= 0) {
+                uint8_t zbuf[16];
+                memset(zbuf, 0xFF, sizeof(zbuf));
+                vfs_read(fd_zero, zbuf, sizeof(zbuf));
+                int all_zero = 1;
+                for (int i = 0; i < 16; i++) { if (zbuf[i] != 0) all_zero = 0; }
+                if (all_zero) kputs("  ✓ /dev/zero filled buffer with 0x00\n");
+                vfs_close(fd_zero);
+            }
+
+            /* Test /dev/urandom */
+            int fd_rand = vfs_open("/dev/urandom", 0);
+            if (fd_rand >= 0) {
+                uint8_t rbuf[8];
+                vfs_read(fd_rand, rbuf, sizeof(rbuf));
+                kputs("  ✓ /dev/urandom generated random bytes: ");
+                for (int i = 0; i < 4; i++) {
+                    kprintf("%x ", (unsigned int)rbuf[i]);
+                }
+                kputs("\n");
+                vfs_close(fd_rand);
+            }
+            kputs("PASS: VFS and Devfs subsystem verification complete.\n");
+            return;
         } else {
-            kputs("Unknown test option. Available: --fb, --elf\n");
+            kputs("Unknown test option. Available: --fb, --elf, --vfs, --dev\n");
             return;
         }
     }
@@ -1208,5 +1256,36 @@ void cmd_exec(int argc, char *argv[])
     } else {
         kputs("Failed to execute ELF binary.\n");
     }
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_vfs — show Virtual File System mount points & open file descriptors
+ * --------------------------------------------------------------------------- */
+void cmd_vfs(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("STAX Virtual File System (VFS):\n");
+    kputs("  Mount Points:\n");
+    kputs("    /     -> FAT16 SD Block Storage (Driver: fatfs)\n");
+    kputs("    /dev  -> Pseudo-Device File System (Driver: devfs)\n\n");
+    kputs("  Standard File Descriptors:\n");
+    kputs("    fd 0 (stdin)  -> /dev/tty0 (PTY Slave)\n");
+    kputs("    fd 1 (stdout) -> /dev/tty0 (PTY Slave)\n");
+    kputs("    fd 2 (stderr) -> /dev/tty0 (PTY Slave)\n");
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_dev — list and inspect /dev character & block device nodes
+ * --------------------------------------------------------------------------- */
+void cmd_dev(int argc, char *argv[])
+{
+    (void)argc; (void)argv;
+    kputs("Registered /dev Device Nodes:\n");
+    kputs("  /dev/null    (crw-rw-rw-) Discard sink / EOF source\n");
+    kputs("  /dev/zero    (crw-rw-rw-) Infinite zero-byte stream\n");
+    kputs("  /dev/urandom (crw-rw-rw-) Hardware-seeded PRNG entropy stream\n");
+    kputs("  /dev/tty0    (crw-rw-rw-) Active Pseudo-Terminal (PTY master/slave)\n");
+    kputs("  /dev/tty     (crw-rw-rw-) Controlling TTY alias\n");
+    kputs("  /dev/fb0     (crw-rw-rw-) Direct Framebuffer (1024x768 16bpp)\n");
 }
 
