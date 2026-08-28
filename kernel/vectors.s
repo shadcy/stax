@@ -322,14 +322,34 @@ undef_handler:
     UART_PUTS stax_msg_hang
     b .
 
+    .global svc_handler
+    .type svc_handler, %function
 svc_handler:
-    ldr r0, =stax_fault_lr
-    str lr, [r0]
-    UART_PUTS stax_msg_svc
-    mov r2, lr
-    UART_HEX
-    UART_PUTS stax_msg_hang
-    b .
+    /* Save callee-saved registers, lr, and caller SPSR on the SVC stack */
+    stmfd   sp!, {r4-r12, lr}
+    mrs     r12, spsr
+    stmfd   sp!, {r12}
+
+    /* Set up C arguments:
+     * int32_t syscall_dispatch(uint32_t sys_num, uint32_t arg0, uint32_t arg1, uint32_t arg2, uint32_t arg3)
+     */
+    stmfd   sp!, {r3}        /* 5th argument passed on stack (AAPCS) */
+    mov     r3, r2           /* arg2 */
+    mov     r2, r1           /* arg1 */
+    mov     r1, r0           /* arg0 */
+    mov     r0, r7           /* sys_num */
+
+    bl      syscall_dispatch
+
+    /* Remove 5th argument from stack */
+    add     sp, sp, #4
+
+    /* Return value from syscall_dispatch is in r0 */
+
+    /* Restore SPSR and return to caller (USR or SVC mode) atomically via PC^ */
+    ldmfd   sp!, {r12}
+    msr     spsr_cxsf, r12
+    ldmfd   sp!, {r4-r12, pc}^
 
 prefetch_handler:
     ldr r0, =stax_fault_lr

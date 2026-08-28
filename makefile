@@ -89,6 +89,7 @@ BOOT_BIN     := $(BUILD_DIR)/bootloader.bin
 KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/vectors.o \
                 $(BUILD_DIR)/kernel.o \
+                $(BUILD_DIR)/syscall.o \
                 $(BUILD_DIR)/system.o \
                 $(BUILD_DIR)/string.o \
                 $(BUILD_DIR)/vic.o \

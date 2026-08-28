@@ -58,9 +58,9 @@ void scheduler_init(void)
 }
 
 /* ============================================================================
- * task_create — allocate a TCB and stack for a new task.
+ * task_create_mode — allocate a TCB with a specified CPSR mode (0x10=USR, 0x13=SVC).
  * ============================================================================ */
-int task_create(void (*entry)(void))
+int task_create_mode(void (*entry)(void), uint32_t cpsr_mode)
 {
     int i;
     task_t *t;
@@ -82,7 +82,7 @@ int task_create(void (*entry)(void))
     t->sp = (uint32_t)&task_stacks[i][TASK_STACK_SIZE / 4];
     t->lr = (uint32_t)task_exit;
     t->pc = (uint32_t)entry;
-    t->cpsr = 0x13;  /* SVC mode, IRQs enabled */
+    t->cpsr = cpsr_mode;  /* Set target mode (0x10 = USR, 0x13 = SVC) */
     t->state = TASK_STATE_READY;
     t->next = current_task->next;
     current_task->next = t;
@@ -90,6 +90,22 @@ int task_create(void (*entry)(void))
     num_tasks++;
     irq_enable();
     return i;
+}
+
+/* ============================================================================
+ * task_create — allocate a TCB and stack for a new SVC task.
+ * ============================================================================ */
+int task_create(void (*entry)(void))
+{
+    return task_create_mode(entry, 0x13); /* 0x13 = SVC mode */
+}
+
+/* ============================================================================
+ * task_create_user — allocate a TCB for a new User (USR mode) task.
+ * ============================================================================ */
+int task_create_user(void (*entry)(void))
+{
+    return task_create_mode(entry, 0x10); /* 0x10 = USR mode, IRQs enabled */
 }
 
 int task_spawn(void (*entry)(void), uint32_t *stack_top)

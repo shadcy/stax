@@ -43,8 +43,14 @@ extern task_t *current_task;
 /* Initialise scheduler (creates idle task from current context) */
 void scheduler_init(void);
 
-/* Create a new task. Returns task ID or -1 on failure. */
+/* Create a new task in Supervisor mode. Returns task ID or -1 on failure. */
 int task_create(void (*entry)(void));
+
+/* Create a new task in User (USR) mode. Returns task ID or -1 on failure. */
+int task_create_user(void (*entry)(void));
+
+/* Create a task with a specific CPSR mode (0x10 = USR, 0x13 = SVC). */
+int task_create_mode(void (*entry)(void), uint32_t cpsr_mode);
 
 /* Create a task using a caller-supplied stack top pointer. */
 int task_spawn(void (*entry)(void), uint32_t *stack_top);
