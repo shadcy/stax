@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/Architecture-ARM926EJ--S-blue.svg?style=flat-square" alt="Architecture">
     <img src="https://img.shields.io/badge/Language-C%20%7C%20Assembly-orange.svg?style=flat-square" alt="Language">
     <img src="https://img.shields.io/badge/Platform-QEMU-lightgrey.svg?style=flat-square" alt="Platform">
-    <img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License">
+    <img src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square" alt="License">
   </p>
 </div>
 

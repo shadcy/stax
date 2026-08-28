@@ -5,7 +5,7 @@
  *
  * Part of the STAX Operating System.
  *
- * @license MIT
+ * @license GPL-3.0-or-later
  * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
  */
 

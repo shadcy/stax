@@ -1,6 +1,14 @@
-
-
-
+# ============================================================================
+# STAX — Dockerfile (Booster Suite Sandbox)
+# @file    Dockerfile
+# @author  shadcy
+# @brief   Containerized build & emulation sandbox for STAX OS development.
+#
+# Part of the STAX Operating System.
+#
+# @license GPL-3.0-or-later
+# Copyright (c) 2026 Shreyash Wanjari (Shadcy)
+# ============================================================================
 
 FROM ubuntu:24.04
 

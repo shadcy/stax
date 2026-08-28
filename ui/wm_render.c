@@ -568,29 +568,39 @@ void wm_render(void) {
     mem_str[m_idx] = '\0';
     draw_text(fb_width - 272, ty + 6, mem_str, COLOR_BLACK);
     
-    /* Context Menu */
+    /* Desktop Context Menu (Clean & Simple) */
     if (ctx_menu.active) {
-        fb_fillrect(ctx_menu.x, ctx_menu.y, 160, 240, rgb565(235, 235, 240));
-        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y, COLOR_WHITE);
-        fb_drawline(ctx_menu.x, ctx_menu.y, ctx_menu.x, ctx_menu.y + 239, COLOR_WHITE);
-        fb_drawline(ctx_menu.x + 159, ctx_menu.y, ctx_menu.x + 159, ctx_menu.y + 239, rgb565(120, 120, 130));
-        fb_drawline(ctx_menu.x, ctx_menu.y + 239, ctx_menu.x + 159, ctx_menu.y + 239, rgb565(120, 120, 130));
-        
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 8, "New Terminal", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 30, ctx_menu.x + 155, ctx_menu.y + 30, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 38, "Retro Widgets", rgb565(20, 100, 220));
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 60, ctx_menu.x + 155, ctx_menu.y + 60, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 68, "Web Browser", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 90, ctx_menu.x + 155, ctx_menu.y + 90, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 98, "File Manager", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 120, ctx_menu.x + 155, ctx_menu.y + 120, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 128, "Text Editor", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 150, ctx_menu.x + 155, ctx_menu.y + 150, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 158, "Calculator", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 180, ctx_menu.x + 155, ctx_menu.y + 180, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 188, "Settings", COLOR_BLACK);
-        fb_drawline(ctx_menu.x + 5, ctx_menu.y + 210, ctx_menu.x + 155, ctx_menu.y + 210, rgb565(180, 180, 190));
-        draw_text(ctx_menu.x + 10, ctx_menu.y + 218, "Reboot System", rgb565(190, 40, 40));
+        int cm_x = ctx_menu.x;
+        int cm_y = ctx_menu.y;
+        int cm_w = 160;
+        int cm_h = 112;
+
+        /* Drop shadow */
+        fb_fillrect(cm_x + 3, cm_y + 3, cm_w, cm_h, rgb565(15, 17, 22));
+
+        /* Background (Ubuntu Dark Slate Theme) */
+        fb_fillrect(cm_x, cm_y, cm_w, cm_h, rgb565(36, 38, 46));
+
+        /* Border */
+        fb_drawline(cm_x, cm_y, cm_x + cm_w - 1, cm_y, rgb565(70, 75, 90));
+        fb_drawline(cm_x, cm_y, cm_x, cm_y + cm_h - 1, rgb565(70, 75, 90));
+        fb_drawline(cm_x + cm_w - 1, cm_y, cm_x + cm_w - 1, cm_y + cm_h - 1, rgb565(20, 22, 28));
+        fb_drawline(cm_x, cm_y + cm_h - 1, cm_x + cm_w - 1, cm_y + cm_h - 1, rgb565(20, 22, 28));
+
+        /* Item 0: Open Terminal */
+        draw_text(cm_x + 12, cm_y + 6, "Open Terminal", COLOR_WHITE);
+        fb_drawline(cm_x + 8, cm_y + 27, cm_x + cm_w - 8, cm_y + 27, rgb565(50, 54, 65));
+
+        /* Item 1: New Document */
+        draw_text(cm_x + 12, cm_y + 34, "New Document", COLOR_WHITE);
+        fb_drawline(cm_x + 8, cm_y + 55, cm_x + cm_w - 8, cm_y + 55, rgb565(50, 54, 65));
+
+        /* Item 2: Refresh Desktop */
+        draw_text(cm_x + 12, cm_y + 62, "Refresh Desktop", rgb565(180, 200, 225));
+        fb_drawline(cm_x + 8, cm_y + 83, cm_x + cm_w - 8, cm_y + 83, rgb565(50, 54, 65));
+
+        /* Item 3: Settings */
+        draw_text(cm_x + 12, cm_y + 90, "Settings...", COLOR_WHITE);
     }
 
     /* 1. STAX System Dropdown Menu (Under Logo) */

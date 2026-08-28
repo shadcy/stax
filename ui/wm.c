@@ -267,46 +267,27 @@ void wm_update(void) {
     
     if (pressed || right_pressed) {
         if (ctx_menu.active) {
-            if (pressed && mx >= ctx_menu.x && mx < ctx_menu.x + 160 && 
-                my >= ctx_menu.y && my < ctx_menu.y + 180) {
+            int cm_w = 160;
+            int cm_h = 112;
+            if (pressed && mx >= ctx_menu.x && mx < ctx_menu.x + cm_w && 
+                my >= ctx_menu.y && my < ctx_menu.y + cm_h) {
                 
-                int item = (my - ctx_menu.y) / 30;
+                int item = (my - ctx_menu.y) / 28;
                 if (item == 0) {
                     extern struct window *terminal_open_new(void);
                     terminal_open_new();
                 } else if (item == 1) {
-                    extern struct window *widgets_open_window(void);
-                    widgets_open_window();
-                } else if (item == 2) {
-                    extern void cmd_browser(int, char**);
-                    cmd_browser(0, 0);
-                } else if (item == 3) {
-                    window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
-                    if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
-                } else if (item == 4) {
                     extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void editor_key_event(struct window *win, char c);
                     window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
                     if (ew) ew->key_event = editor_key_event;
-                } else if (item == 5) {
-                    extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                    extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
-                    extern void calculator_key_event(struct window *win, char c);
-                    window_t *cw = wm_add_window(160, 80, 280, 350, "Calculator", calculator_draw_window);
-                    if (cw) {
-                        cw->mouse_click = calculator_mouse_click;
-                        cw->key_event = calculator_key_event;
-                    }
-                } else if (item == 6) {
+                } else if (item == 2) {
+                    desk_load_files();
+                } else if (item == 3) {
                     extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                     extern void settings_mouse_click(struct window *win, int mx, int my, int button);
                     window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                     if (sw) sw->mouse_click = settings_mouse_click;
-                } else if (item == 7) {
-                    extern void settings_save(void);
-                    extern void system_reboot(void);
-                    settings_save();
-                    system_reboot();
                 }
             }
             ctx_menu.active = 0;
@@ -616,8 +597,8 @@ void wm_update(void) {
                     ctx_menu.active = 1;
                     ctx_menu.x = mx;
                     ctx_menu.y = my;
-                    if (ctx_menu.x + 150 > (int)fb_width) ctx_menu.x = fb_width - 150;
-                    if (ctx_menu.y + 150 > (int)(fb_height - TASKBAR_HEIGHT)) ctx_menu.y = fb_height - TASKBAR_HEIGHT - 150;
+                    if (ctx_menu.x + 160 > (int)fb_width) ctx_menu.x = fb_width - 160;
+                    if (ctx_menu.y + 112 > (int)(fb_height - TASKBAR_HEIGHT)) ctx_menu.y = fb_height - TASKBAR_HEIGHT - 112;
                 } else if (pressed) {
                     extern int widgets_handle_desktop_click(int, int);
                     if (widgets_handle_desktop_click(mx, my)) goto update_done;
