@@ -367,28 +367,81 @@ void wm_render(void) {
     fb_fill_rounded_rect(dt_x, ty + 3, dt_w, 22, 3, rgb565(36, 40, 52));
     draw_text(dt_x + 6, ty + 6, dt_str, COLOR_WHITE);
     
-    /* Memory Usage Pill */
+    /* Dynamic Real-Time Memory Usage Pill with Mini Live Chart */
     extern int get_total_memory(void);
     extern int get_free_memory(void);
     uint32_t tot = get_total_memory();
     uint32_t f = get_free_memory();
-    int pct = 0;
-    if (tot > 0) pct = ((tot - f) * 100) / tot;
-    char mem_str[12];
-    mem_str[0] = 'M'; mem_str[1] = 'E'; mem_str[2] = 'M'; mem_str[3] = ':'; mem_str[4] = ' ';
-    int m_idx = 5;
-    if (pct == 100) {
-        mem_str[m_idx++] = '1'; mem_str[m_idx++] = '0'; mem_str[m_idx++] = '0';
+    uint32_t tot_kb = tot / 1024;
+    uint32_t used_kb = (tot >= f) ? (tot - f) / 1024 : 0;
+    
+    char mem_str[24];
+    if (used_kb >= 1024) {
+        uint32_t mb_int = used_kb / 1024;
+        uint32_t mb_dec = ((used_kb % 1024) * 10) / 1024;
+        int mi = 0;
+        if (mb_int >= 10) mem_str[mi++] = '0' + (mb_int / 10);
+        mem_str[mi++] = '0' + (mb_int % 10);
+        mem_str[mi++] = '.';
+        mem_str[mi++] = '0' + mb_dec;
+        mem_str[mi++] = ' ';
+        mem_str[mi++] = 'M';
+        mem_str[mi++] = 'B';
+        mem_str[mi] = '\0';
     } else {
-        if (pct >= 10) mem_str[m_idx++] = '0' + (pct / 10);
-        mem_str[m_idx++] = '0' + (pct % 10);
+        int mi = 0;
+        char numbuf[12];
+        int ni = 0;
+        uint32_t temp = used_kb;
+        if (temp == 0) numbuf[ni++] = '0';
+        else {
+            char t2[12]; int ti = 0;
+            while (temp) { t2[ti++] = '0' + (temp % 10); temp /= 10; }
+            while (ti > 0) numbuf[ni++] = t2[--ti];
+        }
+        for (int k = 0; k < ni; k++) mem_str[mi++] = numbuf[k];
+        mem_str[mi++] = ' ';
+        mem_str[mi++] = 'K';
+        mem_str[mi++] = 'B';
+        mem_str[mi] = '\0';
     }
-    mem_str[m_idx++] = '%';
-    mem_str[m_idx] = '\0';
-    int mem_w = font_get_string_width(mem_str, FONT_STYLE_REGULAR) + 12;
+
+    /* History sparkline ring buffer */
+    static uint8_t s_mem_history[10] = {14, 15, 14, 16, 17, 16, 18, 17, 19, 18};
+    static uint32_t s_last_sample_tick = 0;
+    extern volatile unsigned int tick_count;
+    uint32_t cur_ticks = tick_count;
+    if (cur_ticks - s_last_sample_tick >= 1000) {
+        s_last_sample_tick = cur_ticks;
+        uint8_t cur_pct = (tot_kb > 0) ? (uint8_t)(((uint64_t)used_kb * 100) / tot_kb) : 0;
+        if (cur_pct == 0 && used_kb > 0) cur_pct = 5;
+        for (int hi = 0; hi < 9; hi++) s_mem_history[hi] = s_mem_history[hi + 1];
+        s_mem_history[9] = cur_pct;
+    }
+
+    int chart_w = 10 * 3; /* 10 bars * (2px width + 1px gap) = 30px */
+    int text_w = font_get_string_width(mem_str, FONT_STYLE_REGULAR);
+    int mem_w = chart_w + text_w + 16;
     int mem_x = dt_x - mem_w - 6;
+
     fb_fill_rounded_rect(mem_x, ty + 3, mem_w, 22, 3, rgb565(36, 40, 52));
-    draw_text(mem_x + 6, ty + 6, mem_str, theme_get_primary_accent());
+
+    /* Render mini real-time sparkline chart */
+    int bar_base_y = ty + 18;
+    for (int bi = 0; bi < 10; bi++) {
+        int bx = mem_x + 6 + bi * 3;
+        int val = s_mem_history[bi];
+        int bh = (val * 13) / 100;
+        if (bh < 2) bh = 2;
+        if (bh > 13) bh = 13;
+        uint16_t bcol = (val > 80) ? rgb565(230, 60, 60) :
+                        (val > 50) ? rgb565(240, 180, 40) :
+                        theme_get_primary_accent();
+        fb_fillrect(bx, bar_base_y - bh, 2, bh, bcol);
+    }
+
+    /* Render live RAM text */
+    draw_text(mem_x + 6 + chart_w + 4, ty + 6, mem_str, COLOR_WHITE);
     
     /* Desktop Context Menu (Clean & Simple) */
     if (ctx_menu.active) {

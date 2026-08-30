@@ -344,6 +344,15 @@ void wm_update(void) {
                             }
                         }
                     }
+
+                    /* Check Memory Pill click */
+                    if (mx >= (int)fb_width - 320 && mx < (int)fb_width - 150) {
+                        extern void memview_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        extern void memview_mouse_click(struct window *win, int mx, int my, int button);
+                        extern void memview_key_event(struct window *win, char c);
+                        window_t *mw = wm_add_window(140, 80, 520, 360, "Memory Profiler & Telemetry", memview_draw_window);
+                        if (mw) { mw->mouse_click = memview_mouse_click; mw->key_event = memview_key_event; }
+                    }
                 }
             }
             drag_win = NULL;
