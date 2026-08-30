@@ -25,7 +25,6 @@
 #include "wm.h"
 #include "bmp.h"
 #include "rtc.h"
-#include "audio.h"
 
 /* ---------------------------------------------------------------------------
  * Global state
@@ -42,7 +41,6 @@ static void timer_isr(void)
     timer_ack();
     kb_poll();    /* Drain PL050 FIFO every 1ms tick for lag-free keyboard input */
     mouse_poll(); /* Poll PL050 mouse every 1ms tick for smooth 1000Hz cursor tracking */
-    audio_poll(); /* Drain audio ring buffer to PL041 hardware FIFO */
     if ((tick_count % 10) == 0) {
         /* Trigger round-robin scheduler on every 10ms tick */
         need_schedule = 1;
@@ -147,10 +145,8 @@ void kernel_main(void)
     net_init();
     ifconfig_init();
     ping_init();
+    
 
-    /* Initialize Audio Subsystem (PL041 AACI + AC'97) */
-    audio_init();
-    audio_play_fx(AUDIO_FX_BOOT);
 
     /* ---- Phase 6b: Timer ---- */
     irq_register(VIC_TIMER0_INT, timer_isr);

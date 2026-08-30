@@ -223,53 +223,6 @@ static vfs_ops_t g_dev_fb_ops = {
 };
 
 /* ============================================================================
- * /dev/dsp & /dev/audio Driver (OSS Digital Sound Processor)
- * ============================================================================ */
-
-#include "audio.h"
-
-static int32_t dev_dsp_read(vfs_node_t *node, uint32_t offset, void *buf, size_t count) {
-    (void)node; (void)offset; (void)buf; (void)count;
-    return 0;
-}
-
-static int32_t dev_dsp_write(vfs_node_t *node, uint32_t offset, const void *buf, size_t count) {
-    (void)node; (void)offset;
-    return audio_write_pcm(buf, count);
-}
-
-static int dev_dsp_ioctl(vfs_node_t *node, uint32_t cmd, void *arg) {
-    (void)node;
-    if (!arg) return -1;
-    switch (cmd) {
-        case SNDCTL_DSP_SPEED: {
-            uint32_t rate = *(uint32_t *)arg;
-            audio_set_sample_rate(rate);
-            return 0;
-        }
-        case SNDCTL_DSP_RESET:
-            audio_stop();
-            return 0;
-        case SNDCTL_DSP_SYNC:
-            while (audio_is_playing()) {
-                audio_poll();
-            }
-            return 0;
-        default:
-            return 0;
-    }
-}
-
-static vfs_ops_t g_dev_dsp_ops = {
-    .open  = NULL,
-    .close = NULL,
-    .read  = dev_dsp_read,
-    .write = dev_dsp_write,
-    .ioctl = dev_dsp_ioctl,
-    .stat  = NULL
-};
-
-/* ============================================================================
  * Devfs Initialization & Registry
  * ============================================================================ */
 
@@ -306,10 +259,8 @@ void devfs_init(void) {
     devfs_register_device("tty0",    VFS_TYPE_CHARDEV, &g_dev_tty_ops,     NULL);
     devfs_register_device("tty",     VFS_TYPE_CHARDEV, &g_dev_tty_ops,     NULL);
     devfs_register_device("fb0",     VFS_TYPE_CHARDEV, &g_dev_fb_ops,      NULL);
-    devfs_register_device("dsp",     VFS_TYPE_CHARDEV, &g_dev_dsp_ops,     NULL);
-    devfs_register_device("audio",   VFS_TYPE_CHARDEV, &g_dev_dsp_ops,     NULL);
 
     /* Mount at /dev */
     vfs_mount("/dev", &g_devfs_root);
-    kputs("DEVFS: Device Filesystem mounted at /dev (/dev/null, /dev/zero, /dev/urandom, /dev/tty0, /dev/fb0, /dev/dsp, /dev/audio).\n");
+    kputs("DEVFS: Device Filesystem mounted at /dev (/dev/null, /dev/zero, /dev/urandom, /dev/tty0, /dev/fb0).\n");
 }

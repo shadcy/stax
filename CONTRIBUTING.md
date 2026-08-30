@@ -121,7 +121,7 @@ The `makefile` provides targets for building, running, debugging, and testing:
 stax/
 ├── boot/           # Bootloader startup assembly, FAT16 stage-2 loader, A/B secure boot
 ├── kernel/         # Kernel core: scheduler, MMU paging, syscalls, processes, signals
-├── drivers/        # Hardware drivers: PL041 audio, PL181 SD, SP804 timer, PL050 mouse/kbd, PL110 LCD, VIC, PTY
+├── drivers/        # Hardware drivers: PL181 SD, SP804 timer, PL050 mouse/kbd, PL110 LCD, VIC, PTY
 ├── fs/             # Virtual File System (VFS), FatFs integration, DevFS, pipes, .launch loader
 ├── mm/             # Physical page allocator (bitmap/buddy) and kernel heap allocator
 ├── ui/             # Window Manager (WM), compositing engine, event loop, desktop shell, BMP loader
