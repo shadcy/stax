@@ -8,7 +8,7 @@ def generate_font_c():
     
     try:
         font_sans = ImageFont.truetype(sans_path, 13)
-        font_mono = ImageFont.truetype(mono_path, 12)
+        font_mono = ImageFont.truetype(mono_path, 13)
     except Exception as e:
         print(f"Error loading fonts: {e}")
         return
@@ -69,7 +69,7 @@ def generate_font_c():
     out_c.append("};")
     out_c.append("")
 
-    # --- 2. Ubuntu Mono (Fixed-Pitch 8px) ---
+    # --- 2. Ubuntu Mono (Fixed-Pitch 8px, Exact Spacing & Centered Tracking) ---
     glyph_arrays_mono = []
     glyph_entries_mono = []
     MONO_W = 8
@@ -78,7 +78,11 @@ def generate_font_c():
         char_str = chr(c)
         img = Image.new("L", (MONO_W, GLYPH_H), color=0)
         draw = ImageDraw.Draw(img)
-        draw.text((0, -1), char_str, font=font_mono, fill=255)
+        
+        # Calculate horizontal centering inside 8px cell
+        adv = font_mono.getlength(char_str)
+        off_x = (MONO_W - adv) / 2.0
+        draw.text((off_x, -1), char_str, font=font_mono, fill=255)
 
         array_name = f"glyph_mono_{c}"
         pixels = []

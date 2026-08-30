@@ -1223,7 +1223,7 @@ static void browser_draw(struct window *win, int cx, int cy, int cw, int ch) {
             sx = cx + s->x;
             sy = cy + content_top + s->y - scroll_y;
             for (j = 0; j < s->n; j++)
-                draw_char_8x16(sx + j * 8, sy, text[s->off + j], color, COLOR_WHITE, vram, (int)fb_width);
+                font_draw_char_clipped(sx + j * 8, sy, text[s->off + j], color, FONT_STYLE_MONO, clip_x0, clip_y0, clip_x1, clip_y1);
             if (s->style == HTML_ST_LINK && s->url_id) {
                 int uw = s->n * 8;
                 int uy = sy + 15;
