@@ -13,6 +13,9 @@
 #include "lwip/ip_addr.h"
 #include "lwip/err.h"
 
+/* BearSSL TLS 1.2 adapter */
+#include "tls_bear.h"
+
 extern volatile unsigned int tick_count;
 extern int net_poll(void);
 
@@ -64,6 +67,7 @@ static char nav_host[128];
 static char nav_path[192];
 static u16_t nav_port = 80;
 static int nav_use_proxy;
+static int nav_is_https = 0;  /* 1 when current URL uses https:// */
 static int nav_attempt;
 static unsigned int nav_gen;
 
@@ -71,7 +75,9 @@ static unsigned int state_deadline;
 static unsigned int last_rx_tick;
 
 static enum {
-    STATE_IDLE, STATE_RESOLVING, STATE_CONNECTING, STATE_REQUESTING,
+    STATE_IDLE, STATE_RESOLVING, STATE_CONNECTING,
+    STATE_TLS_HANDSHAKE,            /* BearSSL handshake in progress */
+    STATE_REQUESTING,
     STATE_DOWNLOADING, STATE_FINISHED, STATE_ERROR
 } browser_state = STATE_IDLE;
 
@@ -230,6 +236,8 @@ static void browser_close_pcb(int abort) {
         }
     }
     browser_pcb = NULL;
+    /* Always reset TLS state — harmless if not an HTTPS connection */
+    tls_reset();
 }
 
 #include "font.h"
@@ -249,13 +257,15 @@ static int parse_url(void) {
     int has_space = 0;
     int has_dot = 0;
     nav_port = 80;
+    nav_is_https = 0;
     nav_host[0] = '\0';
     nav_path[0] = '/';
     nav_path[1] = '\0';
 
     if (str_istart(p, "https://")) {
-        browser_log("HTTPS not supported. Use http:// or bare hostname.");
-        return -1;
+        nav_is_https = 1;
+        nav_port = 443;
+        p += 8;
     }
     
     for (int i = 0; p[i] && p[i] != '/' && p[i] != ':' && p[i] != '?'; i++) {
@@ -279,6 +289,8 @@ static int parse_url(void) {
     }
 
     if (str_istart(p, "http://")) p += 7;
+    /* https:// was already stripped above; nav_is_https is set */
+    if (nav_is_https && str_istart(p, "https://")) p += 8;
 
     int hi = 0;
     while (*p && *p != '/' && *p != ':' && *p != '?' && hi < (int)sizeof(nav_host) - 1)
@@ -333,7 +345,7 @@ static int build_http_request(char *req, int req_max) {
         const char *scheme = "http://";
         while (*scheme && len < req_max - 1) req[len++] = *scheme++;
         for (int i = 0; nav_host[i] && len < req_max - 1; i++) req[len++] = nav_host[i];
-        if (nav_port != 80) {
+        if (nav_port != 80 && nav_port != 443) {
             unsigned int port = nav_port;
             char tmp[6];
             int ti = 0;
@@ -351,7 +363,7 @@ static int build_http_request(char *req, int req_max) {
         while (*mid && len < req_max - 1) req[len++] = *mid++;
     }
     for (int i = 0; nav_host[i] && len < req_max - 1; i++) req[len++] = nav_host[i];
-    if (nav_port != 80 && len < req_max - 8) {
+    if (nav_port != 80 && nav_port != 443 && len < req_max - 8) {
         unsigned int port = nav_port;
         char tmp[6];
         int ti = 0;
@@ -475,8 +487,11 @@ static int try_redirect(void) {
         return 0;
     }
     if (str_istart(location_hdr, "https://")) {
-        html_emit_text("Redirected to HTTPS, which is not supported.\n");
-        return 0;
+        /* Follow https:// redirects: re-parse URL and reconnect */
+        copy_str(url_input, location_hdr, URL_INPUT_MAX);
+        url_pos = (int)strlen(url_input);
+        navigate();
+        return 1;
     }
     redirect_hops++;
     html_set_base(nav_host, nav_path, nav_port);
@@ -577,6 +592,16 @@ static void http_byte(unsigned char b) {
     }
 }
 
+/* TLS send callback: called by tls_pump() to flush ciphertext to the TCP PCB */
+static int browser_tls_send(const uint8_t *data, size_t len, void *arg) {
+    struct tcp_pcb *tpcb = (struct tcp_pcb *)arg;
+    if (!tpcb) return -1;
+    err_t e = tcp_write(tpcb, data, (u16_t)len, TCP_WRITE_FLAG_COPY);
+    if (e != ERR_OK) return -1;
+    tcp_output(tpcb);
+    return (int)len;
+}
+
 static err_t browser_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
     u16_t received;
     (void)arg;
@@ -598,19 +623,67 @@ static err_t browser_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t
     last_rx_tick = tick_count;
     state_deadline = tick_count + BROWSER_IDLE_TIMEOUT_MS;
 
-    /* Keep the byte count separate from the HTML output count: headers,
-     * markup and a response with no visible text are all valid received data.
-     * Capture tot_len before handing the pbuf back to lwIP. */
     received = p->tot_len;
     bytes_rx += received;
 
-    {
+    if (nav_is_https) {
+        /* ---- TLS path: feed ciphertext into BearSSL engine ---- */
+        struct pbuf *q;
+        for (q = p; q != NULL; q = q->next) {
+            tls_feed_recv((const uint8_t *)q->payload, q->len);
+        }
+        tcp_recved(tpcb, received);
+        pbuf_free(p);
+
+        /* Pump the engine: completes handshake sends or decrypts app data */
+        if (tls_pump() != 0) {
+            browser_state = STATE_ERROR;
+            browser_log("TLS error during receive.");
+            browser_close_pcb(1);
+            return ERR_ABRT;
+        }
+
+        /* If we were in handshake and it just completed, send the HTTP request */
+        if (browser_state == STATE_TLS_HANDSHAKE && tls_handshake_done()) {
+            char req[BROWSER_REQ_SIZE];
+            int len = build_http_request(req, BROWSER_REQ_SIZE);
+            browser_state = STATE_REQUESTING;
+            set_status(nav_is_https ? "[TLS\xe2\x9a\xa0] Sending HTTPS request..." : "Sending request...");
+            if (len > 0)
+                tls_write((const uint8_t *)req, (size_t)len);
+            tls_pump();
+            browser_state = STATE_DOWNLOADING;
+            set_status(nav_is_https ? "[TLS\xe2\x9a\xa0] Downloading..." : "Downloading...");
+            last_rx_tick = tick_count;
+            state_deadline = tick_count + BROWSER_IDLE_TIMEOUT_MS;
+            return ERR_OK;
+        }
+
+        /* Drain decrypted application data into the HTTP parser */
+        {
+            uint8_t plain[512];
+            int n;
+            while ((n = tls_read(plain, sizeof plain)) > 0) {
+                int i;
+                if (bytes_rx == (u16_t)n && n >= 4) {
+                    kprintf("[BROWSER] First TLS chunk: %d bytes. Start: '%c%c%c%c'\n",
+                            n, plain[0], plain[1], plain[2], plain[3]);
+                }
+                for (i = 0; i < n; i++) {
+                    debug_capture_byte(plain[i]);
+                    http_byte(plain[i]);
+                }
+            }
+        }
+    } else {
+        /* ---- Plain HTTP path (unchanged) ---- */
         struct pbuf *q;
         for (q = p; q != NULL; q = q->next) {
             unsigned char *data = (unsigned char *)q->payload;
             int i;
             if (bytes_rx == received && q->len >= 4) {
-                kprintf("[BROWSER] First chunk rx: %d bytes. Start: '%c%c%c%c'\n", q->len, data[0], data[1], data[2], data[3]);
+                kprintf("[BROWSER] First chunk rx: %d bytes. Start: '%c%c%c%c'\n",
+                        q->len, data[0], data[1], data[2], data[3]);
             }
             kprintf("[BROWSER] pbuf len: %d\n", q->len);
             for (i = 0; i < q->len; i++) {
@@ -618,10 +691,9 @@ static err_t browser_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t
                 http_byte(data[i]);
             }
         }
+        tcp_recved(tpcb, received);
+        pbuf_free(p);
     }
-
-    tcp_recved(tpcb, received);
-    pbuf_free(p);
 
     if (http_phase == HTTP_DONE) {
         /*
@@ -648,8 +720,6 @@ static err_t browser_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
 }
 
 static err_t browser_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
-    char req[BROWSER_REQ_SIZE];
-    int len;
     (void)arg;
     if (err != ERR_OK) {
         char msg[96];
@@ -666,42 +736,56 @@ static err_t browser_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
         return err;
     }
 
-    browser_state = STATE_REQUESTING;
     kprintf("[BROWSER] TCP connected to %s%s\n", nav_use_proxy ? "proxy for " : "", nav_host);
-    set_status("Connected. Sending request...");
-
-    len = build_http_request(req, BROWSER_REQ_SIZE);
-    if (len <= 0 || len >= BROWSER_REQ_SIZE) {
-        browser_state = STATE_ERROR;
-        browser_log("Failed to build HTTP request.");
-        browser_close_pcb(1);
-        return ERR_VAL;
-    }
-
     tcp_recv(tpcb, browser_recv);
     tcp_sent(tpcb, browser_sent);
 
-    {
-        err_t werr = tcp_write(tpcb, req, (u16_t)len, TCP_WRITE_FLAG_COPY);
-        if (werr != ERR_OK) {
-            char msg[96];
-            int i = 0;
-            const char *pre = "tcp_write failed: ";
-            const char *es = lwip_err_str(werr);
-            while (*pre && i < 95) msg[i++] = *pre++;
-            while (*es && i < 95) msg[i++] = *es++;
-            msg[i] = '\0';
+    if (nav_is_https) {
+        /* Begin TLS handshake — HTTP request is sent after handshake completes */
+        if (tls_init(nav_host) != 0) {
             browser_state = STATE_ERROR;
-            browser_log(msg);
+            browser_log("TLS init failed.");
             browser_close_pcb(1);
-            return werr;
+            return ERR_VAL;
         }
+        tls_set_send_cb(browser_tls_send, tpcb);
+        browser_state = STATE_TLS_HANDSHAKE;
+        set_status("[TLS] Handshaking...");
+        state_deadline = tick_count + 30000; /* 30s for RSA handshake on ARM926 */
+        /* Kick the engine — it will immediately produce a ClientHello record */
+        tls_pump();
+    } else {
+        /* Plain HTTP: send request immediately */
+        char req[BROWSER_REQ_SIZE];
+        int len = build_http_request(req, BROWSER_REQ_SIZE);
+        if (len <= 0 || len >= BROWSER_REQ_SIZE) {
+            browser_state = STATE_ERROR;
+            browser_log("Failed to build HTTP request.");
+            browser_close_pcb(1);
+            return ERR_VAL;
+        }
+        {
+            err_t werr = tcp_write(tpcb, req, (u16_t)len, TCP_WRITE_FLAG_COPY);
+            if (werr != ERR_OK) {
+                char msg[96];
+                int i = 0;
+                const char *pre = "tcp_write failed: ";
+                const char *es = lwip_err_str(werr);
+                while (*pre && i < 95) msg[i++] = *pre++;
+                while (*es && i < 95) msg[i++] = *es++;
+                msg[i] = '\0';
+                browser_state = STATE_ERROR;
+                browser_log(msg);
+                browser_close_pcb(1);
+                return werr;
+            }
+        }
+        tcp_output(tpcb);
+        browser_state = STATE_DOWNLOADING;
+        set_status("Downloading...");
+        last_rx_tick = tick_count;
+        state_deadline = tick_count + BROWSER_IDLE_TIMEOUT_MS;
     }
-    tcp_output(tpcb);
-    browser_state = STATE_DOWNLOADING;
-    set_status("Downloading...");
-    last_rx_tick = tick_count;
-    state_deadline = tick_count + BROWSER_IDLE_TIMEOUT_MS;
     return ERR_OK;
 }
 

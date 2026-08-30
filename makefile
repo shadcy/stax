@@ -61,6 +61,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -I$(LIB_DIR)        \
             -I$(BENCH_DIR)      \
             -Ithird_party/lwip/src/include \
+            -Ithird_party/bearssl          \
+            -Ithird_party/bearssl/src      \
             -Inet
 
 ifeq ($(ENABLE_BENCH), 1)
@@ -193,7 +195,14 @@ KERNEL_OBJS  += $(BUILD_DIR)/smc91c111.o \
                 $(BUILD_DIR)/sys_arch.o \
                 $(BUILD_DIR)/net_init.o \
                 $(BUILD_DIR)/netif_smc.o \
-                $(BUILD_DIR)/ping.o
+                $(BUILD_DIR)/ping.o \
+                $(BUILD_DIR)/tls_bear.o
+
+# BearSSL TLS library
+BEARSSL_DIR := third_party/bearssl/src
+BEARSSL_SRCS := $(shell find $(BEARSSL_DIR) -name '*.c')
+BEARSSL_OBJS := $(patsubst $(BEARSSL_DIR)/%.c, $(BUILD_DIR)/bearssl/%.o, $(BEARSSL_SRCS))
+KERNEL_OBJS  += $(BEARSSL_OBJS)
 
 LWIP_DIR := third_party/lwip/src
 LWIP_SRCS := $(wildcard $(LWIP_DIR)/core/*.c) \
@@ -373,6 +382,11 @@ $(BUILD_DIR)/%.o: apps/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/lwip/%.o: $(LWIP_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# BearSSL — one flat pattern rule for all source subdirectories
+$(BUILD_DIR)/bearssl/%.o: third_party/bearssl/src/%.c | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
