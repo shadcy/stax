@@ -603,21 +603,27 @@ void switcher_draw(void) {
     /* ---- 1. Subtle Screen Dim ---- */
     sw_dim_rect(0, 0, fw2, fh2, 130);
 
-    /* ---- 2. Modal Geometry (Rectangular Tabs) ---- */
+    /* ---- 2. 2D Grid Geometry (Columns & Rows) ---- */
+    int count = g_switcher.count;
+    int cols = count;
+    if (cols > 4) cols = 4;
+    if (count == 5 || count == 6) cols = 3;
+    int rows = (count + cols - 1) / cols;
+
     int tab_w   = 136;
-    int tab_h   = 34;
-    int tab_gap = 6;
+    int tab_h   = 32;
+    int gap_x   = 6;
+    int gap_y   = 6;
     int pad_x   = 10;
     int pad_y   = 10;
-    int count   = g_switcher.count;
 
-    int panel_w = pad_x * 2 + count * tab_w + (count - 1) * tab_gap;
-    int panel_h = pad_y * 2 + tab_h;
+    int panel_w = pad_x * 2 + cols * tab_w + (cols - 1) * gap_x;
+    int panel_h = pad_y * 2 + rows * tab_h + (rows - 1) * gap_y;
+
     if (panel_w > fw2 - 32) {
-        /* Scale tab width down if many windows */
-        tab_w = (fw2 - 32 - pad_x * 2 - (count - 1) * tab_gap) / count;
+        tab_w = (fw2 - 32 - pad_x * 2 - (cols - 1) * gap_x) / cols;
         if (tab_w < 70) tab_w = 70;
-        panel_w = pad_x * 2 + count * tab_w + (count - 1) * tab_gap;
+        panel_w = pad_x * 2 + cols * tab_w + (cols - 1) * gap_x;
     }
 
     int panel_x = (fw2 - panel_w) / 2;
@@ -637,33 +643,44 @@ void switcher_draw(void) {
     fb_drawline(panel_x,               panel_y,               panel_x,               panel_y + panel_h - 1, rgb565(60, 64, 76));
     fb_drawline(panel_x + panel_w - 1, panel_y,               panel_x + panel_w - 1, panel_y + panel_h - 1, rgb565(20, 22, 28));
 
-    /* ---- 4. Smooth Sliding Selection Tab ---- */
+    /* ---- 4. Smooth 2D Sliding Selection Tab ---- */
     int cx0 = panel_x + pad_x;
     int cy0 = panel_y + pad_y;
 
-    int target_x = cx0 + g_switcher.sel * (tab_w + tab_gap);
+    int sel_c = g_switcher.sel % cols;
+    int sel_r = g_switcher.sel / cols;
+
+    int target_x = cx0 + sel_c * (tab_w + gap_x);
+    int target_y = cy0 + sel_r * (tab_h + gap_y);
     int target_x_fp = target_x * 256;
+    int target_y_fp = target_y * 256;
 
     if (!g_switcher.anim_inited) {
         g_switcher.anim_x_fp = target_x_fp;
+        g_switcher.anim_y_fp = target_y_fp;
         g_switcher.anim_inited = 1;
     } else {
-        int diff = target_x_fp - g_switcher.anim_x_fp;
-        g_switcher.anim_x_fp += (diff * 45) / 100;
+        int diff_x = target_x_fp - g_switcher.anim_x_fp;
+        int diff_y = target_y_fp - g_switcher.anim_y_fp;
+        g_switcher.anim_x_fp += (diff_x * 45) / 100;
+        g_switcher.anim_y_fp += (diff_y * 45) / 100;
     }
 
     int anim_sel_x = g_switcher.anim_x_fp / 256;
+    int anim_sel_y = g_switcher.anim_y_fp / 256;
 
     /* Active Highlight Tab */
-    fb_fillrect(anim_sel_x, cy0, tab_w, tab_h, rgb565(54, 58, 74));
-    fb_fillrect(anim_sel_x, cy0 + tab_h - 2, tab_w, 2, accent);
-    fb_drawline(anim_sel_x, cy0, anim_sel_x + tab_w - 1, cy0, rgb565(75, 80, 100));
+    fb_fillrect(anim_sel_x, anim_sel_y, tab_w, tab_h, rgb565(54, 58, 74));
+    fb_fillrect(anim_sel_x, anim_sel_y + tab_h - 2, tab_w, 2, accent);
+    fb_drawline(anim_sel_x, anim_sel_y, anim_sel_x + tab_w - 1, anim_sel_y, rgb565(75, 80, 100));
 
-    /* ---- 5. Render Clean Window Tabs ---- */
+    /* ---- 5. Render Clean Window Tabs in 2D Grid ---- */
     for (int i = 0; i < count; i++) {
         window_t *win = g_switcher.wins[i];
-        int cx = cx0 + i * (tab_w + tab_gap);
-        int cy = cy0;
+        int r = i / cols;
+        int c = i % cols;
+        int cx = cx0 + c * (tab_w + gap_x);
+        int cy = cy0 + r * (tab_h + gap_y);
         int is_sel = (i == g_switcher.sel);
 
         /* Unselected Tab Background */

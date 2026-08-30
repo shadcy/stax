@@ -36,6 +36,12 @@ static int drag_moved = 0;
 /* ---- Ctrl+Tab Window Switcher global state ---- */
 wm_switcher_t g_switcher = {0};
 
+static int switcher_get_cols(int count) {
+    if (count <= 4) return count;
+    if (count == 5 || count == 6) return 3;
+    return 4; /* Max 4 columns per row */
+}
+
 void switcher_step(int dir) {
     extern volatile unsigned int tick_count;
 
@@ -69,6 +75,34 @@ void switcher_step(int dir) {
             g_switcher.sel = (g_switcher.sel + g_switcher.count - 1) % g_switcher.count;
         }
     }
+    g_switcher.tab_tick = tick_count;
+}
+
+void switcher_step_2d(int dx, int dy) {
+    if (!g_switcher.active || g_switcher.count < 1) {
+        switcher_step(dx != 0 ? dx : (dy != 0 ? dy : 1));
+        return;
+    }
+    int count = g_switcher.count;
+    int cols = switcher_get_cols(count);
+    int rows = (count + cols - 1) / cols;
+    int cur_r = g_switcher.sel / cols;
+    int cur_c = g_switcher.sel % cols;
+
+    int new_r = cur_r + dy;
+    int new_c = cur_c + dx;
+
+    if (new_r < 0) new_r = rows - 1;
+    if (new_r >= rows) new_r = 0;
+    if (new_c < 0) new_c = cols - 1;
+    if (new_c >= cols) new_c = 0;
+
+    int new_sel = new_r * cols + new_c;
+    if (new_sel >= count) {
+        new_sel = count - 1;
+    }
+    g_switcher.sel = new_sel;
+    extern volatile unsigned int tick_count;
     g_switcher.tab_tick = tick_count;
 }
 
@@ -297,11 +331,19 @@ int wm_dispatch_key(char c) {
             return 1;
         }
         if (c == 0x13) { /* Left arrow */
-            switcher_step(-1);
+            switcher_step_2d(-1, 0);
             return 1;
         }
         if (c == 0x14) { /* Right arrow */
-            switcher_step(1);
+            switcher_step_2d(1, 0);
+            return 1;
+        }
+        if (c == 0x11) { /* Up arrow */
+            switcher_step_2d(0, -1);
+            return 1;
+        }
+        if (c == 0x12) { /* Down arrow */
+            switcher_step_2d(0, 1);
             return 1;
         }
         if (c == 0x1B) { /* Escape: cancel */

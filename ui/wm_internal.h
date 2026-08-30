@@ -95,14 +95,16 @@ typedef struct {
     window_t *wins[SWITCHER_MAX_WINS];
     unsigned open_tick;      /* tick_count when overlay opened (for entry anim) */
     unsigned tab_tick;       /* tick_count of last Tab press (for selection anim) */
-    int      anim_x_fp;      /* fixed-point animated x coordinate for smooth sliding box */
-    int      anim_inited;    /* 1 if animated x is initialized */
+    int      anim_x_fp;      /* fixed-point animated x coordinate */
+    int      anim_y_fp;      /* fixed-point animated y coordinate */
+    int      anim_inited;    /* 1 if animated coords are initialized */
 } wm_switcher_t;
 
 extern wm_switcher_t g_switcher;
 
 /* Open the switcher and step in given direction (+1 next, -1 prev) */
 void switcher_step(int dir);
+void switcher_step_2d(int dx, int dy);
 void switcher_open_or_advance(void);
 /* Commit the current selection and close the overlay */
 void switcher_commit(void);
