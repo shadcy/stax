@@ -3,11 +3,11 @@
 #include "bmp.h"
 #include "heap.h"
 
-#define TEXT_CAP      (96 * 1024)
-#define URL_ARENA_CAP (24 * 1024)
-#define MAX_RUNS      4096
-#define MAX_SPANS     8192
-#define MAX_URLS      192
+#define TEXT_CAP      (16 * 1024)
+#define URL_ARENA_CAP (4 * 1024)
+#define MAX_RUNS      512
+#define MAX_SPANS     1024
+#define MAX_URLS      64
 #define TAG_NAME_MAX  24
 #define ATTR_VAL_MAX  256
 #define URL_MAX       256

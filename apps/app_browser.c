@@ -23,8 +23,8 @@ extern int net_poll(void);
 #define BROWSER_MAX_REDIRECTS 6
 #define URL_INPUT_MAX 256
 #define HDR_LINE_MAX 384
-#define MAX_LINKS_HIT 192
-#define BROWSER_DEBUG_RAW_CAP (16 * 1024)
+#define MAX_LINKS_HIT 64
+#define BROWSER_DEBUG_RAW_CAP (2 * 1024)
 
 #define NAV_ATTEMPT_DIRECT 0
 #define NAV_ATTEMPT_STATIC 1
@@ -855,7 +855,7 @@ static void browser_advance_fallback(void) {
     }
 }
 
-#define BROWSER_HISTORY_MAX 32
+#define BROWSER_HISTORY_MAX 8
 static char history_urls[BROWSER_HISTORY_MAX][URL_INPUT_MAX];
 static int history_count = 0;
 static int history_pos = -1;

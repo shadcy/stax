@@ -10,7 +10,7 @@
 
 #define COLS   80
 #define ROWS   30
-#define MAX_LINES 256
+#define MAX_LINES 64
 
 static int      cur_x    = 0;
 static int      enabled  = 0;
