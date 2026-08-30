@@ -176,9 +176,9 @@ static void term_console_hook(char c, void *ctx) {
 
 #include "font.h"
 
-/* Fast glyph rendering with Ubuntu typography */
+/* Fast glyph rendering with Ubuntu Mono typography */
 static void draw_glyph(int px, int py, char c, uint16_t color, int min_x, int min_y, int max_x, int max_y) {
-    font_draw_char_clipped(px, py, c, color, FONT_STYLE_REGULAR, min_x, min_y, max_x, max_y);
+    font_draw_char_clipped(px, py, c, color, FONT_STYLE_MONO, min_x, min_y, max_x, max_y);
 }
 
 void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {

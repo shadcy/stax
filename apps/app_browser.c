@@ -236,12 +236,12 @@ static void browser_close_pcb(int abort) {
 
 static void draw_char_8x16(int x, int y, char c, uint16_t color, uint16_t bg, uint16_t *vram, int stride) {
     (void)bg; (void)vram; (void)stride;
-    font_draw_char_clipped(x, y, c, color, FONT_STYLE_REGULAR, clip_x0, clip_y0, clip_x1, clip_y1);
+    font_draw_char_clipped(x, y, c, color, FONT_STYLE_MONO, clip_x0, clip_y0, clip_x1, clip_y1);
 }
 
 static void draw_string(int x, int y, const char *str, uint16_t color, uint16_t bg, uint16_t *vram, int stride) {
     (void)bg; (void)vram; (void)stride;
-    font_draw_text_clipped(x, y, str, color, FONT_STYLE_REGULAR, clip_x0, clip_y0, clip_x1, clip_y1);
+    font_draw_text_clipped(x, y, str, color, FONT_STYLE_MONO, clip_x0, clip_y0, clip_x1, clip_y1);
 }
 
 static int parse_url(void) {

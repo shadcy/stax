@@ -1,6 +1,6 @@
 /* ============================================================================
  * STAX — ubuntu_font_data.h
- * Authentic Canonical Ubuntu Font Glyph Atlas Declarations
+ * Authentic Canonical Ubuntu Font Glyph Atlas Declarations (Sans & Mono)
  * ============================================================================ */
 
 #ifndef UBUNTU_FONT_DATA_H
@@ -16,5 +16,6 @@ typedef struct {
 } ubuntu_glyph_t;
 
 extern const ubuntu_glyph_t ubuntu_font_glyphs[128];
+extern const ubuntu_glyph_t ubuntu_mono_glyphs[128];
 
 #endif /* UBUNTU_FONT_DATA_H */

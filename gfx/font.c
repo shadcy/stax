@@ -1,6 +1,7 @@
 /* ============================================================================
  * STAX — font.c
- * Authentic Ubuntu Font Anti-Aliased Alpha Blending Engine
+ * Authentic Canonical Ubuntu Font Anti-Aliased Alpha Blending Engine
+ * (Supports Proportional Ubuntu Sans & Fixed-Pitch Ubuntu Mono)
  * ============================================================================ */
 
 #include "font.h"
@@ -14,14 +15,13 @@ void font_init(void) {
 }
 
 int font_get_char_width(char c, font_style_t style) {
-    if (style == FONT_STYLE_MONO) {
-        return FONT8X16_WIDTH;
-    }
     unsigned char uc = (unsigned char)c;
-    if (uc >= 32 && uc < 127) {
-        return ubuntu_font_glyphs[uc].advance;
+    if (uc < 32 || uc >= 127) return 8;
+
+    if (style == FONT_STYLE_MONO) {
+        return 8;
     }
-    return 8;
+    return ubuntu_font_glyphs[uc].advance;
 }
 
 int font_get_height(font_style_t style) {
@@ -44,30 +44,10 @@ void font_draw_char_clipped(int x, int y, char c, uint16_t color, font_style_t s
     uint16_t *buf = fb_get_buffer();
     if (!buf) return;
     unsigned char uc = (unsigned char)c;
+    if (uc < 32 || uc >= 127) return;
 
-    if (style == FONT_STYLE_MONO || uc < 32 || uc >= 127) {
-        int char_w = 8;
-        if (x + char_w > min_x && x < max_x) {
-            const unsigned char *glyph_rows = font8x16_data[uc];
-            for (int r = 0; r < 16; r++) {
-                int py = y + r;
-                if (py < min_y || py >= max_y) continue;
-                unsigned char bits = glyph_rows[r];
-                if (!bits) continue;
-                uint16_t *line_ptr = buf + py * fb_width;
-                for (int col = 0; col < 8; col++) {
-                    int px = x + col;
-                    if (px < min_x || px >= max_x) continue;
-                    if (bits & (0x80 >> col)) {
-                        line_ptr[px] = color;
-                    }
-                }
-            }
-        }
-        return;
-    }
-
-    const ubuntu_glyph_t *g = &ubuntu_font_glyphs[uc];
+    const ubuntu_glyph_t *g = (style == FONT_STYLE_MONO) ? 
+                              &ubuntu_mono_glyphs[uc] : &ubuntu_font_glyphs[uc];
     int gw = g->width;
     int gh = g->height;
     const uint8_t *alpha_ptr = g->alpha;
@@ -105,33 +85,13 @@ int font_draw_text_clipped(int x, int y, const char *str, uint16_t color, font_s
     
     while (*p) {
         unsigned char c = *p++;
-        
-        if (style == FONT_STYLE_MONO || c < 32 || c >= 127) {
-            /* Monospace fallback (VGA 8x16) */
-            int char_w = 8;
-            if (cur_x + char_w > min_x && cur_x < max_x) {
-                const unsigned char *glyph_rows = font8x16_data[c];
-                for (int r = 0; r < 16; r++) {
-                    int py = y + r;
-                    if (py < min_y || py >= max_y) continue;
-                    unsigned char bits = glyph_rows[r];
-                    if (!bits) continue;
-                    uint16_t *line_ptr = buf + py * fb_width;
-                    for (int col = 0; col < 8; col++) {
-                        int px = cur_x + col;
-                        if (px < min_x || px >= max_x) continue;
-                        if (bits & (0x80 >> col)) {
-                            line_ptr[px] = color;
-                        }
-                    }
-                }
-            }
-            cur_x += char_w;
+        if (c < 32 || c >= 127) {
+            cur_x += 8;
             continue;
         }
-        
-        /* Authentic Canonical Ubuntu Font Glyph with 8-bit Alpha */
-        const ubuntu_glyph_t *g = &ubuntu_font_glyphs[c];
+
+        const ubuntu_glyph_t *g = (style == FONT_STYLE_MONO) ? 
+                                  &ubuntu_mono_glyphs[c] : &ubuntu_font_glyphs[c];
         int gw = g->width;
         int gh = g->height;
         const uint8_t *alpha_ptr = g->alpha;
@@ -153,7 +113,6 @@ int font_draw_text_clipped(int x, int y, const char *str, uint16_t color, font_s
                 }
             }
         }
-        
         cur_x += g->advance;
     }
     
@@ -165,8 +124,6 @@ int font_draw_text(int x, int y, const char *str, uint16_t color, font_style_t s
 }
 
 int font_load_otf_file(const char *path, int font_size, font_style_t target_slot) {
-    (void)path;
-    (void)font_size;
-    (void)target_slot;
+    (void)path; (void)font_size; (void)target_slot;
     return 0;
 }
