@@ -161,7 +161,7 @@ int pty_master_read(pty_t *pty, char *buf, size_t count) {
  * ============================================================================ */
 
 int pty_slave_write(pty_t *pty, const char *buf, size_t count) {
-    if (!pty || !pty->in_use || !buf) return -1;
+    if (!pty || !pty->in_use || !buf || (uint32_t)buf >= 0xC0000000) return -1;
     size_t written = 0;
 
     for (size_t i = 0; i < count; i++) {

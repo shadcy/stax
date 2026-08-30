@@ -28,7 +28,16 @@ extern volatile unsigned int tick_count;
  * Kernel Syscall Handlers (VFS & POSIX Backed)
  * ============================================================================ */
 
+static inline int is_valid_user_ptr(const void *ptr, size_t len) {
+    if (!ptr) return 0;
+    uint32_t addr = (uint32_t)ptr;
+    if (addr >= 0xC0000000) return 0;
+    if (addr + len < addr) return 0;
+    return 1;
+}
+
 static int32_t ksys_open(const char *path, int flags) {
+    if (!is_valid_user_ptr(path, 1)) return -1;
     return vfs_open(path, flags);
 }
 
@@ -37,10 +46,12 @@ static int32_t ksys_close(int fd) {
 }
 
 static int32_t ksys_read(int fd, void *buf, size_t count) {
+    if (!is_valid_user_ptr(buf, count)) return -1;
     return vfs_read(fd, buf, count);
 }
 
 static int32_t ksys_write(int fd, const void *buf, size_t count) {
+    if (!is_valid_user_ptr(buf, count)) return -1;
     return vfs_write(fd, buf, count);
 }
 

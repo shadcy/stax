@@ -8,6 +8,7 @@
 #include "framebuffer.h"
 #include "string.h"
 #include "wm.h"
+#include "font.h"
 
 static file_icon_type_t get_file_type(const char *filename, int is_dir) {
     if (is_dir) return ICON_FILE_FOLDER;
@@ -27,6 +28,7 @@ static file_icon_type_t get_file_type(const char *filename, int is_dir) {
         if (e1 == 'c' && e2 == 'f' && e3 == 'g') return ICON_FILE_TEXT;
         if (e1 == 'b' && e2 == 'i' && e3 == 'n') return ICON_FILE_EXEC;
         if (e1 == 'e' && e2 == 'l' && e3 == 'f') return ICON_FILE_EXEC;
+        if (e1 == 's' && e2 == 't' && e3 == 'x') return ICON_FILE_FIRMWARE;
         if (e1 == 'b' && e2 == 'm' && e3 == 'p') return ICON_FILE_IMAGE;
         if (e1 == 'w' && e2 == 'a' && e3 == 'v') return ICON_FILE_AUDIO;
         if (e1 == 'w' && e2 == 'a' && e3 == 'd') return ICON_FILE_PACKAGE;
@@ -245,12 +247,13 @@ void icon_draw_desktop_file(int ix, int iy, const char *filename, int is_dir) {
     int x = ix + 14;
     int y = iy + 8;
 
+    uint16_t pri = theme_get_primary_accent();
+    uint16_t sec = theme_get_secondary_accent();
+
     switch (t) {
     case ICON_FILE_FOLDER: {
-        /* Clean Ubuntu Yaru Tall Folder (Dynamic with Active Appearance Theme) */
-        uint16_t pri = theme_get_primary_accent();
-        uint16_t sec = theme_get_secondary_accent();
-        uint16_t bg  = theme_get_desktop_bg();
+        /* Classic Ubuntu Yaru Tall Folder */
+        uint16_t bg = theme_get_desktop_bg();
         fb_fill_rounded_rect(x, y, 16, 6, 2, bg);
         fb_fill_rounded_rect(x, y + 4, 36, 34, 4, bg);
         fb_fill_rounded_rect(x + 4, y + 6, 28, 6, 2, rgb565(250, 252, 255));
@@ -260,46 +263,81 @@ void icon_draw_desktop_file(int ix, int iy, const char *filename, int is_dir) {
     }
 
     case ICON_FILE_EXEC: {
-        /* Dark Slate Executable Card with Theme Chevron */
+        /* Dark Slate Executable Card with .BIN/.ELF text on bottom-right */
         fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(36, 38, 48));
-        fb_draw_hline(x + 4, y + 2, 28, rgb565(75, 80, 95));
+        fb_draw_hline(x + 4, y + 2, 28, pri);
+        fb_fillrect(x + 24, y + 2, 10, 8, rgb565(52, 58, 72));
         
-        /* Terminal prompt chevron >_ */
-        uint16_t col_act = theme_get_primary_accent();
-        fb_drawline(x + 10, y + 16, x + 16, y + 22, col_act);
-        fb_drawline(x + 10, y + 28, x + 16, y + 22, col_act);
-        fb_fillrect(x + 20, y + 26, 6, 2, col_act);
+        /* Terminal chevron prompt on top left */
+        fb_drawline(x + 6, y + 10, x + 11, y + 15, pri);
+        fb_drawline(x + 6, y + 20, x + 11, y + 15, pri);
+        fb_fillrect(x + 14, y + 19, 5, 2, pri);
+
+        /* Badge text on bottom-right */
+        const char *badge = "BIN";
+        if (filename) {
+            int flen = strlen(filename);
+            if (flen >= 4 && (filename[flen-3]|0x20) == 'e' && (filename[flen-2]|0x20) == 'l' && (filename[flen-1]|0x20) == 'f') {
+                badge = "ELF";
+            }
+        }
+        int tw = font_get_string_width(badge, FONT_STYLE_REGULAR);
+        font_draw_text(x + 32 - tw, y + 22, badge, pri, FONT_STYLE_REGULAR);
+        break;
+    }
+
+    case ICON_FILE_FIRMWARE: {
+        /* Dark Slate Firmware Card with .STX badge on bottom-right */
+        fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(40, 34, 48));
+        fb_draw_hline(x + 4, y + 2, 28, rgb565(240, 110, 60));
+        fb_fillrect(x + 24, y + 2, 10, 8, rgb565(65, 50, 78));
+        
+        /* Microchip grid on top-left */
+        fb_fill_rounded_rect(x + 6, y + 9, 12, 10, 2, rgb565(60, 48, 72));
+        fb_fillrect(x + 9, y + 12, 6, 4, rgb565(255, 195, 60));
+
+        /* Badge text on bottom-right */
+        int tw = font_get_string_width(".STX", FONT_STYLE_REGULAR);
+        font_draw_text(x + 32 - tw, y + 22, ".STX", rgb565(255, 130, 80), FONT_STYLE_REGULAR);
+        break;
+    }
+
+    case ICON_FILE_PACKAGE: {
+        /* Dark Slate App Package Card with .APP/.LAUNCH on bottom-right */
+        fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(32, 42, 46));
+        fb_draw_hline(x + 4, y + 2, 28, sec);
+        fb_fillrect(x + 24, y + 2, 10, 8, rgb565(48, 62, 68));
+        
+        /* Box / package icon on top-left */
+        fb_fill_rounded_rect(x + 6, y + 9, 12, 10, 2, rgb565(45, 60, 65));
+        fb_draw_hline(x + 8, y + 13, 8, COLOR_WHITE);
+
+        /* Badge text on bottom-right */
+        int tw = font_get_string_width("APP", FONT_STYLE_REGULAR);
+        font_draw_text(x + 32 - tw, y + 22, "APP", sec, FONT_STYLE_REGULAR);
         break;
     }
 
     case ICON_FILE_IMAGE: {
-        /* Photo Canvas with Mountain & Sun */
+        /* Photo Canvas with Mountain & Sun and .BMP on bottom-right */
         fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(248, 250, 254));
-        fb_draw_hline(x + 4, y + 2, 28, rgb565(210, 215, 225));
+        fb_draw_hline(x + 4, y + 2, 28, rgb565(40, 160, 95));
+        fb_fillrect(x + 24, y + 2, 10, 8, rgb565(210, 220, 235));
         
-        /* Sun Circle */
-        fb_fill_rounded_rect(x + 20, y + 8, 6, 6, 2, rgb565(255, 195, 40));
-        /* Emerald Mountain Peak */
-        fb_fill_rounded_rect(x + 6, y + 20, 24, 14, 2, rgb565(40, 150, 90));
-        fb_drawline(x + 6, y + 20, x + 16, y + 12, rgb565(60, 180, 110));
-        fb_drawline(x + 16, y + 12, x + 26, y + 20, rgb565(60, 180, 110));
-        break;
-    }
+        /* Mini Sun & Mountain on top-left */
+        fb_fill_rounded_rect(x + 14, y + 7, 5, 5, 2, rgb565(255, 195, 40));
+        fb_fill_rounded_rect(x + 6, y + 14, 14, 8, 2, rgb565(40, 150, 90));
 
-    case ICON_FILE_FIRMWARE:
-    case ICON_FILE_PACKAGE: {
-        /* ROM / Firmware Cartridge */
-        fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(120, 30, 45));
-        fb_draw_hline(x + 4, y + 2, 28, rgb565(190, 60, 75));
-        fb_fill_rounded_rect(x + 8, y + 10, 20, 14, 2, rgb565(255, 215, 60));
-        fb_fillrect(x + 12, y + 28, 12, 4, COLOR_WHITE);
+        /* Badge text on bottom-right */
+        int tw = font_get_string_width("BMP", FONT_STYLE_REGULAR);
+        font_draw_text(x + 32 - tw, y + 22, "BMP", rgb565(40, 140, 85), FONT_STYLE_REGULAR);
         break;
     }
 
     default: {
-        /* Clean Document Card with Theme Accent Header & Syntax Lines */
+        /* Classic Clean Document Card with Folded Corner & Syntax Lines */
         fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(248, 250, 254));
-        fb_draw_hline(x + 4, y + 2, 28, theme_get_primary_accent());
+        fb_draw_hline(x + 4, y + 2, 28, pri);
         
         /* Folded corner */
         fb_fillrect(x + 24, y + 2, 10, 10, rgb565(200, 205, 220));
@@ -316,41 +354,45 @@ void icon_draw_desktop_file(int ix, int iy, const char *filename, int is_dir) {
 /* ── 3. Compact File Manager Row Icons (16x16) ────────────────────────────── */
 void icon_draw_file_mini(int x, int y, const char *filename, int is_dir) {
     file_icon_type_t t = get_file_type(filename, is_dir);
+    uint16_t pri = theme_get_primary_accent();
 
     switch (t) {
     case ICON_FILE_FOLDER: {
-        uint16_t pri = theme_get_primary_accent();
-        uint16_t sec = theme_get_secondary_accent();
-        uint16_t bg  = theme_get_desktop_bg();
-        fb_fill_rounded_rect(x, y + 1, 8, 4, 1, bg);
+        /* Classic mini folder */
+        fb_fill_rounded_rect(x, y + 1, 8, 4, 1, theme_get_desktop_bg());
         fb_fill_rounded_rect(x, y + 3, 16, 12, 2, pri);
-        fb_draw_hline(x + 1, y + 3, 14, sec);
+        fb_draw_hline(x + 1, y + 3, 14, theme_get_secondary_accent());
         break;
     }
 
     case ICON_FILE_EXEC:
         fb_fill_rounded_rect(x + 1, y + 1, 14, 14, 2, rgb565(36, 38, 48));
-        fb_drawline(x + 4, y + 5, x + 7, y + 8, theme_get_primary_accent());
-        fb_drawline(x + 4, y + 11, x + 7, y + 8, theme_get_primary_accent());
-        fb_fillrect(x + 9, y + 10, 3, 1, theme_get_primary_accent());
+        fb_draw_hline(x + 2, y + 1, 12, pri);
+        font_draw_text(x + 3, y + 2, "B", pri, FONT_STYLE_REGULAR);
+        break;
+
+    case ICON_FILE_FIRMWARE:
+        fb_fill_rounded_rect(x + 1, y + 1, 14, 14, 2, rgb565(45, 36, 50));
+        fb_draw_hline(x + 2, y + 1, 12, rgb565(240, 110, 60));
+        font_draw_text(x + 3, y + 2, "S", rgb565(255, 130, 80), FONT_STYLE_REGULAR);
+        break;
+
+    case ICON_FILE_PACKAGE:
+        fb_fill_rounded_rect(x + 1, y + 1, 14, 14, 2, rgb565(34, 45, 46));
+        fb_draw_hline(x + 2, y + 1, 12, theme_get_secondary_accent());
+        font_draw_text(x + 3, y + 2, "A", theme_get_secondary_accent(), FONT_STYLE_REGULAR);
         break;
 
     case ICON_FILE_IMAGE:
         fb_fill_rounded_rect(x + 1, y + 1, 14, 14, 2, rgb565(248, 250, 254));
-        fb_fill_rounded_rect(x + 3, y + 7, 10, 6, 1, rgb565(40, 150, 90));
-        fb_fillrect(x + 9, y + 3, 2, 2, rgb565(255, 195, 40));
-        break;
-
-    case ICON_FILE_FIRMWARE:
-    case ICON_FILE_PACKAGE:
-        fb_fill_rounded_rect(x + 1, y + 1, 14, 14, 2, rgb565(140, 30, 45));
-        fb_fillrect(x + 5, y + 5, 6, 6, rgb565(255, 215, 60));
+        fb_draw_hline(x + 2, y + 1, 12, rgb565(40, 160, 95));
+        font_draw_text(x + 3, y + 2, "I", rgb565(40, 140, 85), FONT_STYLE_REGULAR);
         break;
 
     default:
-        /* Document */
+        /* Classic mini document with folded corner & lines */
         fb_fill_rounded_rect(x + 2, y + 1, 12, 14, 2, rgb565(248, 250, 254));
-        fb_draw_hline(x + 3, y + 1, 10, theme_get_primary_accent());
+        fb_draw_hline(x + 3, y + 1, 10, pri);
         fb_draw_hline(x + 4, y + 5, 6, rgb565(100, 110, 130));
         fb_draw_hline(x + 4, y + 8, 8, rgb565(100, 110, 130));
         fb_draw_hline(x + 4, y + 11, 5, rgb565(100, 110, 130));
