@@ -241,7 +241,10 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.el
 		if [ ! -f stax_key.priv ]; then \
 			./tools/stax-sign/stax-sign --gen-key stax_key; \
 		fi; \
-		if [ -f $(BUILD_DIR)/doom.launch ]; then mcopy -i $@@@2098688 $(BUILD_DIR)/doom.launch ::/DOOM.LAUNCH; fi; \
+		mmd -i $@@@2098688 ::/BIN; \
+		mmd -i $@@@2098688 ::/DOCS; \
+		mmd -i $@@@2098688 ::/DOWNLOADS; \
+		mmd -i $@@@2098688 ::/TRASH; \
 		mmd -i $@@@2098688 ::/BMP; \
 		if [ -d assets/bmp ]; then mcopy -i $@@@2098688 assets/bmp/*.BMP ::/BMP/; fi; \
 	fi
@@ -252,8 +255,14 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.el
 	@dd if=$(BUILD_DIR)/firmware.stax of=$@ bs=512 seek=3 conv=notrunc 2>/dev/null
 	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
 	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
-	@if [ -f $(BUILD_DIR)/hello.elf ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/HELLO.ELF; mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/hello.elf; fi
-	@if [ -f $(BUILD_DIR)/doom.launch ]; then mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.launch ::/DOOM.LAUNCH; fi
+	@if [ -f $(BUILD_DIR)/hello.elf ]; then \
+		mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/HELLO.ELF; \
+		mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/BIN/HELLO.ELF; \
+	fi
+	@if [ -f $(BUILD_DIR)/doom.launch ]; then \
+		mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.launch ::/DOOM.LAUNCH; \
+		mcopy -o -i $@@@2098688 $(BUILD_DIR)/doom.launch ::/BIN/DOOM.LAUNCH; \
+	fi
 	@echo "Build complete → $@"
 	@echo "Run:  make qemu"
 	@echo "Quit: Ctrl-A then X"

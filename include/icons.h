@@ -44,6 +44,12 @@ void icon_draw_desktop_file(int x, int y, const char *filename, int is_dir);
 /* Draw Compact File Manager Row Icon (16x16) */
 void icon_draw_file_mini(int x, int y, const char *filename, int is_dir);
 
+/* Draw Compact Trash Can Icon (16x16) */
+void icon_draw_trash_mini(int x, int y, int has_items);
+
+/* Draw Sidebar Place Badge (16x16) (0=Home, 1=Docs, 2=Downloads, 3=Bin, 4=Trash, 5=Storage) */
+void icon_draw_place_badge(int x, int y, int place_id);
+
 #ifdef __cplusplus
 }
 #endif

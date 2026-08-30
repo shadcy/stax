@@ -8,7 +8,7 @@
 #include "framebuffer.h"
 #include "string.h"
 #include "heap.h"
-#include "font8x16.h"
+#include "font.h"
 
 /* Fixed-point math representation (scale factor 10000 = 4 decimal places) */
 #define CALC_SCALE 10000
@@ -177,37 +177,36 @@ void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch) 
     calc_state_t *st = (calc_state_t *)win->app_data;
     if (!st) return;
 
-    /* Body Background (Dark Slate) */
-    fb_fillrect(cx, cy, cw, ch, rgb565(30, 32, 40));
+    /* Body Background (Dark Midnight Slate) */
+    fb_fillrect(cx, cy, cw, ch, rgb565(22, 24, 32));
 
     /* LCD Screen Display Frame */
-    int disp_x = cx + 8;
+    int disp_x = cx + 10;
     int disp_y = cy + 8;
-    int disp_w = cw - 16;
-    int disp_h = 46;
+    int disp_w = cw - 20;
+    int disp_h = 50;
 
-    fb_fillrect(disp_x, disp_y, disp_w, disp_h, rgb565(16, 18, 24));
-    fb_drawline(disp_x, disp_y, disp_x + disp_w - 1, disp_y, rgb565(10, 12, 16));
-    fb_drawline(disp_x, disp_y, disp_x, disp_y + disp_h - 1, rgb565(10, 12, 16));
-    fb_drawline(disp_x + disp_w - 1, disp_y, disp_x + disp_w - 1, disp_y + disp_h - 1, rgb565(45, 48, 60));
-    fb_drawline(disp_x, disp_y + disp_h - 1, disp_x + disp_w - 1, disp_y + disp_h - 1, rgb565(45, 48, 60));
+    fb_fill_rounded_rect(disp_x, disp_y, disp_w, disp_h, 6, rgb565(12, 14, 20));
+    fb_drawline(disp_x + 6, disp_y, disp_x + disp_w - 6, disp_y, theme_get_primary_accent());
 
     /* Memory indicator */
     if (st->has_memory) {
-        draw_text(disp_x + 6, disp_y + 4, "M", rgb565(80, 240, 120));
+        font_draw_text(disp_x + 8, disp_y + 4, "M", rgb565(80, 240, 120), FONT_STYLE_REGULAR);
     }
 
     /* Sub expression (upper formula) */
     if (st->sub_buf[0]) {
-        int sub_len = (int)strlen(st->sub_buf);
-        draw_text(disp_x + disp_w - 8 - sub_len * 8, disp_y + 4, st->sub_buf, rgb565(140, 150, 170));
+        int sub_w = font_get_string_width(st->sub_buf, FONT_STYLE_REGULAR);
+        font_draw_text(disp_x + disp_w - 10 - sub_w, disp_y + 4, st->sub_buf, rgb565(130, 140, 160), FONT_STYLE_REGULAR);
     }
 
     /* Main digits */
-    int main_len = (int)strlen(st->display_buf);
-    int main_x = disp_x + disp_w - 8 - main_len * 8;
-    if (main_x < disp_x + 6) main_x = disp_x + 6;
-    draw_text(main_x, disp_y + 24, st->display_buf, st->has_error ? rgb565(255, 80, 80) : COLOR_WHITE);
+    int main_w = font_get_string_width(st->display_buf, FONT_STYLE_REGULAR);
+    int main_x = disp_x + disp_w - 10 - main_w;
+    if (main_x < disp_x + 8) main_x = disp_x + 8;
+    font_draw_text_clipped(main_x, disp_y + 24, st->display_buf, 
+                           st->has_error ? rgb565(255, 80, 80) : COLOR_WHITE, 
+                           FONT_STYLE_REGULAR, disp_x + 6, disp_y + 20, disp_x + disp_w - 6, disp_y + disp_h);
 
     /* 5 Columns x 6 Rows Keypad */
     const char *btn_labels[6][5] = {
@@ -219,9 +218,9 @@ void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch) 
         {"0",  ".",  "=",  "=",  "="}
     };
 
-    int start_y = cy + 60;
+    int start_y = cy + 64;
     int btn_h = 32;
-    int gap = 4;
+    int gap = 5;
     int btn_w = (disp_w - gap * 4) / 5;
 
     for (int r = 0; r < 6; r++) {
@@ -236,36 +235,33 @@ void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch) 
                 bw = btn_w * 3 + gap * 2; /* Wide '=' button */
             }
 
-            uint16_t bg = rgb565(55, 58, 70);   /* Standard number key */
+            uint16_t bg = rgb565(44, 48, 62);   /* Standard number key */
             uint16_t fg = COLOR_WHITE;
 
             /* Operator styling */
             if (strcmp(label, "÷") == 0 || strcmp(label, "×") == 0 ||
                 strcmp(label, "−") == 0 || strcmp(label, "+") == 0) {
-                bg = theme_get_primary_accent(); /* Dynamic Active Theme Accent */
+                bg = theme_get_primary_accent();
             } else if (strcmp(label, "=") == 0) {
-                bg = theme_get_secondary_accent(); /* Dynamic Active Theme Secondary Accent */
+                bg = theme_get_secondary_accent();
             } else if (strcmp(label, "AC") == 0) {
-                bg = rgb565(190, 45, 45);  /* Crimson */
+                bg = rgb565(195, 45, 55);  /* Crimson */
             } else if (strcmp(label, "MC") == 0 || strcmp(label, "MR") == 0 ||
                        strcmp(label, "M+") == 0 || strcmp(label, "M-") == 0 ||
                        strcmp(label, "x²") == 0 || strcmp(label, "√x") == 0 ||
                        strcmp(label, "1/x") == 0 || strcmp(label, "%") == 0 ||
                        strcmp(label, "DEL") == 0 || strcmp(label, "+/-") == 0) {
-                bg = rgb565(75, 80, 95);   /* Slate */
+                bg = rgb565(60, 65, 82);   /* Function Slate */
             }
 
-            /* Draw button frame */
-            fb_fillrect(bx, by, bw, btn_h, bg);
-            fb_drawline(bx, by, bx + bw - 1, by, rgb565(255, 255, 255));
-            fb_drawline(bx, by, bx, by + btn_h - 1, rgb565(255, 255, 255));
-            fb_drawline(bx + bw - 1, by, bx + bw - 1, by + btn_h - 1, rgb565(20, 22, 30));
-            fb_drawline(bx, by + btn_h - 1, bx + bw - 1, by + btn_h - 1, rgb565(20, 22, 30));
+            /* Draw tactile rounded button */
+            fb_fill_rounded_rect(bx, by, bw, btn_h, 4, bg);
+            fb_drawline(bx + 2, by, bx + bw - 3, by, rgb565(80, 85, 105));
 
-            int tlen = (int)strlen(label);
-            int tx = bx + (bw - tlen * 8) / 2;
+            int tw = font_get_string_width(label, FONT_STYLE_REGULAR);
+            int tx = bx + (bw - tw) / 2;
             int ty = by + (btn_h - 16) / 2;
-            draw_text(tx, ty, label, fg);
+            font_draw_text(tx, ty, label, fg, FONT_STYLE_REGULAR);
         }
     }
 }

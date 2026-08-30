@@ -8,7 +8,7 @@ def generate_font_c():
     
     try:
         font_sans = ImageFont.truetype(sans_path, 13)
-        font_mono = ImageFont.truetype(mono_path, 14)
+        font_mono = ImageFont.truetype(mono_path, 12)
     except Exception as e:
         print(f"Error loading fonts: {e}")
         return
@@ -20,7 +20,7 @@ def generate_font_c():
     out_c.append("/* ============================================================================")
     out_c.append(" * STAX — ubuntu_font_data.c")
     out_c.append(" * Authentic Canonical Ubuntu Font Glyph Atlas (Sans & Mono)")
-    out_c.append(" * Anti-Aliased 8-bit Alpha with Perfect Kerning, Tracking & Spacing")
+    out_c.append(" * Anti-Aliased 8-bit Alpha with Perfect Kerning, Zero Cutoffs & Max Speed")
     out_c.append(" * ============================================================================ */")
     out_c.append("")
     out_c.append("#include <stdint.h>")
@@ -101,7 +101,7 @@ def generate_font_c():
     with open("/home/shreyash/Desktop/stax/gfx/ubuntu_font_data.c", "w") as f:
         f.write("\n".join(out_c))
 
-    print("Successfully generated /home/shreyash/Desktop/stax/gfx/ubuntu_font_data.c with Sans & Mono fonts.")
+    print("Successfully regenerated /home/shreyash/Desktop/stax/gfx/ubuntu_font_data.c with zero cutoffs.")
 
 if __name__ == '__main__':
     generate_font_c()

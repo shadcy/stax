@@ -1,7 +1,7 @@
 /* ============================================================================
  * STAX — font.c
  * Authentic Canonical Ubuntu Font Anti-Aliased Alpha Blending Engine
- * (Supports Proportional Ubuntu Sans & Fixed-Pitch Ubuntu Mono)
+ * (Zero Cutoffs, Fast Parallel Alpha Blending, Robust Clipping)
  * ============================================================================ */
 
 #include "font.h"
@@ -46,6 +46,8 @@ void font_draw_char_clipped(int x, int y, char c, uint16_t color, font_style_t s
     unsigned char uc = (unsigned char)c;
     if (uc < 32 || uc >= 127) return;
 
+    if (y + 16 <= min_y || y >= max_y) return;
+
     const ubuntu_glyph_t *g = (style == FONT_STYLE_MONO) ? 
                               &ubuntu_mono_glyphs[uc] : &ubuntu_font_glyphs[uc];
     int gw = g->width;
@@ -53,18 +55,24 @@ void font_draw_char_clipped(int x, int y, char c, uint16_t color, font_style_t s
     const uint8_t *alpha_ptr = g->alpha;
 
     if (x + gw > min_x && x < max_x && alpha_ptr) {
-        for (int r = 0; r < gh; r++) {
+        int r_start = 0;
+        int r_end = gh;
+        if (y < min_y) r_start = min_y - y;
+        if (y + gh > max_y) r_end = max_y - y;
+
+        int c_start = 0;
+        int c_end = gw;
+        if (x < min_x) c_start = min_x - x;
+        if (x + gw > max_x) c_end = max_x - x;
+
+        for (int r = r_start; r < r_end; r++) {
             int py = y + r;
-            if (py >= min_y && py < max_y) {
-                uint16_t *line_ptr = buf + py * fb_width;
-                for (int col = 0; col < gw; col++) {
-                    int px = x + col;
-                    if (px >= min_x && px < max_x) {
-                        uint8_t a = alpha_ptr[r * gw + col];
-                        if (a > 8) {
-                            line_ptr[px] = blend_rgb565(line_ptr[px], color, a);
-                        }
-                    }
+            uint16_t *line_ptr = buf + py * fb_width;
+            const uint8_t *a_row = alpha_ptr + r * gw;
+            for (int col = c_start; col < c_end; col++) {
+                uint8_t a = a_row[col];
+                if (a > 8) {
+                    line_ptr[x + col] = blend_rgb565(line_ptr[x + col], color, a);
                 }
             }
         }
@@ -79,6 +87,7 @@ int font_draw_text_clipped(int x, int y, const char *str, uint16_t color, font_s
                            int min_x, int min_y, int max_x, int max_y) {
     uint16_t *buf = fb_get_buffer();
     if (!str || !buf) return 0;
+    if (y + 16 <= min_y || y >= max_y) return 0;
     
     int cur_x = x;
     const unsigned char *p = (const unsigned char *)str;
@@ -97,23 +106,30 @@ int font_draw_text_clipped(int x, int y, const char *str, uint16_t color, font_s
         const uint8_t *alpha_ptr = g->alpha;
         
         if (cur_x + gw > min_x && cur_x < max_x && alpha_ptr) {
-            for (int r = 0; r < gh; r++) {
+            int r_start = 0;
+            int r_end = gh;
+            if (y < min_y) r_start = min_y - y;
+            if (y + gh > max_y) r_end = max_y - y;
+
+            int c_start = 0;
+            int c_end = gw;
+            if (cur_x < min_x) c_start = min_x - cur_x;
+            if (cur_x + gw > max_x) c_end = max_x - cur_x;
+
+            for (int r = r_start; r < r_end; r++) {
                 int py = y + r;
-                if (py >= min_y && py < max_y) {
-                    uint16_t *line_ptr = buf + py * fb_width;
-                    for (int col = 0; col < gw; col++) {
-                        int px = cur_x + col;
-                        if (px >= min_x && px < max_x) {
-                            uint8_t a = alpha_ptr[r * gw + col];
-                            if (a > 8) {
-                                line_ptr[px] = blend_rgb565(line_ptr[px], color, a);
-                            }
-                        }
+                uint16_t *line_ptr = buf + py * fb_width;
+                const uint8_t *a_row = alpha_ptr + r * gw;
+                for (int col = c_start; col < c_end; col++) {
+                    uint8_t a = a_row[col];
+                    if (a > 8) {
+                        line_ptr[cur_x + col] = blend_rgb565(line_ptr[cur_x + col], color, a);
                     }
                 }
             }
         }
         cur_x += g->advance;
+        if (cur_x >= max_x) break;
     }
     
     return cur_x - x;

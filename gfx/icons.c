@@ -348,3 +348,61 @@ void icon_draw_file_mini(int x, int y, const char *filename, int is_dir) {
         break;
     }
 }
+
+void icon_draw_trash_mini(int x, int y, int has_items) {
+    uint16_t body_col = has_items ? rgb565(180, 50, 60) : rgb565(140, 145, 160);
+    uint16_t lid_col  = has_items ? rgb565(220, 70, 80) : rgb565(175, 180, 195);
+    
+    /* Trash Lid */
+    fb_draw_hline(x + 3, y + 2, 10, lid_col);
+    fb_draw_hline(x + 6, y + 1, 4, lid_col);
+    
+    /* Trash Can Body */
+    fb_fill_rounded_rect(x + 4, y + 4, 8, 10, 1, body_col);
+    /* Vertical Ribs */
+    fb_draw_vline(x + 6, y + 6, 6, rgb565(240, 240, 245));
+    fb_draw_vline(x + 9, y + 6, 6, rgb565(240, 240, 245));
+}
+
+void icon_draw_place_badge(int x, int y, int place_id) {
+    switch (place_id) {
+    case 0: /* Home */
+        fb_fill_rounded_rect(x + 2, y + 6, 12, 8, 1, rgb565(235, 95, 30));
+        /* Roof */
+        fb_drawline(x + 2, y + 6, x + 8, y + 1, rgb565(255, 130, 60));
+        fb_drawline(x + 8, y + 1, x + 14, y + 6, rgb565(255, 130, 60));
+        /* Door */
+        fb_fillrect(x + 6, y + 9, 4, 5, rgb565(40, 42, 54));
+        break;
+
+    case 1: /* Documents */
+        fb_fill_rounded_rect(x + 3, y + 1, 10, 14, 1, rgb565(70, 130, 240));
+        fb_draw_hline(x + 5, y + 4, 6, COLOR_WHITE);
+        fb_draw_hline(x + 5, y + 7, 6, COLOR_WHITE);
+        fb_draw_hline(x + 5, y + 10, 4, COLOR_WHITE);
+        break;
+
+    case 2: /* Downloads */
+        fb_fill_rounded_rect(x + 2, y + 1, 12, 14, 2, rgb565(40, 165, 110));
+        /* Down Arrow */
+        fb_draw_vline(x + 8, y + 4, 6, COLOR_WHITE);
+        fb_drawline(x + 5, y + 7, x + 8, y + 10, COLOR_WHITE);
+        fb_drawline(x + 8, y + 10, x + 11, y + 7, COLOR_WHITE);
+        break;
+
+    case 3: /* Binaries */
+        fb_fill_rounded_rect(x + 2, y + 1, 12, 14, 2, rgb565(140, 80, 220));
+        fb_fillrect(x + 5, y + 4, 6, 6, COLOR_WHITE);
+        break;
+
+    case 4: /* Trash */
+        icon_draw_trash_mini(x, y, 1);
+        break;
+
+    case 5: /* Storage */
+    default:
+        fb_fill_rounded_rect(x + 2, y + 2, 12, 12, 2, rgb565(90, 100, 125));
+        fb_fillrect(x + 5, y + 7, 6, 4, rgb565(40, 45, 58));
+        break;
+    }
+}

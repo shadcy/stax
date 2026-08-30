@@ -403,7 +403,7 @@ void wm_update(void) {
                         extern struct window *terminal_open_new(void);
                         terminal_open_new();
                     } else if (idx == 2) {
-                        window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
+                        window_t *fw = wm_add_window(80, 50, 540, 370, "Files", file_manager_draw_window);
                         if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
                     } else if (idx == 3) {
                         extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
