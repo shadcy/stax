@@ -386,7 +386,7 @@ void file_manager_draw_window(struct window *win, int cx, int cy, int cw, int ch
         }
 
         uint16_t name_col = (i == st->selected_idx) ? COLOR_WHITE : 
-                            (st->file_list[i].is_dir ? rgb565(25, 45, 135) : rgb565(20, 24, 32));
+                            (st->file_list[i].is_dir ? theme_get_primary_accent() : rgb565(20, 24, 32));
         uint16_t sub_col  = (i == st->selected_idx) ? rgb565(225, 235, 255) : rgb565(110, 115, 130);
 
         icon_draw_file_mini(main_x + 6, item_y + 3, st->file_list[i].name, st->file_list[i].is_dir);
@@ -402,7 +402,8 @@ void file_manager_draw_window(struct window *win, int cx, int cy, int cw, int ch
         }
 
         if (st->file_list[i].is_dir) {
-            font_draw_text(col_type_x, item_y + 3, "Folder", sub_col, FONT_STYLE_REGULAR);
+            uint16_t fcol = (i == st->selected_idx) ? sub_col : theme_get_primary_accent();
+            font_draw_text(col_type_x, item_y + 3, "Folder", fcol, FONT_STYLE_REGULAR);
         } else if (is_txt(st->file_list[i].name)) {
             font_draw_text(col_type_x, item_y + 3, "Text Doc", sub_col, FONT_STYLE_REGULAR);
         } else if (is_stax(st->file_list[i].name)) {

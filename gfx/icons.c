@@ -7,6 +7,7 @@
 #include "icons.h"
 #include "framebuffer.h"
 #include "string.h"
+#include "wm.h"
 
 static file_icon_type_t get_file_type(const char *filename, int is_dir) {
     if (is_dir) return ICON_FILE_FOLDER;
@@ -246,22 +247,25 @@ void icon_draw_desktop_file(int ix, int iy, const char *filename, int is_dir) {
 
     switch (t) {
     case ICON_FILE_FOLDER: {
-        /* Clean Ubuntu Yaru Tall Folder */
-        fb_fill_rounded_rect(x, y, 16, 6, 2, rgb565(22, 92, 170));
-        fb_fill_rounded_rect(x, y + 4, 36, 34, 4, rgb565(22, 92, 170));
+        /* Clean Ubuntu Yaru Tall Folder (Dynamic with Active Appearance Theme) */
+        uint16_t pri = theme_get_primary_accent();
+        uint16_t sec = theme_get_secondary_accent();
+        uint16_t bg  = theme_get_desktop_bg();
+        fb_fill_rounded_rect(x, y, 16, 6, 2, bg);
+        fb_fill_rounded_rect(x, y + 4, 36, 34, 4, bg);
         fb_fill_rounded_rect(x + 4, y + 6, 28, 6, 2, rgb565(250, 252, 255));
-        fb_fill_rounded_rect(x, y + 10, 36, 28, 4, rgb565(38, 132, 226));
-        fb_draw_hline(x + 2, y + 10, 32, rgb565(120, 190, 255));
+        fb_fill_rounded_rect(x, y + 10, 36, 28, 4, pri);
+        fb_draw_hline(x + 2, y + 10, 32, sec);
         break;
     }
 
     case ICON_FILE_EXEC: {
-        /* Dark Slate Executable Card with Orange Chevron */
+        /* Dark Slate Executable Card with Theme Chevron */
         fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(36, 38, 48));
         fb_draw_hline(x + 4, y + 2, 28, rgb565(75, 80, 95));
         
         /* Terminal prompt chevron >_ */
-        uint16_t col_act = rgb565(235, 95, 30);
+        uint16_t col_act = theme_get_primary_accent();
         fb_drawline(x + 10, y + 16, x + 16, y + 22, col_act);
         fb_drawline(x + 10, y + 28, x + 16, y + 22, col_act);
         fb_fillrect(x + 20, y + 26, 6, 2, col_act);
@@ -293,9 +297,9 @@ void icon_draw_desktop_file(int ix, int iy, const char *filename, int is_dir) {
     }
 
     default: {
-        /* Clean Document Card with Folded Corner & Syntax Lines */
+        /* Clean Document Card with Theme Accent Header & Syntax Lines */
         fb_fill_rounded_rect(x + 2, y + 2, 32, 36, 4, rgb565(248, 250, 254));
-        fb_draw_hline(x + 4, y + 2, 28, rgb565(210, 215, 225));
+        fb_draw_hline(x + 4, y + 2, 28, theme_get_primary_accent());
         
         /* Folded corner */
         fb_fillrect(x + 24, y + 2, 10, 10, rgb565(200, 205, 220));
@@ -314,17 +318,21 @@ void icon_draw_file_mini(int x, int y, const char *filename, int is_dir) {
     file_icon_type_t t = get_file_type(filename, is_dir);
 
     switch (t) {
-    case ICON_FILE_FOLDER:
-        fb_fill_rounded_rect(x, y + 1, 8, 4, 1, rgb565(22, 92, 170));
-        fb_fill_rounded_rect(x, y + 3, 16, 12, 2, rgb565(38, 132, 226));
-        fb_draw_hline(x + 1, y + 3, 14, rgb565(120, 190, 255));
+    case ICON_FILE_FOLDER: {
+        uint16_t pri = theme_get_primary_accent();
+        uint16_t sec = theme_get_secondary_accent();
+        uint16_t bg  = theme_get_desktop_bg();
+        fb_fill_rounded_rect(x, y + 1, 8, 4, 1, bg);
+        fb_fill_rounded_rect(x, y + 3, 16, 12, 2, pri);
+        fb_draw_hline(x + 1, y + 3, 14, sec);
         break;
+    }
 
     case ICON_FILE_EXEC:
         fb_fill_rounded_rect(x + 1, y + 1, 14, 14, 2, rgb565(36, 38, 48));
-        fb_drawline(x + 4, y + 5, x + 7, y + 8, rgb565(235, 95, 30));
-        fb_drawline(x + 4, y + 11, x + 7, y + 8, rgb565(235, 95, 30));
-        fb_fillrect(x + 9, y + 10, 3, 1, rgb565(235, 95, 30));
+        fb_drawline(x + 4, y + 5, x + 7, y + 8, theme_get_primary_accent());
+        fb_drawline(x + 4, y + 11, x + 7, y + 8, theme_get_primary_accent());
+        fb_fillrect(x + 9, y + 10, 3, 1, theme_get_primary_accent());
         break;
 
     case ICON_FILE_IMAGE:
@@ -342,6 +350,7 @@ void icon_draw_file_mini(int x, int y, const char *filename, int is_dir) {
     default:
         /* Document */
         fb_fill_rounded_rect(x + 2, y + 1, 12, 14, 2, rgb565(248, 250, 254));
+        fb_draw_hline(x + 3, y + 1, 10, theme_get_primary_accent());
         fb_draw_hline(x + 4, y + 5, 6, rgb565(100, 110, 130));
         fb_draw_hline(x + 4, y + 8, 8, rgb565(100, 110, 130));
         fb_draw_hline(x + 4, y + 11, 5, rgb565(100, 110, 130));

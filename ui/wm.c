@@ -74,11 +74,60 @@ window_t *wm_add_window(int x, int y, int w, int h, const char *title, void (*dr
 void wm_close_window(window_t *win)
 {
     if (!win) return;
-    win->state = WM_STATE_HIDDEN;
-    win->key_event = NULL;
-    win->update_client = NULL;
-    if (focused_window == win)
-        focused_window = NULL;
+
+    /* Special case: Boot Log is the permanent kernel logger window */
+    if (strcmp(win->title, "Boot Log") == 0) {
+        win->state = WM_STATE_HIDDEN;
+        win->key_event = NULL;
+        if (focused_window == win)
+            focused_window = NULL;
+        return;
+    }
+
+    /* Special case: DOOM instance marker */
+    if (win->app_data == DOOM_WIN_MARKER) {
+        win->state = WM_STATE_HIDDEN;
+        if (focused_window == win)
+            focused_window = NULL;
+        return;
+    }
+
+    /* 1. App-specific cleanups */
+    extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+    if (win->draw_client == editor_draw_window) {
+        editor_autosave(win);
+        file_manager_refresh();
+    }
+
+    /* 2. Free dynamic application heap data */
+    if (win->app_data && win->app_data != (void*)1) {
+        kfree(win->app_data);
+        win->app_data = NULL;
+    }
+
+    /* 3. Unlink from window_list */
+    if (window_list == win) {
+        window_list = win->next;
+    } else {
+        window_t *prev = window_list;
+        while (prev && prev->next != win) {
+            prev = prev->next;
+        }
+        if (prev) {
+            prev->next = win->next;
+        }
+    }
+
+    /* 4. Update focus & drag pointers */
+    if (focused_window == win) {
+        focused_window = window_list;
+    }
+    if (drag_win == win) {
+        drag_win = NULL;
+    }
+
+    /* 5. Free window node from heap */
+    kfree(win);
 }
 
 void wm_focus_shell(void)
@@ -142,18 +191,7 @@ int wm_dispatch_key(char c) {
         }
         if (c == 'w' || c == 'W' || c == 0x17) { /* Ctrl+W: Close active window */
             if (focused_window && focused_window->state == WM_STATE_ACTIVE) {
-                if (focused_window->app_data == DOOM_WIN_MARKER) {
-                    focused_window->state = WM_STATE_HIDDEN;
-                    focused_window = NULL;
-                    return 1;
-                }
-                extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                if (focused_window->draw_client == editor_draw_window) {
-                    editor_autosave(focused_window);
-                    file_manager_refresh();
-                }
-                focused_window->state = WM_STATE_HIDDEN;
-                focused_window = NULL;
+                wm_close_window(focused_window);
                 return 1;
             }
         }
@@ -472,25 +510,7 @@ void wm_update(void) {
                         if (my >= tby + 2 && my < tby + TITLEBAR_HEIGHT - 2) {
                             if (mx >= close_x - 2 && mx < close_x + btn_w) {
                                 btn_handled = 1;
-                                if (curr->app_data == DOOM_WIN_MARKER) {
-                                    curr->state = WM_STATE_HIDDEN;
-                                    if (focused_window == curr)
-                                        focused_window = NULL;
-                                } else {
-                                    extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                    if (curr->draw_client == editor_draw_window) {
-                                        editor_autosave(curr);
-                                        file_manager_refresh();
-                                    }
-                                    curr->state = WM_STATE_HIDDEN;
-                                    extern void image_viewer_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                    if (curr->draw_client == image_viewer_draw_window && curr->app_data && curr->app_data != (void*)1) {
-                                        extern void kfree(void*);
-                                        kfree(curr->app_data);
-                                        curr->app_data = NULL;
-                                    }
-                                    if (focused_window == curr) focused_window = NULL;
-                                }
+                                wm_close_window(curr);
                             } else if (mx >= max_x - 2 && mx < max_x + btn_w) {
                                 btn_handled = 1;
                                 if (curr->is_maximized) {

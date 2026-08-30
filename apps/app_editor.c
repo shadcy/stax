@@ -139,7 +139,8 @@ void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     /* Draw first line number */
     if (ty >= body_y && ty + 14 < body_y + body_h) {
         char lstr[8]; lstr[0] = '1'; lstr[1] = '\0';
-        font_draw_text(cx + 10, ty, lstr, rgb565(90, 95, 120), FONT_STYLE_MONO);
+        uint16_t num_col = (st->cur_line == 1) ? theme_get_primary_accent() : rgb565(90, 95, 120);
+        font_draw_text(cx + 16, ty, lstr, num_col, FONT_STYLE_MONO);
     }
 
     int text_clip_r = cx + cw - 8;
@@ -173,7 +174,8 @@ void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
                         lstr[0] = '0' + line_num;
                         lstr[1] = '\0';
                     }
-                    font_draw_text(cx + (line_num >= 10 ? 10 : 16), ty, lstr, rgb565(90, 95, 120), FONT_STYLE_MONO);
+                    uint16_t num_col = (line_num == st->cur_line) ? theme_get_primary_accent() : rgb565(90, 95, 120);
+                    font_draw_text(cx + (line_num >= 10 ? 10 : 16), ty, lstr, num_col, FONT_STYLE_MONO);
                 }
             } else if (c == '\r') {
                 /* skip */
