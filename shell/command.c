@@ -14,7 +14,6 @@
 #include "bmp.h"
 #include "gfx_console.h"
 #include "string.h"
-#include "craft.h"
 #include "bench.h"
 #include "page.h"
 #include "system.h"
@@ -49,9 +48,7 @@ static const command_t commands[] = {
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
     {"exec",    "Load and execute standalone ELF-32 binary", cmd_exec},
     {"run",     "Run a .launch application package (e.g. run doom.launch)", cmd_run},
-    {"game",    "Play a game (use --doom, --snake, --slime)", cmd_game},
-    {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
-    {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
+    {"game",    "Play a game (use --doom)",            cmd_game},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
     {"test",    "Run tests ([--mem] [--fs] [--vfs] [--elf] [--all])", cmd_test},
 #ifdef ENABLE_BENCH
@@ -78,20 +75,10 @@ void cmd_game(int argc, char *argv[])
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom   ");
         gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Launch DOOM (doom.launch)\n");
-
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
-        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Graphical Snake\n");
-
-        gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
-        gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--slime  ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Play Slime Escape\n");
         return;
     }
     if (strcmp(argv[1], "--doom") == 0) cmd_doomgfx(argc, argv);
-    else if (strcmp(argv[1], "--snake") == 0) cmd_snake(argc, argv);
-    else if (strcmp(argv[1], "--slime") == 0) cmd_slime(argc, argv);
-    else kputs("Unknown game. Try: game --doom | game --snake | game --slime\n");
+    else kputs("Unknown game. Try: game --doom\n");
 }
 
 /* ------------------------------------------------------------------------

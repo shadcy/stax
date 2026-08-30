@@ -45,6 +45,8 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -ffreestanding      \
             -nostdlib           \
             -nostartfiles       \
+            -ffunction-sections \
+            -fdata-sections     \
             -Wall               \
             -Wextra             \
             -O2                 \
@@ -133,8 +135,7 @@ KERNEL_OBJS  := $(BUILD_DIR)/startup.o \
                 $(BUILD_DIR)/font8x16.o \
                 $(BUILD_DIR)/gfx_console.o \
                 $(BUILD_DIR)/command.o \
-                $(BUILD_DIR)/bmp.o \
-                $(BUILD_DIR)/engine2d.o
+                $(BUILD_DIR)/bmp.o
 
 # FatFs objects
 KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
@@ -145,26 +146,10 @@ KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
 # tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 
-# Software rendering subsystem
-KERNEL_OBJS  += $(BUILD_DIR)/math_fixed.o \
-                $(BUILD_DIR)/palette.o \
-                $(BUILD_DIR)/backbuffer.o \
-                $(BUILD_DIR)/renderer.o \
-                $(BUILD_DIR)/sprite.o \
-                $(BUILD_DIR)/texture.o \
-                $(BUILD_DIR)/profiler.o
-
-# Core/Apps
-KERNEL_OBJS  += $(BUILD_DIR)/sokoban.o
-
-# Games (kernel-resident: snake, slime, craft only - DOOM runs via .launch userspace)
-KERNEL_OBJS  += $(BUILD_DIR)/snake.o
-KERNEL_OBJS  += $(BUILD_DIR)/slime.o
-KERNEL_OBJS  += $(BUILD_DIR)/craft.o
+# Firmware update subsystem
 KERNEL_OBJS  += $(BUILD_DIR)/firmware_update.o
 KERNEL_OBJS  += $(BUILD_DIR)/crc32.o \
                 $(BUILD_DIR)/sha256.o \
-                $(BUILD_DIR)/monocypher.o \
                 $(BUILD_DIR)/firmware_format.o
 
 # Benchmark infrastructure
@@ -230,7 +215,8 @@ QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),i
 # =============================================================================
 # Rules
 # =============================================================================
-.PHONY: all clean qemu qemu-gfx debug gdb dump size bench bench-memory bench-vm bench-scheduler bench-fs bench-gfx stress test bench-compare
+.PHONY: all clean clean-all distclean qemu qemu-gfx debug gdb dump size bench bench-memory bench-vm bench-scheduler bench-fs bench-gfx stress test bench-compare
+.PRECIOUS: $(BUILD_DIR)/%.elf $(BUILD_DIR)/%.bin $(BUILD_DIR)/%.ld
 
 all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
 
@@ -472,6 +458,8 @@ clean:
 clean-all: clean
 	rm -f $(OS_BIN)
 	@echo "Cleaned everything, including os.bin."
+
+distclean: clean-all
 
 # ---------------------------------------------------------------------------
 # Benchmark targets — build + run in QEMU, capture output
