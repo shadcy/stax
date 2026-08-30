@@ -126,6 +126,59 @@ void fb_putpixel(int x, int y, uint16_t col)
         fb[y * fb_width + x] = col;
 }
 
+void fb_draw_hline(int x, int y, int w, uint16_t col)
+{
+    if (y < 0 || y >= (int)fb_height) return;
+    if (x < 0) { w += x; x = 0; }
+    if (x + w > (int)fb_width) w = fb_width - x;
+    if (w <= 0) return;
+
+    uint16_t *p = fb + y * fb_width + x;
+    uint32_t col32 = ((uint32_t)col << 16) | col;
+
+    if (((uintptr_t)p & 2) && w > 0) {
+        *p++ = col;
+        w--;
+    }
+
+    uint32_t *p32 = (uint32_t *)p;
+    int dwords = w >> 1;
+    while (dwords >= 8) {
+        p32[0] = col32; p32[1] = col32; p32[2] = col32; p32[3] = col32;
+        p32[4] = col32; p32[5] = col32; p32[6] = col32; p32[7] = col32;
+        p32 += 8;
+        dwords -= 8;
+    }
+    while (dwords > 0) {
+        *p32++ = col32;
+        dwords--;
+    }
+    if (w & 1) {
+        *((uint16_t *)p32) = col;
+    }
+}
+
+void fb_draw_vline(int x, int y, int h, uint16_t col)
+{
+    if (x < 0 || x >= (int)fb_width) return;
+    if (y < 0) { h += y; y = 0; }
+    if (y + h > (int)fb_height) h = fb_height - y;
+    if (h <= 0) return;
+
+    uint16_t *p = fb + y * fb_width + x;
+    uint32_t stride = fb_width;
+    while (h >= 4) {
+        p[0] = col; p[stride] = col; p[stride * 2] = col; p[stride * 3] = col;
+        p += stride * 4;
+        h -= 4;
+    }
+    while (h > 0) {
+        *p = col;
+        p += stride;
+        h--;
+    }
+}
+
 void fb_fillrect(int x, int y, int w, int h, uint16_t col)
 {
     if (x < 0) { w += x; x = 0; }
@@ -133,14 +186,80 @@ void fb_fillrect(int x, int y, int w, int h, uint16_t col)
     if (x + w > (int)fb_width)  w = fb_width  - x;
     if (y + h > (int)fb_height) h = fb_height - y;
     if (w <= 0 || h <= 0) return;
+
+    uint32_t col32 = ((uint32_t)col << 16) | col;
+
     for (int r = 0; r < h; r++) {
         uint16_t *p = fb + (y + r) * fb_width + x;
-        for (int c = 0; c < w; c++) p[c] = col;
+        int count = w;
+
+        /* Align to 32-bit boundary */
+        if (((uintptr_t)p & 2) && count > 0) {
+            *p++ = col;
+            count--;
+        }
+
+        /* 32-bit bulk write (2 pixels per store, unrolled 8x) */
+        uint32_t *p32 = (uint32_t *)p;
+        int dwords = count >> 1;
+        while (dwords >= 8) {
+            p32[0] = col32; p32[1] = col32; p32[2] = col32; p32[3] = col32;
+            p32[4] = col32; p32[5] = col32; p32[6] = col32; p32[7] = col32;
+            p32 += 8;
+            dwords -= 8;
+        }
+        while (dwords > 0) {
+            *p32++ = col32;
+            dwords--;
+        }
+
+        /* Trailing pixel for odd widths */
+        if (count & 1) {
+            *((uint16_t *)p32) = col;
+        }
+    }
+}
+
+void fb_fill_rounded_rect(int x, int y, int w, int h, int r, uint16_t col)
+{
+    if (r <= 0) {
+        fb_fillrect(x, y, w, h, col);
+        return;
+    }
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+
+    /* Center rectangle */
+    fb_fillrect(x, y + r, w, h - 2 * r, col);
+
+    /* Top & bottom segments with corner indentation */
+    for (int dy = 0; dy < r; dy++) {
+        /* Approximate circle curve: dx = r - sqrt(r^2 - (r-dy)^2) */
+        int inset = (r * (r - dy)) / (r + 1);
+        if (inset < 0) inset = 0;
+        int line_w = w - 2 * inset;
+        if (line_w > 0) {
+            fb_draw_hline(x + inset, y + dy, line_w, col);
+            fb_draw_hline(x + inset, y + h - 1 - dy, line_w, col);
+        }
     }
 }
 
 void fb_drawline(int x0, int y0, int x1, int y1, uint16_t col)
 {
+    if (y0 == y1) {
+        int x_min = (x0 < x1) ? x0 : x1;
+        int w = (x0 < x1) ? (x1 - x0 + 1) : (x0 - x1 + 1);
+        fb_draw_hline(x_min, y0, w, col);
+        return;
+    }
+    if (x0 == x1) {
+        int y_min = (y0 < y1) ? y0 : y1;
+        int h = (y0 < y1) ? (y1 - y0 + 1) : (y0 - y1 + 1);
+        fb_draw_vline(x0, y_min, h, col);
+        return;
+    }
+
     int dx = x1-x0, dy = y1-y0;
     int ax = dx<0?-dx:dx, ay = dy<0?-dy:dy;
     int sx = dx<0?-1:1,   sy = dy<0?-1:1;

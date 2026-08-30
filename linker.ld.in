@@ -24,7 +24,8 @@ SECTIONS
     /* ---- Code and read-only data ---- */
     .text : {
         _text_start = .;
-        *(.text._start)         /* startup.s _start FIRST */
+        KEEP(*(.text._start))   /* startup.s _start FIRST */
+        KEEP(*(.text.vectors))  /* interrupt vectors */
         *(.text*)               /* all other .text input sections */
         *(.rodata*)             /* read-only data */
         *(.glue_7)

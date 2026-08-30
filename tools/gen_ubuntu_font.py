@@ -4,7 +4,7 @@ from PIL import Image, ImageFont, ImageDraw
 
 def generate_font_c():
     font_path = "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf"
-    font_size = 14
+    font_size = 13
     try:
         font = ImageFont.truetype(font_path, font_size)
     except Exception as e:
@@ -13,23 +13,17 @@ def generate_font_c():
 
     # Dimensions
     GLYPH_H = 16
-    GLYPH_MAX_W = 12
+    GLYPH_MAX_W = 14
 
     out_c = []
     out_c.append("/* ============================================================================")
     out_c.append(" * STAX — ubuntu_font_data.c")
     out_c.append(" * Authentic Canonical Ubuntu Font Glyph Atlas (Anti-Aliased 8-bit Alpha)")
+    out_c.append(" * Perfected Vertical Alignment & Full Descender Tails (Zero Cutoff)")
     out_c.append(" * ============================================================================ */")
     out_c.append("")
     out_c.append("#include <stdint.h>")
-    out_c.append("#include \"font.h\"")
-    out_c.append("")
-    out_c.append("typedef struct {")
-    out_c.append("    uint8_t width;")
-    out_c.append("    uint8_t height;")
-    out_c.append("    uint8_t advance;")
-    out_c.append("    const uint8_t *alpha;")
-    out_c.append("} ubuntu_glyph_t;")
+    out_c.append("#include \"ubuntu_font_data.h\"")
     out_c.append("")
 
     glyph_arrays = []
@@ -40,22 +34,28 @@ def generate_font_c():
         char_str = chr(c)
         
         # Measure character bounding box & advance
-        bbox = font.getbbox(char_str) # (left, top, right, bottom)
         length = font.getlength(char_str)
         advance = max(int(round(length)), 3)
         if c == 32: # space
             advance = 5
 
-        # Render glyph onto a grayscale image
+        # Render glyph onto a grayscale image with exact baseline offset
         img = Image.new("L", (GLYPH_MAX_W, GLYPH_H), color=0)
         draw = ImageDraw.Draw(img)
-        # Position with standard baseline offset (Y=1)
-        draw.text((0, 1), char_str, font=font, fill=255)
+        # Position with -1 baseline offset to perfectly preserve ascenders and descenders
+        draw.text((0, -1), char_str, font=font, fill=255)
         
-        # Find trimmed width
-        w = max(advance, 4)
+        # Calculate actual active width
+        bbox = font.getbbox(char_str)
+        if bbox:
+            w = max(bbox[2], advance)
+        else:
+            w = advance
+        
         if w > GLYPH_MAX_W:
             w = GLYPH_MAX_W
+        if w < 1:
+            w = 1
 
         array_name = f"glyph_alpha_{c}"
         pixels = []
@@ -78,7 +78,7 @@ def generate_font_c():
     with open("/home/shreyash/Desktop/stax/gfx/ubuntu_font_data.c", "w") as f:
         f.write("\n".join(out_c))
 
-    print("Successfully generated /home/shreyash/Desktop/stax/gfx/ubuntu_font_data.c")
+    print("Successfully generated /home/shreyash/Desktop/stax/gfx/ubuntu_font_data.c with full descender support.")
 
 if __name__ == '__main__':
     generate_font_c()

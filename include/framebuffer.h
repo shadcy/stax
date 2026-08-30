@@ -58,6 +58,9 @@ void fb_set_resolution(uint32_t w,
 void fb_putpixel(int x, int y, uint16_t col);
 void fb_fillrect(int x, int y, int w, int h, uint16_t col);
 void fb_drawline(int x0, int y0, int x1, int y1, uint16_t col);
+void fb_draw_hline(int x, int y, int w, uint16_t col);
+void fb_draw_vline(int x, int y, int h, uint16_t col);
+void fb_fill_rounded_rect(int x, int y, int w, int h, int r, uint16_t col);
 uint16_t *fb_get_buffer(void);
 
 /* Double buffering API */
