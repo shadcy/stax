@@ -358,22 +358,19 @@ void wm_update(void) {
                     int rel_y = my - sm_y;
                     if (rel_y >= 0 && rel_y < 30) {
                         extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                        wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
+                        wm_add_window(110, 80, 340, 260, "About STAX OS", sysinfo_draw_window);
                     } else if (rel_y >= 30 && rel_y < 60) {
-                        extern struct window *widgets_open_window(void);
-                        widgets_open_window();
-                    } else if (rel_y >= 60 && rel_y < 90) {
                         extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         extern void settings_mouse_click(struct window *win, int mx, int my, int button);
                         window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
                         if (sw) sw->mouse_click = settings_mouse_click;
-                    } else if (rel_y >= 90 && rel_y < 120) {
+                    } else if (rel_y >= 60 && rel_y < 90) {
                         extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
-                    } else if (rel_y >= 120 && rel_y < 150) {
+                    } else if (rel_y >= 90 && rel_y < 120) {
                         extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
-                    } else if (rel_y >= 150 && rel_y < 185) {
+                    } else if (rel_y >= 120 && rel_y < 155) {
                         extern void settings_save(void);
                         extern void system_reboot(void);
                         settings_save();
@@ -598,8 +595,6 @@ void wm_update(void) {
                     if (ctx_menu.x + 160 > (int)fb_width) ctx_menu.x = fb_width - 160;
                     if (ctx_menu.y + 112 > (int)(fb_height - TASKBAR_HEIGHT)) ctx_menu.y = fb_height - TASKBAR_HEIGHT - 112;
                 } else if (pressed) {
-                    extern int widgets_handle_desktop_click(int, int);
-                    if (widgets_handle_desktop_click(mx, my)) goto update_done;
                     if (!desk_loaded) desk_load_files();
                     for (int i = 0; i < desk_count; i++) {
                         if (!desk_files[i].valid) continue;

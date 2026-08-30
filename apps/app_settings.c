@@ -260,7 +260,7 @@ void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         /* Card 1: Internet Master Switch */
         draw_card(px, cy + 38, card_w, 64);
         draw_text(px + 14, cy + 50, "Internet Connection", rgb565(30, 35, 45));
-        draw_text(px + 14, cy + 68, "Enables HTTP APIs, Weather & Crypto Widgets", rgb565(120, 125, 140));
+        draw_text(px + 14, cy + 68, "Enables TCP/IP, SNTP, DNS & Web browsing", rgb565(120, 125, 140));
         draw_switch(px + card_w - 80, cy + 48, g_settings.network_enabled);
 
         /* Card 2: Live Network Adapter Info */
@@ -283,8 +283,7 @@ void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         draw_text(px + 105, cy + 200, "SMC91C111 100Mbps Ethernet", rgb565(40, 50, 70));
 
         /* Action Buttons */
-        draw_btn(px, cy + 248, 140, 26, "Open Widgets", 0);
-        draw_btn(px + 150, cy + 248, 140, 26, "Toggle Internet", is_on);
+        draw_btn(px, cy + 248, 160, 26, "Toggle Internet", is_on);
 
     } else if (g_settings.active_tab == 4) {
         /* ==== ABOUT STAX OS ==== */
@@ -405,13 +404,9 @@ void settings_mouse_click(struct window *win, int mx, int my, int button) {
             settings_save();
             return;
         }
-        /* Open Widgets Button */
+        /* Toggle Internet Button */
         if (my >= 248 && my < 276) {
-            if (mx >= px && mx < px + 140) {
-                extern struct window *widgets_open_window(void);
-                widgets_open_window();
-                return;
-            } else if (mx >= px + 150 && mx < px + 290) {
+            if (mx >= px && mx < px + 160) {
                 g_settings.network_enabled = !g_settings.network_enabled;
                 settings_save();
                 return;

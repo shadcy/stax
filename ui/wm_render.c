@@ -413,10 +413,6 @@ void wm_render(void) {
         fb_drawline(pill_x, pill_y, pill_x + pill_w - 1, pill_y, rgb565(65, 75, 95));
         draw_text(pill_x + 4, pill_y, lbl, COLOR_WHITE);
     }
-    
-    /* ---- 2b. Desktop Background Widgets Overlay (Pinned via [ATD]) ---- */
-    extern void widgets_draw_desktop_overlay(void);
-    widgets_draw_desktop_overlay();
 
     window_t *arr[32];
     int count = 0;
@@ -646,7 +642,7 @@ void wm_render(void) {
         int sm_x = 0;
         int sm_y = TASKBAR_HEIGHT;
         int sm_w = 190;
-        int sm_h = 225;
+        int sm_h = 195;
 
         /* Drop shadow */
         fb_fillrect(sm_x + 3, sm_y + 3, sm_w, sm_h, rgb565(20, 22, 28));
@@ -662,15 +658,14 @@ void wm_render(void) {
         draw_text(sm_x + 12, sm_y + 8, "About STAX OS", COLOR_WHITE);
         fb_drawline(sm_x + 6, sm_y + 30, sm_x + sm_w - 6, sm_y + 30, rgb565(55, 58, 70));
 
-        draw_text(sm_x + 12, sm_y + 38, "Retro Widgets", theme_get_secondary_accent());
-        draw_text(sm_x + 12, sm_y + 68, "System Settings", COLOR_WHITE);
-        draw_text(sm_x + 12, sm_y + 98, "Task Manager", COLOR_WHITE);
-        draw_text(sm_x + 12, sm_y + 128, "System Info", COLOR_WHITE);
+        draw_text(sm_x + 12, sm_y + 38, "System Settings", COLOR_WHITE);
+        draw_text(sm_x + 12, sm_y + 68, "Task Manager", COLOR_WHITE);
+        draw_text(sm_x + 12, sm_y + 98, "System Info", COLOR_WHITE);
 
-        fb_drawline(sm_x + 6, sm_y + 156, sm_x + sm_w - 6, sm_y + 156, rgb565(55, 58, 70));
+        fb_drawline(sm_x + 6, sm_y + 126, sm_x + sm_w - 6, sm_y + 126, rgb565(55, 58, 70));
 
-        draw_text(sm_x + 12, sm_y + 166, "Reboot System", rgb565(240, 80, 80));
-        draw_text(sm_x + 12, sm_y + 196, "Force Quit...", rgb565(160, 165, 180));
+        draw_text(sm_x + 12, sm_y + 136, "Reboot System", rgb565(240, 80, 80));
+        draw_text(sm_x + 12, sm_y + 166, "Force Quit...", rgb565(160, 165, 180));
     }
     
     /* 2. Modern 3x3 Applications Launcher Menu Window (Under Apps button) */
