@@ -76,21 +76,10 @@ const char cursor_bitmap[CURSOR_H][CURSOR_W] = {
     {' ',' ',' ',' ',' ',' ','X','X','X','X',' '}
 };
 
+#include "font.h"
+
 void draw_text(int x, int y, const char *s, uint16_t color) {
-    /* extremely simple unscaled 8x16 font rendering for WM strings */
-    extern const unsigned char font8x16_data[256][16];
-    while (*s) {
-        unsigned char c = *s++;
-        for (int r = 0; r < 16; r++) {
-            unsigned char bits = font8x16_data[c][r];
-            for (int b = 0; b < 8; b++) {
-                if (bits & (0x80 >> b)) {
-                    fb_putpixel(x + b, y + r, color);
-                }
-            }
-        }
-        x += 8;
-    }
+    font_draw_text(x, y, s, color, FONT_STYLE_REGULAR);
 }
 
 void draw_window(window_t *win) {
