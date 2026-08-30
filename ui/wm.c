@@ -33,6 +33,70 @@ static int drag_type = -1; /* 0 = app, 1 = file, -1 = none */
 static int drag_idx = -1;
 static int drag_moved = 0;
 
+/* ---- Ctrl+Tab Window Switcher global state ---- */
+wm_switcher_t g_switcher = {0};
+
+void switcher_step(int dir) {
+    extern volatile unsigned int tick_count;
+
+    /* Rebuild list of visible (non-hidden) windows */
+    int count = 0;
+    window_t *curr = window_list;
+    while (curr && count < SWITCHER_MAX_WINS) {
+        if (curr->state != WM_STATE_HIDDEN)
+            g_switcher.wins[count++] = curr;
+        curr = curr->next;
+    }
+    if (count < 2) {
+        if (count == 1 && g_switcher.wins[0]->state == WM_STATE_MINIMIZED)
+            g_switcher.wins[0]->state = WM_STATE_ACTIVE;
+        g_switcher.active = 0;
+        return;
+    }
+    g_switcher.count = count;
+
+    if (!g_switcher.active) {
+        /* First activation */
+        g_switcher.active    = 1;
+        g_switcher.sel       = (dir > 0) ? 1 : (count - 1);
+        g_switcher.open_tick = tick_count;
+        g_switcher.anim_inited = 0;
+    } else {
+        /* Step selection */
+        if (dir > 0) {
+            g_switcher.sel = (g_switcher.sel + 1) % g_switcher.count;
+        } else {
+            g_switcher.sel = (g_switcher.sel + g_switcher.count - 1) % g_switcher.count;
+        }
+    }
+    g_switcher.tab_tick = tick_count;
+}
+
+void switcher_open_or_advance(void) {
+    int dir = kb_is_pressed(KB_SHIFT) ? -1 : 1;
+    switcher_step(dir);
+}
+
+void switcher_commit(void) {
+    if (!g_switcher.active) return;
+    window_t *chosen = g_switcher.wins[g_switcher.sel];
+    if (chosen) {
+        wm_bring_to_front(chosen);
+        if (chosen->state == WM_STATE_MINIMIZED)
+            chosen->state = WM_STATE_ACTIVE;
+        focused_window = chosen;
+    }
+    g_switcher.active = 0;
+    g_switcher.count  = 0;
+    g_switcher.anim_inited = 0;
+}
+
+void switcher_cancel(void) {
+    g_switcher.active = 0;
+    g_switcher.count  = 0;
+    g_switcher.anim_inited = 0;
+}
+
 void wm_init(void) {
     fb_set_double_buffering(1);
 }
@@ -226,20 +290,31 @@ int wm_dispatch_key(char c) {
         }
     }
 
-    if (c == '\t' && (kb_is_pressed(KB_ALT) || kb_is_pressed(KB_CTRL))) { /* Alt+Tab / Ctrl+Tab: Cycle windows */
-        if (window_list && window_list->next) {
-            window_t *last = window_list;
-            while (last->next) last = last->next;
-            window_t *old_head = window_list;
-            window_list = window_list->next;
-            old_head->next = NULL;
-            last->next = old_head;
-            focused_window = window_list;
-            
-            if (focused_window->state == WM_STATE_MINIMIZED) {
-                focused_window->state = WM_STATE_ACTIVE;
-            }
+    /* 2. Switcher Keyboard Navigation */
+    if (g_switcher.active) {
+        if (c == '\t') {
+            switcher_step(kb_is_pressed(KB_SHIFT) ? -1 : 1);
+            return 1;
         }
+        if (c == 0x13) { /* Left arrow */
+            switcher_step(-1);
+            return 1;
+        }
+        if (c == 0x14) { /* Right arrow */
+            switcher_step(1);
+            return 1;
+        }
+        if (c == 0x1B) { /* Escape: cancel */
+            switcher_cancel();
+            return 1;
+        }
+        if (c == '\n' || c == 0x0D) { /* Enter: commit immediately */
+            switcher_commit();
+            return 1;
+        }
+    } else if (c == '\t' && (kb_is_pressed(KB_ALT) || kb_is_pressed(KB_CTRL))) {
+        /* Ctrl+Tab / Alt+Tab: open the animated window switcher overlay */
+        switcher_open_or_advance();
         return 1;
     }
 
@@ -295,6 +370,11 @@ void wm_update(void) {
             desk_loaded = 0;
             desk_refresh = 0;
         }
+    }
+
+    /* Ctrl+Tab switcher: auto-commit when Ctrl is released */
+    if (g_switcher.active && !kb_is_pressed(KB_CTRL) && !kb_is_pressed(KB_ALT)) {
+        switcher_commit();
     }
     
     int mb = mouse_buttons;

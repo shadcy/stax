@@ -16,6 +16,10 @@
 #define BORDER_WIDTH    2
 #define TASKBAR_HEIGHT  28
 
+#ifndef DOOM_WIN_MARKER
+#define DOOM_WIN_MARKER ((void *)0xD00D0001u)
+#endif
+
 #define RGB565_C(r, g, b) (uint16_t)((((b) & 0xF8u) << 8) | (((g) & 0xFCu) << 3) | ((r) >> 3))
 
 extern int bg_color_idx;
@@ -78,5 +82,33 @@ void wm_bring_to_front(window_t *win);
 void desk_load_files(void);
 void desk_save_positions(void);
 void draw_window(window_t *win);
+
+/* ---- Ctrl+Tab Window Switcher ---- */
+/* Shared between wm.c (input) and wm_render.c (drawing) */
+
+#define SWITCHER_MAX_WINS 16  /* max windows shown in the switcher */
+
+typedef struct {
+    int     active;          /* 1 = overlay is visible */
+    int     sel;             /* index into wins[] of currently selected window */
+    int     count;           /* number of windows in wins[] */
+    window_t *wins[SWITCHER_MAX_WINS];
+    unsigned open_tick;      /* tick_count when overlay opened (for entry anim) */
+    unsigned tab_tick;       /* tick_count of last Tab press (for selection anim) */
+    int      anim_x_fp;      /* fixed-point animated x coordinate for smooth sliding box */
+    int      anim_inited;    /* 1 if animated x is initialized */
+} wm_switcher_t;
+
+extern wm_switcher_t g_switcher;
+
+/* Open the switcher and step in given direction (+1 next, -1 prev) */
+void switcher_step(int dir);
+void switcher_open_or_advance(void);
+/* Commit the current selection and close the overlay */
+void switcher_commit(void);
+/* Cancel switcher without changing window */
+void switcher_cancel(void);
+/* Draw the switcher overlay — called at end of wm_render() */
+void switcher_draw(void);
 
 #endif

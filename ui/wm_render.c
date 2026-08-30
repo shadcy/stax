@@ -195,10 +195,6 @@ void wm_load_background(const char *filename) {
 
 #include "icons.h"
 
-static void draw_app_icon_gfx(int ix, int iy, int id) {
-    icon_draw_app(ix, iy, (app_icon_id_t)id);
-}
-
 void wm_render(void) {
     /* ---- 1. Desktop background (Clean Minimalist Surface) ---- */
     if (desktop_bg_image) {
@@ -562,7 +558,149 @@ void wm_render(void) {
         }
     }
     
-    /* 5. Swap */
+    /* 5. Window Switcher Overlay (Ctrl+Tab) — drawn on top of everything */
+    switcher_draw();
+
+    /* 6. Swap */
     fb_swap();
 }
+
+/* ============================================================================
+ * Ctrl+Tab Window Switcher Overlay (Clean & Minimalist STAX Native Style)
+/* ============================================================================
+ * Ctrl+Tab Window Switcher Overlay (Clean, Rectangular, Minimalist Tabs)
+ * ============================================================================ */
+
+static uint16_t sw_dim(uint16_t c, int alpha) {
+    int r = ((c >> 11) & 0x1f) * alpha / 255;
+    int g = ((c >>  5) & 0x3f) * alpha / 255;
+    int b = ( c        & 0x1f) * alpha / 255;
+    return (uint16_t)((r << 11) | (g << 5) | b);
+}
+
+static void sw_dim_rect(int x, int y, int w, int h, int alpha) {
+    uint16_t *fb = fb_get_buffer();
+    if (!fb) return;
+    int fw2 = (int)fb_width;
+    int fh2 = (int)fb_height;
+    for (int row = y; row < y + h; row++) {
+        if (row < 0 || row >= fh2) continue;
+        for (int col = x; col < x + w; col++) {
+            if (col < 0 || col >= fw2) continue;
+            fb[row * fw2 + col] = sw_dim(fb[row * fw2 + col], alpha);
+        }
+    }
+}
+
+void switcher_draw(void) {
+    if (!g_switcher.active || g_switcher.count < 1) return;
+
+    uint16_t *fb = fb_get_buffer();
+    if (!fb) return;
+    int fw2 = (int)fb_width;
+    int fh2 = (int)fb_height;
+
+    /* ---- 1. Subtle Screen Dim ---- */
+    sw_dim_rect(0, 0, fw2, fh2, 130);
+
+    /* ---- 2. Modal Geometry (Rectangular Tabs) ---- */
+    int tab_w   = 136;
+    int tab_h   = 34;
+    int tab_gap = 6;
+    int pad_x   = 10;
+    int pad_y   = 10;
+    int count   = g_switcher.count;
+
+    int panel_w = pad_x * 2 + count * tab_w + (count - 1) * tab_gap;
+    int panel_h = pad_y * 2 + tab_h;
+    if (panel_w > fw2 - 32) {
+        /* Scale tab width down if many windows */
+        tab_w = (fw2 - 32 - pad_x * 2 - (count - 1) * tab_gap) / count;
+        if (tab_w < 70) tab_w = 70;
+        panel_w = pad_x * 2 + count * tab_w + (count - 1) * tab_gap;
+    }
+
+    int panel_x = (fw2 - panel_w) / 2;
+    int panel_y = (fh2 - panel_h) / 2;
+
+    /* ---- 3. Modal Shell (Rectangular Dark Surface) ---- */
+    /* Drop shadow */
+    fb_fillrect(panel_x + 3, panel_y + 3, panel_w, panel_h, rgb565(16, 18, 24));
+
+    /* Panel background */
+    fb_fillrect(panel_x, panel_y, panel_w, panel_h, rgb565(36, 38, 48));
+
+    /* Borders */
+    uint16_t accent = theme_get_primary_accent();
+    fb_drawline(panel_x,               panel_y,               panel_x + panel_w - 1, panel_y,               accent);
+    fb_drawline(panel_x,               panel_y + panel_h - 1, panel_x + panel_w - 1, panel_y + panel_h - 1, rgb565(20, 22, 28));
+    fb_drawline(panel_x,               panel_y,               panel_x,               panel_y + panel_h - 1, rgb565(60, 64, 76));
+    fb_drawline(panel_x + panel_w - 1, panel_y,               panel_x + panel_w - 1, panel_y + panel_h - 1, rgb565(20, 22, 28));
+
+    /* ---- 4. Smooth Sliding Selection Tab ---- */
+    int cx0 = panel_x + pad_x;
+    int cy0 = panel_y + pad_y;
+
+    int target_x = cx0 + g_switcher.sel * (tab_w + tab_gap);
+    int target_x_fp = target_x * 256;
+
+    if (!g_switcher.anim_inited) {
+        g_switcher.anim_x_fp = target_x_fp;
+        g_switcher.anim_inited = 1;
+    } else {
+        int diff = target_x_fp - g_switcher.anim_x_fp;
+        g_switcher.anim_x_fp += (diff * 45) / 100;
+    }
+
+    int anim_sel_x = g_switcher.anim_x_fp / 256;
+
+    /* Active Highlight Tab */
+    fb_fillrect(anim_sel_x, cy0, tab_w, tab_h, rgb565(54, 58, 74));
+    fb_fillrect(anim_sel_x, cy0 + tab_h - 2, tab_w, 2, accent);
+    fb_drawline(anim_sel_x, cy0, anim_sel_x + tab_w - 1, cy0, rgb565(75, 80, 100));
+
+    /* ---- 5. Render Clean Window Tabs ---- */
+    for (int i = 0; i < count; i++) {
+        window_t *win = g_switcher.wins[i];
+        int cx = cx0 + i * (tab_w + tab_gap);
+        int cy = cy0;
+        int is_sel = (i == g_switcher.sel);
+
+        /* Unselected Tab Background */
+        if (!is_sel) {
+            fb_fillrect(cx, cy, tab_w, tab_h, rgb565(44, 46, 56));
+            fb_drawline(cx, cy, cx + tab_w - 1, cy, rgb565(56, 59, 70));
+            fb_drawline(cx, cy + tab_h - 1, cx + tab_w - 1, cy + tab_h - 1, rgb565(28, 30, 38));
+        }
+
+        /* Format Window Title */
+        char title_buf[24];
+        int max_chars = (tab_w - 16) / 8;
+        if (max_chars > 20) max_chars = 20;
+        if (max_chars < 4) max_chars = 4;
+
+        int ti = 0;
+        while (ti < max_chars && win->title[ti]) {
+            title_buf[ti] = win->title[ti];
+            ti++;
+        }
+        title_buf[ti] = '\0';
+
+        /* If minimized, append subtle marker if space permits */
+        if (win->state == WM_STATE_MINIMIZED && ti + 5 < (int)sizeof(title_buf) && ti + 5 <= max_chars) {
+            const char *min_s = " (min)";
+            for (int k = 0; min_s[k]; k++) title_buf[ti++] = min_s[k];
+            title_buf[ti] = '\0';
+        }
+
+        /* Center Text inside Tab */
+        int tw = font_get_string_width(title_buf, FONT_STYLE_REGULAR);
+        int tx = cx + (tab_w - tw) / 2;
+        int ty = cy + (tab_h - 14) / 2;
+
+        uint16_t text_col = is_sel ? COLOR_WHITE : (win->state == WM_STATE_MINIMIZED ? rgb565(150, 155, 170) : rgb565(200, 205, 220));
+        font_draw_text(tx, ty, title_buf, text_col, FONT_STYLE_REGULAR);
+    }
+}
+
 
