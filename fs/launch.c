@@ -1,16 +1,16 @@
 /**
- * @file    stapp.c
+ * @file    launch.c
  * @author  shadcy
- * @brief   STAX Application Package (.stapp) Loader
+ * @brief   STAX Application Package (.launch) Loader
  *
- * Implements stapp_open, stapp_get_manifest, stapp_extract_to_buf,
- * and stapp_exec for launching .stapp packages from the FAT filesystem.
+ * Implements launch_open, launch_get_manifest, launch_extract_to_buf,
+ * and launch_exec for launching .launch packages from the FAT filesystem.
  *
  * @license GPL-3.0-or-later
  * Copyright (c) 2026 Shreyash Wanjari (Shadcy)
  */
 
-#include "stapp.h"
+#include "launch.h"
 #include "elf.h"
 #include "heap.h"
 #include "string.h"
@@ -21,16 +21,16 @@
  * Internal helpers
  * ============================================================================ */
 
-static int stapp_str_eq(const char *a, const char *b) {
+static int launch_str_eq(const char *a, const char *b) {
     while (*a && *b && *a == *b) { a++; b++; }
     return (*a == '\0' && *b == '\0');
 }
 
-static size_t stapp_strlen(const char *s) {
+static size_t launch_strlen(const char *s) {
     size_t n = 0; while (s[n]) n++; return n;
 }
 
-static void stapp_strncpy(char *dst, const char *src, size_t n) {
+static void launch_strncpy(char *dst, const char *src, size_t n) {
     size_t i;
     for (i = 0; i < n - 1 && src[i]; i++) dst[i] = src[i];
     dst[i] = '\0';
@@ -38,7 +38,7 @@ static void stapp_strncpy(char *dst, const char *src, size_t n) {
 
 /* Parse "key=value\n" lines from a manifest buffer into kv table */
 static int parse_manifest(const char *buf, uint32_t size,
-                           stapp_kv_t *kv, int max_kv)
+                          launch_kv_t *kv, int max_kv)
 {
     int count = 0;
     const char *p = buf;
@@ -57,7 +57,7 @@ static int parse_manifest(const char *buf, uint32_t size,
 
         /* Key */
         size_t klen = (size_t)(eq - p);
-        if (klen == 0 || klen >= STAPP_KEY_LEN) { p = eq + 1; continue; }
+        if (klen == 0 || klen >= LAUNCH_KEY_LEN) { p = eq + 1; continue; }
         size_t i;
         for (i = 0; i < klen; i++) kv[count].key[i] = p[i];
         kv[count].key[i] = '\0';
@@ -67,7 +67,7 @@ static int parse_manifest(const char *buf, uint32_t size,
         const char *ve = vs;
         while (ve < end && *ve != '\n' && *ve != '\r' && *ve != '\0') ve++;
         size_t vlen = (size_t)(ve - vs);
-        if (vlen >= STAPP_VAL_LEN) vlen = STAPP_VAL_LEN - 1;
+        if (vlen >= LAUNCH_VAL_LEN) vlen = LAUNCH_VAL_LEN - 1;
         for (i = 0; i < vlen; i++) kv[count].val[i] = vs[i];
         kv[count].val[i] = '\0';
 
@@ -79,54 +79,54 @@ static int parse_manifest(const char *buf, uint32_t size,
 }
 
 /* ============================================================================
- * stapp_open
+ * launch_open
  * ============================================================================ */
-int stapp_open(const char *path, stapp_t *app)
+int launch_open(const char *path, launch_t *app)
 {
     FIL fil;
     UINT br;
     FRESULT fr;
 
     if (!path || !app) return -1;
-    memset(app, 0, sizeof(stapp_t));
+    memset(app, 0, sizeof(launch_t));
 
     fr = f_open(&fil, path, FA_READ);
     if (fr != FR_OK) {
-        kprintf("[STAPP] Cannot open '%s' (err %d)\n", path, (int)fr);
+        kprintf("[LAUNCH] Cannot open '%s' (err %d)\n", path, (int)fr);
         return -1;
     }
 
     /* Read archive header */
-    fr = f_read(&fil, &app->hdr, sizeof(stapp_header_t), &br);
-    if (fr != FR_OK || br != sizeof(stapp_header_t)) { f_close(&fil); return -2; }
+    fr = f_read(&fil, &app->hdr, sizeof(launch_header_t), &br);
+    if (fr != FR_OK || br != sizeof(launch_header_t)) { f_close(&fil); return -2; }
 
-    if (app->hdr.magic != STAPP_MAGIC) {
-        kprintf("[STAPP] Bad magic in '%s' (got 0x%x)\n", path, app->hdr.magic);
+    if (app->hdr.magic != LAUNCH_MAGIC) {
+        kprintf("[LAUNCH] Bad magic in '%s' (got 0x%x)\n", path, app->hdr.magic);
         f_close(&fil);
         return -3;
     }
-    if (app->hdr.num_entries > STAPP_ENTRIES_MAX) {
-        kprintf("[STAPP] Too many entries (%u)\n", app->hdr.num_entries);
+    if (app->hdr.num_entries > LAUNCH_ENTRIES_MAX) {
+        kprintf("[LAUNCH] Too many entries (%u)\n", app->hdr.num_entries);
         f_close(&fil);
         return -4;
     }
 
     /* Read entry table */
     uint32_t n = app->hdr.num_entries;
-    fr = f_read(&fil, app->entries, sizeof(stapp_entry_t) * n, &br);
-    if (fr != FR_OK || br != sizeof(stapp_entry_t) * n) { f_close(&fil); return -5; }
+    fr = f_read(&fil, app->entries, sizeof(launch_entry_t) * n, &br);
+    if (fr != FR_OK || br != sizeof(launch_entry_t) * n) { f_close(&fil); return -5; }
 
     f_close(&fil);
 
     /* Save path */
-    stapp_strncpy(app->path, path, sizeof(app->path));
+    launch_strncpy(app->path, path, sizeof(app->path));
 
     /* Extract and parse manifest */
     uint32_t msize = 0;
-    void *mbuf = stapp_extract_to_buf(path, STAPP_MANIFEST, &msize);
+    void *mbuf = launch_extract_to_buf(path, LAUNCH_MANIFEST, &msize);
     if (mbuf && msize > 0) {
         app->manifest_count = parse_manifest((const char *)mbuf, msize,
-                                             app->manifest, STAPP_MANIFEST_KEYS);
+                                             app->manifest, LAUNCH_MANIFEST_KEYS);
         kfree(mbuf);
     }
 
@@ -135,14 +135,14 @@ int stapp_open(const char *path, stapp_t *app)
 }
 
 /* ============================================================================
- * stapp_get_manifest
+ * launch_get_manifest
  * ============================================================================ */
-int stapp_get_manifest(const stapp_t *app, const char *key, char *buf, size_t bufsz)
+int launch_get_manifest(const launch_t *app, const char *key, char *buf, size_t bufsz)
 {
     if (!app || !key || !buf || bufsz == 0) return -1;
     for (int i = 0; i < app->manifest_count; i++) {
-        if (stapp_str_eq(app->manifest[i].key, key)) {
-            stapp_strncpy(buf, app->manifest[i].val, bufsz);
+        if (launch_str_eq(app->manifest[i].key, key)) {
+            launch_strncpy(buf, app->manifest[i].val, bufsz);
             return 0;
         }
     }
@@ -151,35 +151,35 @@ int stapp_get_manifest(const stapp_t *app, const char *key, char *buf, size_t bu
 }
 
 /* ============================================================================
- * stapp_extract_to_buf
+ * launch_extract_to_buf
  * ============================================================================ */
-void *stapp_extract_to_buf(const char *stapp_path, const char *name, uint32_t *out_size)
+void *launch_extract_to_buf(const char *launch_path, const char *name, uint32_t *out_size)
 {
     FIL fil;
     UINT br;
     FRESULT fr;
-    stapp_header_t hdr;
-    stapp_entry_t  entries[STAPP_ENTRIES_MAX];
+    launch_header_t hdr;
+    launch_entry_t  entries[LAUNCH_ENTRIES_MAX];
 
-    if (!stapp_path || !name || !out_size) return NULL;
+    if (!launch_path || !name || !out_size) return NULL;
     *out_size = 0;
 
-    fr = f_open(&fil, stapp_path, FA_READ);
+    fr = f_open(&fil, launch_path, FA_READ);
     if (fr != FR_OK) return NULL;
 
     /* Read header */
-    f_read(&fil, &hdr, sizeof(stapp_header_t), &br);
-    if (hdr.magic != STAPP_MAGIC || hdr.num_entries > STAPP_ENTRIES_MAX) {
+    f_read(&fil, &hdr, sizeof(launch_header_t), &br);
+    if (hdr.magic != LAUNCH_MAGIC || hdr.num_entries > LAUNCH_ENTRIES_MAX) {
         f_close(&fil); return NULL;
     }
 
     /* Read entries */
     uint32_t n = hdr.num_entries;
-    f_read(&fil, entries, sizeof(stapp_entry_t) * n, &br);
+    f_read(&fil, entries, sizeof(launch_entry_t) * n, &br);
 
     /* Find the named entry */
     for (uint32_t i = 0; i < n; i++) {
-        if (stapp_str_eq(entries[i].name, name)) {
+        if (launch_str_eq(entries[i].name, name)) {
             uint32_t size = entries[i].size;
             if (size == 0) { f_close(&fil); return NULL; }
 
@@ -202,35 +202,35 @@ void *stapp_extract_to_buf(const char *stapp_path, const char *name, uint32_t *o
 }
 
 /* ============================================================================
- * stapp_exec — extract ELF from archive into temp file, then elf_exec it
+ * launch_exec — extract ELF from archive into temp file, then elf_exec it
  * ============================================================================ */
-int stapp_exec(const char *path)
+int launch_exec(const char *path)
 {
-    stapp_t app;
-    char entry_name[STAPP_NAME_MAX];
-    char data_name[STAPP_NAME_MAX];
+    launch_t app;
+    char entry_name[LAUNCH_NAME_MAX];
+    char data_name[LAUNCH_NAME_MAX];
     char data_fat_path[64];
 
-    kprintf("[STAPP] Loading package: %s\n", path);
+    kprintf("[LAUNCH] Loading package: %s\n", path);
 
-    if (stapp_open(path, &app) != 0) {
-        kprintf("[STAPP] Failed to open package.\n");
+    if (launch_open(path, &app) != 0) {
+        kprintf("[LAUNCH] Failed to open package.\n");
         return -1;
     }
 
     /* Get entry ELF name from manifest */
-    if (stapp_get_manifest(&app, "entry", entry_name, sizeof(entry_name)) != 0) {
-        stapp_strncpy(entry_name, STAPP_DEFAULT_ELF, sizeof(entry_name));
+    if (launch_get_manifest(&app, "entry", entry_name, sizeof(entry_name)) != 0) {
+        launch_strncpy(entry_name, LAUNCH_DEFAULT_ELF, sizeof(entry_name));
     }
 
     /* Get app name for display */
     char app_name[64] = "App";
-    stapp_get_manifest(&app, "name", app_name, sizeof(app_name));
-    kprintf("[STAPP] Launching '%s' ...\n", app_name);
+    launch_get_manifest(&app, "name", app_name, sizeof(app_name));
+    kprintf("[LAUNCH] Launching '%s' ...\n", app_name);
 
     /* Extract data asset to FAT /tmp/ if manifest specifies one */
     data_fat_path[0] = '\0';
-    if (stapp_get_manifest(&app, "data", data_name, sizeof(data_name)) == 0
+    if (launch_get_manifest(&app, "data", data_name, sizeof(data_name)) == 0
         && data_name[0] != '\0')
     {
         /* Extract to /TMP/<basename> */
@@ -239,7 +239,7 @@ int stapp_exec(const char *path)
             if (*p == '/' || *p == '\\') base = p + 1;
         }
         data_fat_path[0] = '/';
-        stapp_strncpy(data_fat_path + 1, base, sizeof(data_fat_path) - 1);
+        launch_strncpy(data_fat_path + 1, base, sizeof(data_fat_path) - 1);
 
         /* Check if already extracted */
         FIL chk;
@@ -247,32 +247,32 @@ int stapp_exec(const char *path)
         if (!needs_extract) f_close(&chk);
 
         if (needs_extract) {
-            kprintf("[STAPP] Extracting data: %s -> %s\n", data_name, data_fat_path);
+            kprintf("[LAUNCH] Extracting data: %s -> %s\n", data_name, data_fat_path);
             uint32_t dsize = 0;
-            void *dbuf = stapp_extract_to_buf(path, data_name, &dsize);
+            void *dbuf = launch_extract_to_buf(path, data_name, &dsize);
             if (dbuf && dsize > 0) {
                 FIL fo; UINT bw;
                 if (f_open(&fo, data_fat_path, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
                     f_write(&fo, dbuf, dsize, &bw);
                     f_close(&fo);
-                    kprintf("[STAPP] Extracted %u bytes to %s\n", dsize, data_fat_path);
+                    kprintf("[LAUNCH] Extracted %u bytes to %s\n", dsize, data_fat_path);
                 } else {
-                    kprintf("[STAPP] Warning: failed to write data to FAT\n");
+                    kprintf("[LAUNCH] Warning: failed to write data to FAT\n");
                     data_fat_path[0] = '\0';
                 }
                 kfree(dbuf);
             }
         } else {
-            kprintf("[STAPP] Data already present: %s\n", data_fat_path);
+            kprintf("[LAUNCH] Data already present: %s\n", data_fat_path);
         }
     }
 
-    /* Extract ELF to /TMP/STAPP.ELF */
-    const char *tmp_elf = "/_STAPP.ELF";
+    /* Extract ELF to /_LAUNCH.ELF */
+    const char *tmp_elf = "/_LAUNCH.ELF";
     uint32_t elfsize = 0;
-    void *elfbuf = stapp_extract_to_buf(path, entry_name, &elfsize);
+    void *elfbuf = launch_extract_to_buf(path, entry_name, &elfsize);
     if (!elfbuf || elfsize == 0) {
-        kprintf("[STAPP] Failed to extract ELF '%s'\n", entry_name);
+        kprintf("[LAUNCH] Failed to extract ELF '%s'\n", entry_name);
         return -1;
     }
 
@@ -280,7 +280,7 @@ int stapp_exec(const char *path)
     FIL fo; UINT bw;
     FRESULT fr = f_open(&fo, tmp_elf, FA_WRITE | FA_CREATE_ALWAYS);
     if (fr != FR_OK) {
-        kprintf("[STAPP] Cannot write temp ELF (err %d)\n", (int)fr);
+        kprintf("[LAUNCH] Cannot write temp ELF (err %d)\n", (int)fr);
         kfree(elfbuf);
         return -1;
     }
@@ -289,7 +289,7 @@ int stapp_exec(const char *path)
     kfree(elfbuf);
 
     if (bw != elfsize) {
-        kprintf("[STAPP] Short write: %u/%u bytes\n", bw, elfsize);
+        kprintf("[LAUNCH] Short write: %u/%u bytes\n", bw, elfsize);
         return -1;
     }
 
@@ -298,7 +298,7 @@ int stapp_exec(const char *path)
     char argv0_buf[64];
     int argc = 0;
     if (data_fat_path[0] != '\0') {
-        stapp_strncpy(argv0_buf, data_fat_path + 1, sizeof(argv0_buf)); /* strip leading / */
+        launch_strncpy(argv0_buf, data_fat_path + 1, sizeof(argv0_buf)); /* strip leading / */
         argv[argc++] = argv0_buf;
     }
     argv[argc] = NULL;
@@ -310,6 +310,6 @@ int stapp_exec(const char *path)
     /* Clean up temp ELF */
     f_unlink(tmp_elf);
 
-    kprintf("[STAPP] '%s' exited (code %d)\n", app_name, rc);
+    kprintf("[LAUNCH] '%s' exited (code %d)\n", app_name, rc);
     return rc;
 }

@@ -648,23 +648,31 @@ desktop_hit_done:
                         int k=0; while(desk_files[i].name[k]) { nw->path[k]=desk_files[i].name[k]; k++; }
                         nw->path[k]='\0';
                     }
-                } else if (nlen>5 &&
+                } else if ((nlen > 7 &&
+                    (desk_files[i].name[nlen-7]=='.' || desk_files[i].name[nlen-7]=='.') &&
+                    (desk_files[i].name[nlen-6]=='L'||desk_files[i].name[nlen-6]=='l') &&
+                    (desk_files[i].name[nlen-5]=='A'||desk_files[i].name[nlen-5]=='a') &&
+                    (desk_files[i].name[nlen-4]=='U'||desk_files[i].name[nlen-4]=='u') &&
+                    (desk_files[i].name[nlen-3]=='N'||desk_files[i].name[nlen-3]=='n') &&
+                    (desk_files[i].name[nlen-2]=='C'||desk_files[i].name[nlen-2]=='c') &&
+                    (desk_files[i].name[nlen-1]=='H'||desk_files[i].name[nlen-1]=='h')) ||
+                    (nlen > 5 &&
                     (desk_files[i].name[nlen-5]=='S'||desk_files[i].name[nlen-5]=='s') &&
                     (desk_files[i].name[nlen-4]=='T'||desk_files[i].name[nlen-4]=='t') &&
                     (desk_files[i].name[nlen-3]=='A'||desk_files[i].name[nlen-3]=='a') &&
                     (desk_files[i].name[nlen-2]=='P'||desk_files[i].name[nlen-2]=='p') &&
-                    (desk_files[i].name[nlen-1]=='P'||desk_files[i].name[nlen-1]=='p')) {
+                    (desk_files[i].name[nlen-1]=='P'||desk_files[i].name[nlen-1]=='p'))) {
 
-                    /* .stapp — launch as application package */
-                    extern int stapp_exec(const char *path);
-                    char stapp_path[64];
-                    stapp_path[0] = '/';
+                    /* .launch / .stapp — launch as application package */
+                    extern int launch_exec(const char *path);
+                    char launch_path[64];
+                    launch_path[0] = '/';
                     int k = 0;
                     while (desk_files[i].name[k] && k < 60) {
-                        stapp_path[k+1] = desk_files[i].name[k]; k++;
+                        launch_path[k+1] = desk_files[i].name[k]; k++;
                     }
-                    stapp_path[k+1] = '\0';
-                    stapp_exec(stapp_path);
+                    launch_path[k+1] = '\0';
+                    launch_exec(launch_path);
                 } else if (nlen>4 &&
                     (desk_files[i].name[nlen-3]=='B'||desk_files[i].name[nlen-3]=='b') &&
                     (desk_files[i].name[nlen-2]=='M'||desk_files[i].name[nlen-2]=='m') &&

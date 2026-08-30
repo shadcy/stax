@@ -26,6 +26,8 @@ extern volatile unsigned int tick_count;
 extern void cmd_browser(int argc, char *argv[]);
 void cmd_widgets(int argc, char *argv[]);
 void cmd_exec(int argc, char *argv[]);
+void cmd_playwav(int argc, char *argv[]);
+void cmd_beep(int argc, char *argv[]);
 void cmd_vfs(int argc, char *argv[]);
 void cmd_dev(int argc, char *argv[]);
 
@@ -48,7 +50,7 @@ static const command_t commands[] = {
     {"mkdir",   "Create dir", cmd_mkdir},
     {"nano",    "Edit text file (ESC to save & quit)", cmd_nano},
     {"exec",    "Load and execute standalone ELF-32 binary", cmd_exec},
-    {"run",     "Run a .stapp application package (e.g. run doom.stapp)", cmd_run},
+    {"run",     "Run a .launch application package (e.g. run doom.launch)", cmd_run},
     {"game",    "Play a game (use --doom, --snake, --slime)", cmd_game},
     {"slime",   "Play Slime Escape (use --debug)", cmd_slime},
     {"craft",   "Play 3D Voxel Engine (Mini-Craft)", cmd_craft},
@@ -66,6 +68,8 @@ static const command_t commands[] = {
     {"ping",    "Send ICMP ECHO_REQUEST to network hosts", cmd_ping},
     {"browser", "Launch Graphical Web Browser", cmd_browser},
     {"widgets", "Launch Retro Internet Widgets & Telemetry Dashboard", cmd_widgets},
+    {"beep",    "Play tone or sound FX (e.g. beep --coin, beep 440 200)", cmd_beep},
+    {"playwav", "Play WAV audio file (e.g. playwav sound.wav)", cmd_playwav},
     {"date",    "Show current date and time (IST Mumbai)", cmd_date},
     {"time",    "Show current date and time (IST Mumbai)", cmd_date},
     {NULL,      NULL,                                NULL}
@@ -77,7 +81,7 @@ void cmd_game(int argc, char *argv[])
         kputs("Usage:\n");
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--doom   ");
-        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Launch DOOM (doom.stapp)\n");
+        gfx_set_color(COLOR_WHITE); kputs("\x1b[0m| Launch DOOM (doom.launch)\n");
 
         gfx_set_color(COLOR_GREEN); kputs("\x1b[32m  game ");
         gfx_set_color(COLOR_MAGENTA); kputs("\x1b[35m--snake  ");
@@ -602,41 +606,43 @@ void command_init(void)
 }
 
 /* ============================================================================
- * cmd_run — launch a .stapp application package
+ * cmd_run — launch a .launch application package
  * ============================================================================ */
 void cmd_run(int argc, char *argv[])
 {
     if (argc < 2) {
-        kputs("Usage: run <app.stapp>\n");
-        kputs("  e.g. run doom.stapp\n");
+        kputs("Usage: run <app.launch>\n");
+        kputs("  e.g. run doom.launch\n");
         return;
     }
-    extern int stapp_exec(const char *path);
+    extern int launch_exec(const char *path);
     /* Try with and without leading slash */
-    int rc = stapp_exec(argv[1]);
+    int rc = launch_exec(argv[1]);
     if (rc < 0) {
         char path2[64];
         path2[0] = '/';
         int i = 0;
         while (argv[1][i] && i < 60) { path2[i+1] = argv[1][i]; i++; }
         path2[i+1] = '\0';
-        rc = stapp_exec(path2);
+        rc = launch_exec(path2);
     }
     if (rc < 0)
         kputs("Error: package not found or failed to launch.\n");
 }
 
 /* ============================================================================
- * cmd_doomgfx — launch DOOM via .stapp package
+ * cmd_doomgfx — launch DOOM via .launch package
  * ============================================================================ */
 void cmd_doomgfx(int argc, char *argv[])
 {
     (void)argc; (void)argv;
-    extern int stapp_exec(const char *path);
+    extern int launch_exec(const char *path);
     kputs("Launching DOOM...\n");
-    if (stapp_exec("/DOOM.STAPP") == 0) return;
-    if (stapp_exec("doom.stapp")  == 0) return;
-    kputs("Error: doom.stapp not found. Run 'make' to build.\n");
+    if (launch_exec("/DOOM.LAUNCH") == 0) return;
+    if (launch_exec("doom.launch")  == 0) return;
+    if (launch_exec("/DOOM.STAPP")  == 0) return;
+    if (launch_exec("doom.stapp")   == 0) return;
+    kputs("Error: doom.launch not found. Run 'make' to build.\n");
 }
 
 void cmd_doom2gfx(int argc, char *argv[]) { (void)argc; (void)argv; }
@@ -1304,5 +1310,74 @@ void cmd_dev(int argc, char *argv[])
     kputs("  /dev/tty0    (crw-rw-rw-) Active Pseudo-Terminal (PTY master/slave)\n");
     kputs("  /dev/tty     (crw-rw-rw-) Controlling TTY alias\n");
     kputs("  /dev/fb0     (crw-rw-rw-) Direct Framebuffer (1024x768 16bpp)\n");
+    kputs("  /dev/dsp     (crw-rw-rw-) Digital Sound Processor (PL041 AACI PCM Playback)\n");
+    kputs("  /dev/audio   (crw-rw-rw-) Audio Output Device (AC'97 Stereo 16-bit)\n");
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_beep — play tone or sound FX
+ * --------------------------------------------------------------------------- */
+#include "audio.h"
+
+void cmd_beep(int argc, char *argv[])
+{
+    if (argc < 2) {
+        audio_play_fx(AUDIO_FX_BEEP);
+        kputs("Usage: beep [freq_hz] [duration_ms]\n");
+        kputs("   or: beep --coin | --laser | --explode | --boot | --click | --error | --popup\n");
+        return;
+    }
+
+    if (strcmp(argv[1], "--coin") == 0) {
+        audio_play_fx(AUDIO_FX_COIN);
+    } else if (strcmp(argv[1], "--laser") == 0) {
+        audio_play_fx(AUDIO_FX_LASER);
+    } else if (strcmp(argv[1], "--explode") == 0) {
+        audio_play_fx(AUDIO_FX_EXPLODE);
+    } else if (strcmp(argv[1], "--boot") == 0) {
+        audio_play_fx(AUDIO_FX_BOOT);
+    } else if (strcmp(argv[1], "--click") == 0) {
+        audio_play_fx(AUDIO_FX_CLICK);
+    } else if (strcmp(argv[1], "--error") == 0) {
+        audio_play_fx(AUDIO_FX_ERROR);
+    } else if (strcmp(argv[1], "--popup") == 0) {
+        audio_play_fx(AUDIO_FX_POPUP);
+    } else {
+        uint32_t freq = 0, dur = 200;
+        const char *p = argv[1];
+        while (*p >= '0' && *p <= '9') { freq = freq * 10 + (*p - '0'); p++; }
+        if (argc >= 3) {
+            dur = 0;
+            p = argv[2];
+            while (*p >= '0' && *p <= '9') { dur = dur * 10 + (*p - '0'); p++; }
+        }
+        if (freq == 0) freq = 440;
+        if (dur == 0) dur = 200;
+        kprintf("Playing tone: %u Hz for %u ms...\n", freq, dur);
+        audio_beep(freq, dur);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * cmd_playwav — play WAV audio file from filesystem
+ * --------------------------------------------------------------------------- */
+void cmd_playwav(int argc, char *argv[])
+{
+    if (argc < 2) {
+        kputs("Usage: playwav <filename.wav>\n");
+        return;
+    }
+
+    /* Try path directly or with leading slash */
+    if (audio_play_wav(argv[1]) == 0) return;
+
+    char path[64];
+    path[0] = '/';
+    int i = 0;
+    while (argv[1][i] && i < 60) { path[i+1] = argv[1][i]; i++; }
+    path[i+1] = '\0';
+    if (audio_play_wav(path) != 0) {
+        kputs("Error: Failed to play WAV file.\n");
+    }
 }
 

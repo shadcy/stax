@@ -43,4 +43,6 @@ Thumbs.db
 keys.*
 build/
 *.stax
+*.launch
 tools/stax-sign/stax-sign
+tools/launch-pack/launch-pack

@@ -172,6 +172,12 @@ STAX is transitioning from an RTOS-style monolithic kernel into a full-fledged *
 
 ---
 
+## Contributing
+
+Contributions are welcome! Please check out the [Contributing Guidelines](CONTRIBUTING.md) to get started with building, developing, and submitting pull requests to STAX.
+
+---
+
 ## License
 
 This project is licensed under the **GNU General Public License v3.0 (GPLv3)**. See the [LICENSE](LICENSE) file for details.
