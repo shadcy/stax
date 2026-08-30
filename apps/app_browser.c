@@ -232,22 +232,16 @@ static void browser_close_pcb(int abort) {
     browser_pcb = NULL;
 }
 
+#include "font.h"
+
 static void draw_char_8x16(int x, int y, char c, uint16_t color, uint16_t bg, uint16_t *vram, int stride) {
-    const unsigned char *g;
-    if (x < clip_x0 || y < clip_y0 || x + 8 > clip_x1 || y + 16 > clip_y1) return;
-    g = font8x16_data[(unsigned char)c];
-    for (int r = 0; r < 16; r++) {
-        unsigned char bits = g[r];
-        for (int b = 0; b < 8; b++)
-            vram[(y + r) * stride + (x + b)] = (bits & (0x80u >> b)) ? color : bg;
-    }
+    (void)bg; (void)vram; (void)stride;
+    font_draw_char_clipped(x, y, c, color, FONT_STYLE_REGULAR, clip_x0, clip_y0, clip_x1, clip_y1);
 }
 
 static void draw_string(int x, int y, const char *str, uint16_t color, uint16_t bg, uint16_t *vram, int stride) {
-    while (*str) {
-        draw_char_8x16(x, y, *str++, color, bg, vram, stride);
-        x += 8;
-    }
+    (void)bg; (void)vram; (void)stride;
+    font_draw_text_clipped(x, y, str, color, FONT_STYLE_REGULAR, clip_x0, clip_y0, clip_x1, clip_y1);
 }
 
 static int parse_url(void) {

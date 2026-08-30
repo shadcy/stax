@@ -193,102 +193,10 @@ void wm_load_background(const char *filename) {
     desktop_bg_image = bmp_load(filename, &w, &h);
 }
 
+#include "icons.h"
+
 static void draw_app_icon_gfx(int ix, int iy, int id) {
-    if (id == 0) {
-        /* Web Browser: Modern macOS Safari Blue Badge */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(32, 130, 235));
-        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(90, 175, 255));
-        /* Globe rings */
-        fb_drawline(ix + 18, iy + 26, ix + 46, iy + 26, COLOR_WHITE);
-        fb_drawline(ix + 32, iy + 12, ix + 32, iy + 40, COLOR_WHITE);
-        fb_drawline(ix + 22, iy + 16, ix + 42, iy + 36, rgb565(190, 225, 255));
-        fb_fillrect(ix + 30, iy + 24, 4, 4, rgb565(240, 70, 70));
-    } else if (id == 1) {
-        /* Terminal: Ubuntu Yaru Dark Slate Console with Green Prompt */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(40, 42, 50));
-        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(75, 80, 95));
-        /* > _ */
-        fb_putpixel(ix + 18, iy + 20, rgb565(50, 235, 100));
-        fb_putpixel(ix + 19, iy + 21, rgb565(50, 235, 100));
-        fb_putpixel(ix + 18, iy + 22, rgb565(50, 235, 100));
-        fb_fillrect(ix + 23, iy + 22, 6, 2, rgb565(50, 235, 100));
-        fb_fillrect(ix + 18, iy + 28, 20, 2, rgb565(140, 145, 160));
-        fb_fillrect(ix + 18, iy + 34, 12, 2, rgb565(140, 145, 160));
-    } else if (id == 2) {
-        /* File Manager: Clean Theme-Matched Tall Ubuntu Folder (36x40px) */
-        uint16_t f_main = (bg_color_idx == 0) ? rgb565(38, 132, 226) :
-                          (bg_color_idx == 1) ? rgb565(26, 150, 132) :
-                          (bg_color_idx == 2) ? rgb565(88, 92, 104) :
-                          (bg_color_idx == 3) ? rgb565(210, 68, 50) : rgb565(235, 130, 30);
-        uint16_t f_tab  = (bg_color_idx == 0) ? rgb565(22, 92, 170) :
-                          (bg_color_idx == 1) ? rgb565(16, 102, 90) :
-                          (bg_color_idx == 2) ? rgb565(58, 60, 70) :
-                          (bg_color_idx == 3) ? rgb565(145, 40, 30) : rgb565(175, 85, 15);
-        uint16_t f_hi   = (bg_color_idx == 0) ? rgb565(120, 188, 255) :
-                          (bg_color_idx == 1) ? rgb565(110, 220, 200) :
-                          (bg_color_idx == 2) ? rgb565(160, 165, 180) :
-                          (bg_color_idx == 3) ? rgb565(255, 140, 120) : rgb565(255, 195, 110);
-        fb_fillrect(ix + 14, iy + 6, 16, 4, f_tab);
-        fb_fillrect(ix + 14, iy + 6, 16, 1, f_hi);
-        fb_fillrect(ix + 14, iy + 9, 36, 37, f_tab);
-        fb_fillrect(ix + 18, iy + 11, 28, 5, rgb565(250, 252, 255));
-        fb_fillrect(ix + 14, iy + 15, 36, 31, f_main);
-        fb_fillrect(ix + 14, iy + 15, 36, 1, f_hi);
-        fb_fillrect(ix + 24, iy + 27, 16, 2, f_hi);
-    } else if (id == 3) {
-        /* Text Editor: Clean Off-White Document Card with Ubuntu Orange Header */
-        fb_fillrect(ix + 12, iy + 4, 40, 44, rgb565(248, 249, 252));
-        fb_fillrect(ix + 12, iy + 4, 40, 8, rgb565(235, 95, 30));
-        fb_drawline(ix + 12, iy + 4, ix + 51, iy + 4, rgb565(255, 140, 80));
-        fb_drawline(ix + 18, iy + 20, ix + 42, iy + 20, rgb565(165, 175, 195));
-        fb_drawline(ix + 18, iy + 26, ix + 42, iy + 26, rgb565(165, 175, 195));
-        fb_drawline(ix + 18, iy + 32, ix + 34, iy + 32, rgb565(165, 175, 195));
-        /* Pencil tip */
-        fb_fillrect(ix + 36, iy + 34, 6, 8, rgb565(235, 95, 30));
-    } else if (id == 4) {
-        /* Calculator: Modern Charcoal Keypad with Orange Accent */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(42, 44, 52));
-        fb_fillrect(ix + 14, iy + 8, 36, 10, rgb565(230, 235, 242));
-        fb_fillrect(ix + 34, iy + 10, 12, 2, rgb565(30, 35, 45));
-        for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 3; c++) {
-                fb_fillrect(ix + 14 + c * 8, iy + 22 + r * 7, 6, 5, rgb565(85, 90, 105));
-            }
-        }
-        fb_fillrect(ix + 39, iy + 22, 7, 19, rgb565(235, 95, 30));
-    } else if (id == 5) {
-        /* System Info: Cobalt Silicon Chip */
-        fb_fillrect(ix + 12, iy + 6, 40, 40, rgb565(28, 80, 170));
-        fb_drawline(ix + 12, iy + 6, ix + 51, iy + 6, rgb565(80, 150, 255));
-        fb_fillrect(ix + 22, iy + 16, 20, 20, rgb565(15, 48, 110));
-        fb_drawline(ix + 26, iy + 26, ix + 37, iy + 26, COLOR_WHITE);
-        fb_drawline(ix + 32, iy + 20, ix + 32, iy + 31, COLOR_WHITE);
-    } else if (id == 6) {
-        /* Task Manager: Clean Pulse Waveform */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(34, 36, 44));
-        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(70, 75, 90));
-        fb_drawline(ix + 14, iy + 26, ix + 22, iy + 26, rgb565(50, 235, 100));
-        fb_drawline(ix + 22, iy + 26, ix + 26, iy + 14, rgb565(50, 235, 100));
-        fb_drawline(ix + 26, iy + 14, ix + 30, iy + 38, rgb565(50, 235, 100));
-        fb_drawline(ix + 30, iy + 38, ix + 34, iy + 22, rgb565(50, 235, 100));
-        fb_drawline(ix + 34, iy + 22, ix + 38, iy + 26, rgb565(50, 235, 100));
-        fb_drawline(ix + 38, iy + 26, ix + 50, iy + 26, rgb565(50, 235, 100));
-    } else if (id == 7) {
-        /* DOOM: Aubergine Gamepad Badge */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(140, 25, 35));
-        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(200, 60, 70));
-        fb_fillrect(ix + 18, iy + 24, 12, 4, COLOR_WHITE);
-        fb_fillrect(ix + 22, iy + 20, 4, 12, COLOR_WHITE);
-        fb_fillrect(ix + 38, iy + 22, 6, 6, rgb565(235, 95, 30));
-    } else if (id == 8) {
-        /* Settings: Minimalist Precision Dual Gears */
-        fb_fillrect(ix + 10, iy + 4, 44, 44, rgb565(60, 65, 75));
-        fb_drawline(ix + 10, iy + 4, ix + 53, iy + 4, rgb565(100, 105, 120));
-        fb_fillrect(ix + 28, iy + 14, 8, 24, rgb565(210, 215, 225));
-        fb_fillrect(ix + 20, iy + 22, 24, 8, rgb565(210, 215, 225));
-        fb_fillrect(ix + 24, iy + 18, 16, 16, rgb565(170, 175, 185));
-        fb_fillrect(ix + 28, iy + 22, 8, 8, rgb565(40, 44, 52));
-    }
+    icon_draw_app(ix, iy, (app_icon_id_t)id);
 }
 
 void wm_render(void) {
@@ -306,81 +214,14 @@ void wm_render(void) {
     /* ---- 2. Filesystem icons (from SD card) ---- */
     if (!desk_loaded) desk_load_files();
 
-    /* Theme-matched folder palette (macOS / Ubuntu Yaru Style) */
-    uint16_t f_main = (bg_color_idx == 0) ? rgb565(38, 132, 226) :
-                      (bg_color_idx == 1) ? rgb565(26, 150, 132) :
-                      (bg_color_idx == 2) ? rgb565(88, 92, 104) :
-                      (bg_color_idx == 3) ? rgb565(210, 68, 50) : rgb565(235, 130, 30);
-    uint16_t f_tab  = (bg_color_idx == 0) ? rgb565(22, 92, 170) :
-                      (bg_color_idx == 1) ? rgb565(16, 102, 90) :
-                      (bg_color_idx == 2) ? rgb565(58, 60, 70) :
-                      (bg_color_idx == 3) ? rgb565(145, 40, 30) : rgb565(175, 85, 15);
-    uint16_t f_hi   = (bg_color_idx == 0) ? rgb565(120, 188, 255) :
-                      (bg_color_idx == 1) ? rgb565(110, 220, 200) :
-                      (bg_color_idx == 2) ? rgb565(160, 165, 180) :
-                      (bg_color_idx == 3) ? rgb565(255, 140, 120) : rgb565(255, 195, 110);
-    uint16_t f_shadow = (bg_color_idx == 0) ? rgb565(15, 60, 125) :
-                        (bg_color_idx == 1) ? rgb565(10, 70, 60) :
-                        (bg_color_idx == 2) ? rgb565(35, 38, 45) :
-                        (bg_color_idx == 3) ? rgb565(110, 25, 20) : rgb565(125, 60, 10);
-
     for (int i = 0; i < desk_count; i++) {
         if (!desk_files[i].valid) continue;
         int ix = desk_files[i].x;
         int iy = desk_files[i].y;
         if (iy + DESK_ICON_H > (int)fb_height) continue;
 
-        if (desk_files[i].is_dir) {
-            /* Clean Ubuntu Tall Folder (Good Height, Low Width: 36x40px) */
-            /* Top-left tab */
-            fb_fillrect(ix + 14, iy + 8, 16, 4, f_tab);
-            fb_fillrect(ix + 14, iy + 8, 16, 1, f_hi);
-            /* Back flap */
-            fb_fillrect(ix + 14, iy + 11, 36, 37, f_tab);
-            /* Clean white interior paper peek */
-            fb_fillrect(ix + 18, iy + 13, 28, 5, rgb565(250, 252, 255));
-            /* Front pocket */
-            fb_fillrect(ix + 14, iy + 17, 36, 31, f_main);
-            fb_fillrect(ix + 14, iy + 17, 36, 1, f_hi);
-            /* Front accent groove */
-            fb_fillrect(ix + 24, iy + 29, 16, 2, f_hi);
-            /* Drop shadow */
-            fb_drawline(ix + 14, iy + 48, ix + 49, iy + 48, f_shadow);
-            fb_drawline(ix + 49, iy + 17, ix + 49, iy + 48, f_shadow);
-        } else {
-            int nlen=0; while(desk_files[i].name[nlen]) nlen++;
-            int is_b = nlen>4 &&
-                (desk_files[i].name[nlen-3]=='B'||desk_files[i].name[nlen-3]=='b'||
-                 desk_files[i].name[nlen-3]=='W'||desk_files[i].name[nlen-3]=='w'||
-                 desk_files[i].name[nlen-3]=='A'||desk_files[i].name[nlen-3]=='a');
-            
-            if (is_b) {
-                /* Modern Minimalist Dark Slate Executable Card */
-                fb_fillrect(ix + 15, iy + 10, 34, 38, rgb565(42, 44, 52));
-                fb_drawline(ix + 15, iy + 10, ix + 48, iy + 10, rgb565(75, 80, 95));
-                fb_drawline(ix + 15, iy + 10, ix + 15, iy + 47, rgb565(75, 80, 95));
-                fb_drawline(ix + 15, iy + 47, ix + 48, iy + 47, rgb565(25, 27, 32));
-                fb_drawline(ix + 48, iy + 10, ix + 48, iy + 47, rgb565(25, 27, 32));
-                /* > _ prompt in Ubuntu orange */
-                fb_putpixel(ix + 24, iy + 26, rgb565(235, 95, 30));
-                fb_putpixel(ix + 25, iy + 27, rgb565(235, 95, 30));
-                fb_putpixel(ix + 24, iy + 28, rgb565(235, 95, 30));
-                fb_fillrect(ix + 29, iy + 28, 6, 2, rgb565(235, 95, 30));
-            } else {
-                /* Modern Minimalist Apple / Ubuntu Clean Off-White Document */
-                fb_fillrect(ix + 15, iy + 10, 34, 38, rgb565(248, 249, 252));
-                fb_drawline(ix + 15, iy + 10, ix + 48, iy + 10, rgb565(190, 195, 205));
-                fb_drawline(ix + 15, iy + 10, ix + 15, iy + 47, rgb565(190, 195, 205));
-                fb_drawline(ix + 15, iy + 47, ix + 48, iy + 47, rgb565(190, 195, 205));
-                fb_drawline(ix + 48, iy + 10, ix + 48, iy + 47, rgb565(190, 195, 205));
-                /* Dog-ear corner fold */
-                fb_fillrect(ix + 39, iy + 10, 9, 9, rgb565(218, 222, 232));
-                /* Subtle text lines */
-                for (int l = 0; l < 3; l++) {
-                    fb_fillrect(ix + 20, iy + 24 + l * 6, (l == 2) ? 14 : 22, 2, rgb565(165, 175, 190));
-                }
-            }
-        }
+        icon_draw_desktop_file(ix, iy, desk_files[i].name, desk_files[i].is_dir);
+
         char lbl[12]; int j;
         for (j=0; j<8 && desk_files[i].name[j]; j++) lbl[j]=desk_files[i].name[j];
         lbl[j]='\0';
@@ -410,7 +251,7 @@ void wm_render(void) {
     /* 1. STAX Logo Button */
     int stax_btn_x = 6;
     int stax_btn_w = 32;
-    uint16_t stax_bg = stax_menu_active ? theme_get_primary_accent() : rgb565(40, 44, 56);
+    uint16_t stax_bg = stax_menu_active ? theme_get_primary_accent() : rgb565(38, 42, 54);
     fb_fill_rounded_rect(stax_btn_x, ty + 3, stax_btn_w, 22, 3, stax_bg);
 
     static uint16_t *stax_logo = NULL;
@@ -428,28 +269,19 @@ void wm_render(void) {
             }
         }
     } else {
-        draw_text(stax_btn_x + 8, ty + 6, "S", stax_menu_active ? COLOR_WHITE : COLOR_BLACK);
+        draw_text(stax_btn_x + 8, ty + 6, "S", stax_menu_active ? COLOR_WHITE : COLOR_WHITE);
     }
-    
-    /* Vertical separator between STAX Menu and Apps Menu */
-    fb_drawline(44, ty + 5, 44, ty + 22, rgb565(180, 185, 195));
-    fb_drawline(45, ty + 5, 45, ty + 22, rgb565(245, 245, 250));
 
-    /* 2. Apps Launcher Button */
-    int app_btn_x = 50;
-    int app_btn_w = 72;
+    /* 2. Apps Dropdown Button */
+    int app_btn_x = 44;
+    int app_btn_w = 52;
     uint16_t app_bg = apps_menu_active ? theme_get_primary_accent() : rgb565(38, 42, 54);
     uint16_t app_fg = apps_menu_active ? COLOR_WHITE : rgb565(220, 225, 240);
     fb_fill_rounded_rect(app_btn_x, ty + 3, app_btn_w, 22, 3, app_bg);
+    draw_text(app_btn_x + 10, ty + 6, "Apps", app_fg);
 
-    /* 9-dot grid icon (3x3 dots) */
-    int mx0 = app_btn_x + 8, my0 = ty + 8;
-    for (int dr = 0; dr < 3; dr++) {
-        for (int dc = 0; dc < 3; dc++) {
-            fb_fillrect(mx0 + dc * 3, my0 + dr * 3, 2, 2, app_fg);
-        }
-    }
-    draw_text(app_btn_x + 22, ty + 6, "Apps", app_fg);
+    /* Vertical separator */
+    fb_drawline(102, ty + 5, 102, ty + 22, rgb565(48, 52, 65));
 
     /* Collect only open (non-hidden) windows for navigation tabs */
     window_t *tab_arr[32];
@@ -461,7 +293,7 @@ void wm_render(void) {
     }
 
     /* Open Window Tabs in Navigation Bar */
-    int nav_x = 128;
+    int nav_x = 110;
     int max_nav_x = (int)fb_width - 280;
     int avail_w = max_nav_x - nav_x;
     
@@ -488,37 +320,23 @@ void wm_render(void) {
 
             uint16_t bg = is_active ? theme_get_desktop_bg() : (is_min ? rgb565(32, 34, 44) : rgb565(38, 42, 54));
             uint16_t fg = is_active ? COLOR_WHITE : (is_min ? rgb565(130, 135, 145) : rgb565(200, 210, 230));
-            uint16_t border = is_active ? theme_get_primary_accent() : rgb565(60, 65, 80);
 
             fb_fill_rounded_rect(tx, ty + 3, tab_w, 22, 3, bg);
             if (is_active) {
                 fb_drawline(tx, ty + 3, tx + tab_w - 1, ty + 3, theme_get_primary_accent());
             }
 
-            /* Status dot */
-            uint16_t dot_col = is_active ? theme_get_primary_accent() : (is_min ? rgb565(140, 145, 155) : rgb565(180, 185, 195));
-            fb_fillrect(tx + 5, ty + 12, 4, 4, dot_col);
+            /* Small status indicator dot */
+            uint16_t dot_col = is_active ? theme_get_primary_accent() : (is_min ? rgb565(100, 105, 120) : rgb565(80, 180, 240));
+            fb_fillrect(tx + 6, ty + 12, 4, 4, dot_col);
 
-            /* Truncate title cleanly to prevent any text overflow */
-            int max_chars = (tab_w - 16) / 7;
-            if (max_chars < 1) max_chars = 1;
-            char title_trunc[18];
-            int tlen = (int)strlen(w->title);
-            if (tlen > max_chars && max_chars > 2) {
-                int k = 0;
-                for (; k < max_chars - 2 && k < 15; k++) {
-                    title_trunc[k] = w->title[k];
-                }
-                title_trunc[k++] = '.';
-                title_trunc[k++] = '.';
-                title_trunc[k] = '\0';
-            } else {
-                int k = 0;
-                for (; k < max_chars && w->title[k]; k++) title_trunc[k] = w->title[k];
-                title_trunc[k] = '\0';
+            char title_trunc[16];
+            int ti;
+            for (ti = 0; ti < 12 && w->title[ti]; ti++) {
+                title_trunc[ti] = w->title[ti];
             }
-
-            draw_text(tx + 12, ty + 6, title_trunc, fg);
+            title_trunc[ti] = '\0';
+            draw_text(tx + 14, ty + 6, title_trunc, fg);
         }
 
         /* Overflow pill if more tabs exist */
@@ -625,7 +443,7 @@ void wm_render(void) {
         fb_drawline(sm_x, sm_y + sm_h - 1, sm_x + sm_w - 1, sm_y + sm_h - 1, rgb565(20, 22, 28));
 
         /* Menu Items */
-        draw_text(sm_x + 12, sm_y + 8, "About STAX OS", COLOR_WHITE);
+        draw_text(sm_x + 12, sm_y + 8, "About", COLOR_WHITE);
         fb_drawline(sm_x + 6, sm_y + 30, sm_x + sm_w - 6, sm_y + 30, rgb565(55, 58, 70));
 
         draw_text(sm_x + 12, sm_y + 38, "System Settings", COLOR_WHITE);
@@ -638,72 +456,43 @@ void wm_render(void) {
         draw_text(sm_x + 12, sm_y + 166, "Force Quit...", rgb565(160, 165, 180));
     }
     
-    /* 2. Modern 3x3 Applications Launcher Menu Window (Under Apps button) */
+    /* 2. Applications Dropdown Menu (Under Apps button) */
     if (apps_menu_active) {
-        int app_x = 50;
-        int app_y = TASKBAR_HEIGHT + 2;
-        int app_w = 340;
-        int app_h = 390;
+        int app_x = 44;
+        int app_y = TASKBAR_HEIGHT;
+        int app_w = 185;
+        int app_h = 265;
+        int item_h = 28;
         
         /* Drop shadow */
-        fb_fillrect(app_x + 4, app_y + 4, app_w, app_h, rgb565(20, 22, 28));
+        fb_fillrect(app_x + 3, app_y + 3, app_w, app_h, rgb565(20, 22, 28));
 
-        /* Card background */
-        fb_fillrect(app_x, app_y, app_w, app_h, rgb565(32, 34, 42));
+        /* Menu card */
+        fb_fillrect(app_x, app_y, app_w, app_h, rgb565(36, 38, 46));
         fb_drawline(app_x, app_y, app_x + app_w - 1, app_y, theme_get_primary_accent());
-        fb_drawline(app_x, app_y, app_x, app_y + app_h - 1, rgb565(65, 70, 85));
-        fb_drawline(app_x + app_w - 1, app_y, app_x + app_w - 1, app_y + app_h - 1, rgb565(18, 20, 26));
-        fb_drawline(app_x, app_y + app_h - 1, app_x + app_w - 1, app_y + app_h - 1, rgb565(18, 20, 26));
-        
-        /* Header */
-        draw_text(app_x + 14, app_y + 10, "Applications & Tools", theme_get_primary_accent());
-        draw_text(app_x + app_w - 110, app_y + 10, "STAX OS", rgb565(140, 150, 175));
-        fb_drawline(app_x + 10, app_y + 30, app_x + app_w - 10, app_y + 30, rgb565(50, 54, 66));
+        fb_drawline(app_x, app_y, app_x, app_y + app_h - 1, rgb565(70, 75, 90));
+        fb_drawline(app_x + app_w - 1, app_y, app_x + app_w - 1, app_y + app_h - 1, rgb565(20, 22, 28));
+        fb_drawline(app_x, app_y + app_h - 1, app_x + app_w - 1, app_y + app_h - 1, rgb565(20, 22, 28));
 
-        /* 3 Columns x 3 Rows App Grid */
-        const char *app_names[9] = {
-            "Browser", "Terminal", "Files",
-            "Editor",  "Calc",     "Sys Info",
-            "Tasks",   "DOOM",     "Settings"
+        const char *app_list[9] = {
+            "Web Browser",
+            "Terminal",
+            "File Manager",
+            "Text Editor",
+            "Calculator",
+            "System Info",
+            "Task Manager",
+            "DOOM Game",
+            "Settings"
         };
 
-        for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 3; c++) {
-                int aid = r * 3 + c;
-                int ix = app_x + 12 + c * 106;
-                int iy = app_y + 38 + r * 98;
-                int tile_w = 98;
-                int tile_h = 90;
-
-                /* Tile frame */
-                fb_fillrect(ix, iy, tile_w, tile_h, rgb565(42, 45, 56));
-                fb_drawline(ix, iy, ix + tile_w - 1, iy, rgb565(60, 65, 80));
-                fb_drawline(ix, iy, ix, iy + tile_h - 1, rgb565(60, 65, 80));
-                fb_drawline(ix + tile_w - 1, iy, ix + tile_w - 1, iy + tile_h - 1, rgb565(25, 28, 36));
-                fb_drawline(ix, iy + tile_h - 1, ix + tile_w - 1, iy + tile_h - 1, rgb565(25, 28, 36));
-
-                /* Graphical App Icon */
-                draw_app_icon_gfx(ix + 17, iy + 6, aid);
-
-                /* App Label */
-                const char *lbl = app_names[aid];
-                int llen = (int)strlen(lbl);
-                int lx = ix + (tile_w - llen * 8) / 2;
-                draw_text(lx, iy + 64, lbl, COLOR_WHITE);
+        for (int i = 0; i < 9; i++) {
+            int iy = app_y + 6 + i * item_h;
+            if (i == 5 || i == 7) {
+                fb_drawline(app_x + 6, iy - 2, app_x + app_w - 6, iy - 2, rgb565(55, 58, 70));
             }
+            draw_text(app_x + 14, iy + 4, app_list[i], COLOR_WHITE);
         }
-
-        /* Bottom System Controls */
-        fb_drawline(app_x + 10, app_y + 342, app_x + app_w - 10, app_y + 342, rgb565(50, 54, 66));
-        
-        fb_fillrect(app_x + 12, app_y + 352, 98, 26, rgb565(45, 48, 60));
-        draw_text(app_x + 22, app_y + 357, "About STAX", rgb565(200, 205, 220));
-
-        fb_fillrect(app_x + 118, app_y + 352, 104, 26, rgb565(190, 45, 45));
-        draw_text(app_x + 126, app_y + 357, "Reboot OS", COLOR_WHITE);
-
-        fb_fillrect(app_x + 230, app_y + 352, 98, 26, rgb565(45, 48, 60));
-        draw_text(app_x + 242, app_y + 357, "Force Quit", rgb565(200, 205, 220));
     }
     
     /* 4. Mouse Cursor */

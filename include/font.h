@@ -53,6 +53,7 @@ static inline uint16_t blend_rgb565(uint16_t bg, uint16_t fg, uint8_t alpha) {
 
 /* Core String Drawing APIs */
 void font_draw_char(int x, int y, char c, uint16_t color, font_style_t style);
+void font_draw_char_clipped(int x, int y, char c, uint16_t color, font_style_t style, int min_x, int min_y, int max_x, int max_y);
 int  font_draw_text(int x, int y, const char *str, uint16_t color, font_style_t style);
 int  font_draw_text_clipped(int x, int y, const char *str, uint16_t color, font_style_t style, int min_x, int min_y, int max_x, int max_y);
 int  font_get_string_width(const char *str, font_style_t style);

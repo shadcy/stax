@@ -174,20 +174,11 @@ static void term_console_hook(char c, void *ctx) {
     }
 }
 
-/* Fast glyph rendering */
-static void draw_glyph(uint16_t *fbuf, int px, int py, char c, uint16_t color) {
-    extern const unsigned char font8x16_data[256][16];
-    const unsigned char *g = font8x16_data[(unsigned char)c];
-    for (int gr = 0; gr < 16; gr++) {
-        unsigned char bits = g[gr];
-        for (int gb = 0; gb < 8; gb++) {
-            if (bits & (0x80 >> gb)) {
-                int sx = px + gb, sy = py + gr;
-                if ((unsigned)sx < fb_width && (unsigned)sy < fb_height)
-                    fbuf[sy * fb_width + sx] = color;
-            }
-        }
-    }
+#include "font.h"
+
+/* Fast glyph rendering with Ubuntu typography */
+static void draw_glyph(int px, int py, char c, uint16_t color, int min_x, int min_y, int max_x, int max_y) {
+    font_draw_char_clipped(px, py, c, color, FONT_STYLE_REGULAR, min_x, min_y, max_x, max_y);
 }
 
 void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
@@ -218,8 +209,8 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     if (st->pty) {
         pty_title[15] = '0' + (st->pty->id % 10);
     }
-    draw_text(cx + 10, cy + 3, pty_title, theme_pri);
-    draw_text(cx + cw - 65, cy + 3, "1000Hz", rgb565(140, 150, 170));
+    font_draw_text_clipped(cx + 10, cy + 3, pty_title, theme_pri, FONT_STYLE_REGULAR, cx, cy, cx + cw, cy + top_bar_h);
+    font_draw_text_clipped(cx + cw - 65, cy + 3, "1000Hz", rgb565(140, 150, 170), FONT_STYLE_REGULAR, cx, cy, cx + cw, cy + top_bar_h);
 
     /* Cursor blink */
     if (++st->blink_n >= 30) {
@@ -227,8 +218,8 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         st->cur_on = !st->cur_on;
     }
 
-    uint16_t *fbuf = fb_get_buffer();
-    if (!fbuf) return;
+    int clip_top = cy + top_bar_h;
+    int clip_bot = cy + ch - 24;
 
     int text_area_h = ch - top_bar_h - 26;
     int max_rows = text_area_h / 16;
@@ -243,7 +234,7 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
         for (int c = 0; c < max_cols; c++) {
             char ch_val = st->text[ring_row][c];
             if (ch_val >= 32 && ch_val <= 126) {
-                draw_glyph(fbuf, cx + 8 + c * 8, py, ch_val, st->color[ring_row][c]);
+                draw_glyph(cx + 8 + c * 8, py, ch_val, st->color[ring_row][c], cx, clip_top, cx + cw, clip_bot);
             }
         }
     }
@@ -257,12 +248,12 @@ void terminal_draw_window(struct window *win, int cx, int cy, int cw, int ch) {
     const char *prompt = "stax@kernel:~$ ";
     int px = cx + 8, py2 = bar_y + 4;
     for (const char *p = prompt; *p; p++) {
-        draw_glyph(fbuf, px, py2, *p, theme_pri);
+        draw_glyph(px, py2, *p, theme_pri, cx, bar_y, cx + cw, cy + ch);
         px += 8;
     }
 
     for (int i = 0; i < st->input_pos; i++) {
-        draw_glyph(fbuf, px, py2, st->input[i], COLOR_WHITE);
+        draw_glyph(px, py2, st->input[i], COLOR_WHITE, cx, bar_y, cx + cw, cy + ch);
         px += 8;
     }
 

@@ -296,17 +296,17 @@ void wm_update(void) {
             if (!right_pressed) goto update_done;
         }        if (my < TASKBAR_HEIGHT) {
             if (pressed) {
-                if (mx >= 0 && mx < 44) {
+                if (mx >= 0 && mx < 42) {
                     stax_menu_active = !stax_menu_active;
                     apps_menu_active = 0;
-                } else if (mx >= 46 && mx < 124) {
+                } else if (mx >= 42 && mx < 100) {
                     apps_menu_active = !apps_menu_active;
                     stax_menu_active = 0;
                 } else {
                     stax_menu_active = 0;
                     apps_menu_active = 0;
                     /* Check window tab clicks */
-                    int nav_x = 128;
+                    int nav_x = 110;
                     int max_nav_x = (int)fb_width - 280;
                     int avail_w = max_nav_x - nav_x;
                     extern struct window *window_list;
@@ -358,7 +358,7 @@ void wm_update(void) {
                     int rel_y = my - sm_y;
                     if (rel_y >= 0 && rel_y < 30) {
                         extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                        wm_add_window(110, 80, 340, 260, "About STAX OS", sysinfo_draw_window);
+                        wm_add_window(110, 80, 360, 240, "About", sysinfo_draw_window);
                     } else if (rel_y >= 30 && rel_y < 60) {
                         extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
                         extern void settings_mouse_click(struct window *win, int mx, int my, int button);
@@ -387,78 +387,52 @@ void wm_update(void) {
                 stax_menu_active = 0;
             }
 
-            /* 2. Apps Launcher Menu Clicks */
+            /* 2. Apps Dropdown Menu Clicks */
             if (pressed && apps_menu_active) {
-                int app_x = 50;
-                int app_y = TASKBAR_HEIGHT + 2;
-                int app_w = 340;
-                int app_h = 390;
+                int app_x = 44;
+                int app_y = TASKBAR_HEIGHT;
+                int app_w = 185;
+                int app_h = 265;
+                int item_h = 28;
                 if (mx >= app_x && mx < app_x + app_w && my >= app_y && my < app_y + app_h) {
-                    int rel_x = mx - app_x;
-                    int rel_y = my - app_y;
-
-                    if (rel_y >= 38 && rel_y < 340) {
-                        int col = (rel_x - 12) / 106;
-                        int row = (rel_y - 38) / 98;
-                        if (col >= 0 && col < 3 && row >= 0 && row < 3) {
-                            int aid = row * 3 + col;
-                            if (aid == 0) {
-                                extern void cmd_browser(int, char**);
-                                cmd_browser(0, 0);
-                            } else if (aid == 1) {
-                                extern struct window *terminal_open_new(void);
-                                terminal_open_new();
-                            } else if (aid == 2) {
-                                window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
-                                if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
-                            } else if (aid == 3) {
-                                extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                extern void editor_key_event(struct window *win, char c);
-                                window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
-                                if (ew) ew->key_event = editor_key_event;
-                            } else if (aid == 4) {
-                                extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
-                                extern void calculator_key_event(struct window *win, char c);
-                                window_t *cw = wm_add_window(160, 80, 280, 350, "Calculator", calculator_draw_window);
-                                if (cw) {
-                                    cw->mouse_click = calculator_mouse_click;
-                                    cw->key_event = calculator_key_event;
-                                }
-                            } else if (aid == 5) {
-                                extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
-                            } else if (aid == 6) {
-                                extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
-                            } else if (aid == 7) {
-                                extern void cmd_doomgfx(int, char**);
-                                cmd_doomgfx(0, 0);
-                            } else if (aid == 8) {
-                                extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                                extern void settings_mouse_click(struct window *win, int mx, int my, int button);
-                                window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
-                                if (sw) sw->mouse_click = settings_mouse_click;
-                            }
-                            apps_menu_active = 0;
+                    int idx = (my - (app_y + 6)) / item_h;
+                    if (idx == 0) {
+                        extern void cmd_browser(int, char**);
+                        cmd_browser(0, 0);
+                    } else if (idx == 1) {
+                        extern struct window *terminal_open_new(void);
+                        terminal_open_new();
+                    } else if (idx == 2) {
+                        window_t *fw = wm_add_window(120, 100, 440, 330, "File Manager", file_manager_draw_window);
+                        if (fw) { fw->mouse_click = file_manager_click; fw->update_client = file_manager_update; }
+                    } else if (idx == 3) {
+                        extern void editor_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        extern void editor_key_event(struct window *win, char c);
+                        window_t *ew = wm_add_window(140, 90, 500, 350, "Untitled.txt", editor_draw_window);
+                        if (ew) ew->key_event = editor_key_event;
+                    } else if (idx == 4) {
+                        extern void calculator_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        extern void calculator_mouse_click(struct window *win, int mx, int my, int button);
+                        extern void calculator_key_event(struct window *win, char c);
+                        window_t *cw = wm_add_window(160, 80, 280, 350, "Calculator", calculator_draw_window);
+                        if (cw) {
+                            cw->mouse_click = calculator_mouse_click;
+                            cw->key_event = calculator_key_event;
                         }
-                    } else if (rel_y >= 348 && rel_y <= 385) {
-                        if (rel_x >= 12 && rel_x < 110) {
-                            extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
-                            wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
-                        } else if (rel_x >= 118 && rel_x < 222) {
-                            extern void settings_save(void);
-                            extern void system_reboot(void);
-                            settings_save();
-                            system_reboot();
-                        } else if (rel_x >= 230 && rel_x < 328) {
-                            extern void wm_close_window(window_t *win);
-                            if (focused_window) {
-                                wm_close_window(focused_window);
-                            } else if (window_list) {
-                                wm_close_window(window_list);
-                            }
-                        }
+                    } else if (idx == 5) {
+                        extern void sysinfo_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        wm_add_window(110, 80, 340, 260, "System Info", sysinfo_draw_window);
+                    } else if (idx == 6) {
+                        extern void taskmgr_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        wm_add_window(130, 90, 420, 300, "Task Manager", taskmgr_draw_window);
+                    } else if (idx == 7) {
+                        extern void cmd_doomgfx(int, char**);
+                        cmd_doomgfx(0, 0);
+                    } else if (idx == 8) {
+                        extern void settings_draw_window(struct window *win, int cx, int cy, int cw, int ch);
+                        extern void settings_mouse_click(struct window *win, int mx, int my, int button);
+                        window_t *sw = wm_add_window(130, 48, 580, 370, "Settings", settings_draw_window);
+                        if (sw) sw->mouse_click = settings_mouse_click;
                     }
                 }
                 apps_menu_active = 0;

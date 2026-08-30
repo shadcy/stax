@@ -18,6 +18,7 @@
 #include "heap.h"
 #include "fatfs/ff.h"
 #include "framebuffer.h"
+#include "icons.h"
 #include "string.h"
 #include "font8x16.h"
 #include "console.h"
@@ -207,27 +208,7 @@ void file_manager_draw_window(struct window *win, int cx, int cy, int cw, int ch
             fb_fillrect(cx, item_y, cw, ITEM_H, rgb565(248,248,255));
 
         /* ---- Icon ---- */
-        if (st->file_list[i].is_dir) {
-            /* Folder: Ubuntu Yaru styled warm amber folder */
-            fb_fillrect(cx+3, item_y+3, 7, 3, rgb565(210,110,20));
-            fb_fillrect(cx+3, item_y+5, 16, 10, rgb565(210,110,20));
-            fb_fillrect(cx+5, item_y+6, 12, 2, rgb565(250,252,255));
-            fb_fillrect(cx+3, item_y+7, 16, 8, rgb565(245,140,30));
-            fb_fillrect(cx+3, item_y+7, 16, 1, rgb565(255,195,100));
-        } else {
-            /* File: white page with folded corner */
-            fb_fillrect(cx+5, item_y+2, 11, 15, COLOR_WHITE);
-            fb_drawline(cx+5,  item_y+2, cx+13, item_y+2,  rgb565(150,150,200));
-            fb_drawline(cx+5,  item_y+2, cx+5,  item_y+17, rgb565(150,150,200));
-            fb_drawline(cx+5,  item_y+17,cx+16, item_y+17, rgb565(150,150,200));
-            fb_drawline(cx+16, item_y+17,cx+16, item_y+7,  rgb565(150,150,200));
-            fb_drawline(cx+16, item_y+7, cx+13, item_y+2,  rgb565(150,150,200));
-            /* folded corner fill */
-            fb_fillrect(cx+13, item_y+2, 4, 5, rgb565(200,200,230));
-            /* .TXT indicator */
-            if (is_txt(st->file_list[i].name))
-                fb_fillrect(cx+7, item_y+8, 7, 2, rgb565(80,80,200));
-        }
+        icon_draw_file_mini(cx + 3, item_y + 2, st->file_list[i].name, st->file_list[i].is_dir);
 
         /* ---- Name (or rename input) ---- */
         if (st->rename_active && i == st->rename_idx) {
