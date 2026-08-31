@@ -39,7 +39,7 @@ static void         ta_start_cert(const br_x509_class **ctx, uint32_t length);
 static void         ta_append(const br_x509_class **ctx, const unsigned char *buf, size_t len);
 static void         ta_end_cert(const br_x509_class **ctx);
 static unsigned     ta_end_chain(const br_x509_class **ctx);
-static const br_x509_pkey *ta_get_pkey(const br_x509_class **ctx, unsigned *usages);
+static const br_x509_pkey *ta_get_pkey(const br_x509_class *const *ctx, unsigned *usages);
 
 static const br_x509_class s_nocheck_vtable = {
     sizeof(br_x509_minimal_context),
@@ -73,7 +73,7 @@ static unsigned ta_end_chain(const br_x509_class **ctx) {
     (void)ctx;
     return 0; /* 0 = success — unconditionally trust */
 }
-static const br_x509_pkey *ta_get_pkey(const br_x509_class **ctx, unsigned *usages) {
+static const br_x509_pkey *ta_get_pkey(const br_x509_class *const *ctx, unsigned *usages) {
     (void)ctx;
     if (usages) *usages = BR_KEYTYPE_KEYX | BR_KEYTYPE_SIGN;
     s_dummy_pkey.key_type = BR_KEYTYPE_RSA;

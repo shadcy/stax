@@ -10,21 +10,8 @@ u32_t sys_now(void) {
 }
 
 /* ------------------------------------------------------------------------- *
- *  Missing LibC functions for lwIP (since T-OS doesn't have a full libc)    *
+ *  Missing LibC functions for lwIP                                          *
  * ------------------------------------------------------------------------- */
-
-void *memmove(void *dest, const void *src, size_t n) {
-    unsigned char *pd = (unsigned char *)dest;
-    const unsigned char *ps = (const unsigned char *)src;
-    if (pd < ps) {
-        while (n--) *pd++ = *ps++;
-    } else {
-        pd += n;
-        ps += n;
-        while (n--) *--pd = *--ps;
-    }
-    return dest;
-}
 
 int atoi(const char *str) {
     int res = 0;
@@ -49,5 +36,6 @@ int isalpha(int c) { return islower(c) || isupper(c); }
 const unsigned char _ctype_[256] = {0};
 
 const char *lwip_strerr(int err) {
+    (void)err;
     return "lwip_err";
 }

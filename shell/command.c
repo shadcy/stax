@@ -9,12 +9,10 @@
 #include "fat.h"
 #include "scheduler.h"
 #include "timer.h"
-#include "snake.h"
 #include "framebuffer.h"
 #include "bmp.h"
 #include "gfx_console.h"
 #include "string.h"
-#include "bench.h"
 #include "page.h"
 #include "system.h"
 #include "signal.h"
@@ -26,6 +24,7 @@ extern void cmd_browser(int argc, char *argv[]);
 void cmd_exec(int argc, char *argv[]);
 void cmd_vfs(int argc, char *argv[]);
 void cmd_dev(int argc, char *argv[]);
+void cmd_viewimg(int argc, char *argv[]);
 
 /* Command table */
 static const command_t commands[] = {
@@ -49,11 +48,6 @@ static const command_t commands[] = {
     {"run",     "Run a .launch application package (e.g. run doom.launch)", cmd_run},
     {"game",    "Play a game (use --doom)",            cmd_game},
     {"read",    "Read info (use --mem, --img <img>)", cmd_read},
-    {"test",    "Run tests ([--mem] [--fs] [--vfs] [--elf] [--all])", cmd_test},
-#ifdef ENABLE_BENCH
-    {"bench",   "Run benchmarks ([--memory] [--vm] [--scheduler] [--fs] [--gfx] [--firmware] [--all])", cmd_bench},
-    {"stress",  "Run stress tests", cmd_stress},
-#endif
     {"ps",      "Show process/task list", cmd_ps},
     {"uptime",  "Show system uptime", cmd_uptime},
     {"fwupdate","Update system firmware (e.g. fwupdate /fw.stax)", cmd_fwupdate},
@@ -234,9 +228,8 @@ void cmd_tasks(int argc, char *argv[])
     (void)argc; (void)argv;
     kputs("Task Information:\n");
     kputs("================\n");
-    kputs("Scheduler: Round-robin\n");
-    kputs("Current tasks: Idle + any created tasks\n");
-    kputs("Use 'test' command to create demo tasks\n");
+    kputs("Scheduler: Preemptive round-robin\n");
+    kputs("Use 'ps' command to view running tasks\n");
 }
 
 void cmd_fs(int argc, char *argv[])
@@ -273,155 +266,7 @@ void cmd_fs(int argc, char *argv[])
     kputs("================================================\n");
 }
 
-void cmd_test(int argc, char *argv[])
-{
-    if (argc > 1) {
-        if (strcmp(argv[1], "--fb") == 0) {
-            cmd_fbtest(argc, argv);
-            return;
-        } else if (strcmp(argv[1], "--elf") == 0) {
-            extern int elf_exec(const char *path, int argc, char **argv);
-            kputs("Testing ELF Loader on hello.elf...\n");
-            int rc = elf_exec("hello.elf", 0, NULL);
-            if (rc == 0) {
-                kputs("PASS: ELF Loader executed successfully in USR mode.\n");
-            } else {
-                kputs("FAIL: ELF Loader returned error code.\n");
-            }
-            return;
-        } else if (strcmp(argv[1], "--vfs") == 0 || strcmp(argv[1], "--dev") == 0) {
-            extern int vfs_open(const char *path, int flags);
-            extern int vfs_close(int fd);
-            extern int32_t vfs_read(int fd, void *buf, size_t count);
-            extern int32_t vfs_write(int fd, const void *buf, size_t count);
 
-            kputs("Testing VFS & Devfs Subsystems...\n");
-            
-            /* Test /dev/null */
-            int fd_null = vfs_open("/dev/null", 0);
-            if (fd_null >= 0) {
-                char dummy[8];
-                int32_t n = vfs_read(fd_null, dummy, sizeof(dummy));
-                if (n == 0) kputs("  ✓ /dev/null read returned EOF (0 bytes)\n");
-                vfs_write(fd_null, "test", 4);
-                vfs_close(fd_null);
-            }
-
-            /* Test /dev/zero */
-            int fd_zero = vfs_open("/dev/zero", 0);
-            if (fd_zero >= 0) {
-                uint8_t zbuf[16];
-                memset(zbuf, 0xFF, sizeof(zbuf));
-                vfs_read(fd_zero, zbuf, sizeof(zbuf));
-                int all_zero = 1;
-                for (int i = 0; i < 16; i++) { if (zbuf[i] != 0) all_zero = 0; }
-                if (all_zero) kputs("  ✓ /dev/zero filled buffer with 0x00\n");
-                vfs_close(fd_zero);
-            }
-
-            /* Test /dev/urandom */
-            int fd_rand = vfs_open("/dev/urandom", 0);
-            if (fd_rand >= 0) {
-                uint8_t rbuf[8];
-                vfs_read(fd_rand, rbuf, sizeof(rbuf));
-                kputs("  ✓ /dev/urandom generated random bytes: ");
-                for (int i = 0; i < 4; i++) {
-                    kprintf("%x ", (unsigned int)rbuf[i]);
-                }
-                kputs("\n");
-                vfs_close(fd_rand);
-            }
-            kputs("PASS: VFS and Devfs subsystem verification complete.\n");
-            return;
-        } else if (strcmp(argv[1], "--pipe") == 0) {
-            extern int pipe_create(int pipefd[2]);
-            extern int vfs_close(int fd);
-            extern int32_t vfs_read(int fd, void *buf, size_t count);
-            extern int32_t vfs_write(int fd, const void *buf, size_t count);
-
-            kputs("Testing Anonymous Pipes Subsystem...\n");
-            int pfd[2];
-            if (pipe_create(pfd) == 0) {
-                kprintf("  ✓ Pipe created (Read FD: %d, Write FD: %d)\n", pfd[0], pfd[1]);
-                const char *test_msg = "Hello STAX IPC Pipe!";
-                int32_t written = vfs_write(pfd[1], test_msg, strlen(test_msg));
-                kprintf("  ✓ Wrote %d bytes into pipe write-end\n", written);
-
-                char rx_buf[32];
-                memset(rx_buf, 0, sizeof(rx_buf));
-                int32_t read_bytes = vfs_read(pfd[0], rx_buf, sizeof(rx_buf) - 1);
-                kprintf("  ✓ Read %d bytes from pipe read-end: \"%s\"\n", read_bytes, rx_buf);
-
-                vfs_close(pfd[1]);
-                int32_t eof_check = vfs_read(pfd[0], rx_buf, sizeof(rx_buf));
-                if (eof_check == 0) {
-                    kputs("  ✓ Closed writer correctly signaled EOF to reader\n");
-                }
-                vfs_close(pfd[0]);
-                kputs("PASS: Anonymous pipe streaming verified successfully.\n");
-            } else {
-                kputs("FAIL: Could not create pipe.\n");
-            }
-            return;
-        } else if (strcmp(argv[1], "--signal") == 0) {
-            static int s_sig_caught = 0;
-            auto void s_test_handler(int sig);
-            void s_test_handler(int sig) {
-                s_sig_caught = sig;
-            }
-
-            kputs("Testing POSIX Signal Handling Engine...\n");
-            signal_register(SIGINT, s_test_handler);
-            kputs("  ✓ Registered user signal handler for SIGINT (2)\n");
-
-            s_sig_caught = 0;
-            signal_send(1, SIGINT);
-            if (s_sig_caught == SIGINT) {
-                kputs("  ✓ Signal dispatched & intercepted by user handler successfully\n");
-            } else {
-                kputs("  ✗ Signal dispatch failed\n");
-            }
-
-            signal_register(SIGINT, SIG_DFL);
-            kputs("PASS: POSIX signal subsystem verified successfully.\n");
-            return;
-        } else {
-            kputs("Unknown test option. Available: --fb, --elf, --vfs, --dev, --pipe, --signal\n");
-            return;
-        }
-    }
-    kputs("Running system tests...\n");
-    
-    /* Test memory allocation */
-    char *buf1 = kmalloc(64);
-    char *buf2 = kmalloc(128);
-    if (buf1 && buf2) {
-        kputs("✓ Memory allocation test passed\n");
-        kfree(buf2);
-        kfree(buf1);
-    } else {
-        kputs("✗ Memory allocation test failed\n");
-    }
-    
-    /* Test filesystem */
-    fat_file_t *file = fat_open("TEST.TXT");
-    if (file) {
-        kputs("✓ Filesystem test passed\n");
-        char read_buf[32];
-        int bytes = fat_read(file, read_buf, sizeof(read_buf) - 1);
-        if (bytes > 0) {
-            read_buf[bytes] = '\0';
-            kputs("Content: ");
-            kputs(read_buf);
-            kputc('\n');
-        }
-        fat_close(file);
-    } else {
-        kputs("✗ Filesystem test failed\n");
-    }
-    
-    kputs("Tests completed.\n");
-}
 
 extern unsigned char _text_start[];
 extern unsigned char _text_end[];
@@ -626,51 +471,7 @@ void cmd_doomgfx(int argc, char *argv[])
     kputs("Error: doom.launch not found. Run 'make' to build.\n");
 }
 
-void cmd_doom2gfx(int argc, char *argv[]) { (void)argc; (void)argv; }
 
-/* ============================================================================
- * cmd_fbtest — test framebuffer
- * ============================================================================ */
-void cmd_fbtest(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    kputs("Testing framebuffer...\n");
-    
-    /* Initialize framebuffer */
-    if (fb_init() != 0) {
-        kputs("Failed to initialize framebuffer!\n");
-        kputs("Make sure you're running with: make qemu-gfx\n");
-        return;
-    }
-    
-    kputs("Framebuffer initialized successfully!\n");
-    kputs("Drawing test pattern...\n");
-    
-    /* Draw test pattern */
-    fb_clear(COLOR_BLACK);
-    
-    /* Draw colored rectangles */
-    fb_fillrect(50, 50, 100, 100, COLOR_RED);
-    fb_fillrect(200, 50, 100, 100, COLOR_GREEN);
-    fb_fillrect(350, 50, 100, 100, COLOR_BLUE);
-    
-    fb_fillrect(50, 200, 100, 100, COLOR_YELLOW);
-    fb_fillrect(200, 200, 100, 100, COLOR_CYAN);
-    fb_fillrect(350, 200, 100, 100, COLOR_MAGENTA);
-    
-    fb_fillrect(125, 350, 250, 80, COLOR_WHITE);
-    
-    kputs("Test pattern drawn!\n");
-    kputs("You should see colored rectangles on the display.\n");
-    kputs("Press any key to continue...\n");
-    
-    /* Wait for key */
-    while (kgetc() == 0);
-    
-    /* Clear screen */
-    fb_clear(COLOR_BLACK);
-    kputs("Framebuffer test complete.\n");
-}
 
 /* ============================================================================
  * cmd_viewimg — launch the image viewer
@@ -1053,48 +854,7 @@ void cmd_nano(int argc, char *argv[])
     kputs("Type 'help' for available commands\n");
 }
 
-#ifdef ENABLE_BENCH
-/* ============================================================================
- * cmd_bench — run benchmark suite
- * Usage: bench [--memory|--vm|--scheduler|--fs|--gfx|--firmware|--all]
- * ============================================================================ */
-extern void bench_run_all(void);
-extern void bench_run_sub(const char *name);
 
-void cmd_bench(int argc, char *argv[])
-{
-    if (argc < 2 || strcmp(argv[1], "--all") == 0) {
-        kputs("Running full STAX benchmark suite...\n");
-        kputs("(This takes 30-60 seconds. BENCH: lines = CSV output)\n\n");
-        bench_run_all();
-        return;
-    }
-
-    const char *sub = argv[1];
-    /* Strip leading -- */
-    if (sub[0] == '-' && sub[1] == '-') sub += 2;
-
-    kputs("Running benchmark: ");
-    kputs(sub);
-    kputs("\n");
-    bench_run_sub(sub);
-}
-
-/* ============================================================================
- * cmd_stress — run stress tests
- * ============================================================================ */
-extern void bench_stress_run(void);
-extern void bench_timer_init(void);
-
-void cmd_stress(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-    kputs("Running STAX stress tests...\n");
-    kputs("(Memory, Scheduler, Filesystem, Graphics)\n\n");
-    bench_timer_init();
-    bench_stress_run();
-}
-#endif
 
 
 /* ============================================================================

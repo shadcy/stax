@@ -566,8 +566,6 @@ void wm_render(void) {
 }
 
 /* ============================================================================
- * Ctrl+Tab Window Switcher Overlay (Clean & Minimalist STAX Native Style)
-/* ============================================================================
  * Ctrl+Tab Window Switcher Overlay (Clean, Rectangular, Minimalist Tabs)
  * ============================================================================ */
 

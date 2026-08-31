@@ -13,12 +13,6 @@ SIZE    := $(CROSS)-size
 GDB     := gdb-multiarch
 
 # ---------------------------------------------------------------------------
-# Configuration Flags
-# ---------------------------------------------------------------------------
-ENABLE_BENCH ?= 0
-# //adding this in case i dont want to include benching to the kernel
-
-# ---------------------------------------------------------------------------
 # Directories
 # ---------------------------------------------------------------------------
 BUILD_DIR   := build
@@ -29,13 +23,11 @@ DRIVERS_DIR := drivers
 FS_DIR      := fs
 MM_DIR      := mm
 GAMES_DIR   := games
-ENGINE_DIR  := engine
 GFX_DIR     := gfx
 APPS_DIR    := apps
 UI_DIR      := ui
 SHELL_DIR   := shell
 LIB_DIR     := lib
-BENCH_DIR   := bench
 
 # ---------------------------------------------------------------------------
 # Compiler / assembler flags
@@ -53,24 +45,17 @@ CFLAGS  := -mcpu=arm926ej-s    \
             -g                  \
             -I$(INC_DIR)        \
             -I$(FS_DIR)         \
-            -I$(ENGINE_DIR)     \
             -I$(GFX_DIR)        \
             -I$(APPS_DIR)       \
             -I$(UI_DIR)         \
             -I$(SHELL_DIR)      \
             -I$(LIB_DIR)        \
-            -I$(BENCH_DIR)      \
             -Ithird_party/lwip/src/include \
             -Ithird_party/bearssl          \
             -Ithird_party/bearssl/src      \
             -Inet
 
-ifeq ($(ENABLE_BENCH), 1)
-CFLAGS += -DENABLE_BENCH
-endif
-
 ASFLAGS := $(CFLAGS) -x assembler-with-cpp
-
 
 LDFLAGS := -nostdlib --gc-sections
 LIBGCC := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
@@ -147,7 +132,6 @@ KERNEL_OBJS  += $(BUILD_DIR)/fatfs_diskio.o \
                 $(BUILD_DIR)/ffunicode.o \
                 $(BUILD_DIR)/ffsystem.o
 
-# tasks.o was added in previous git commits but was not in makefile. I'll add it.
 KERNEL_OBJS  += $(BUILD_DIR)/tasks.o
 
 # Firmware update subsystem
@@ -155,27 +139,6 @@ KERNEL_OBJS  += $(BUILD_DIR)/firmware_update.o
 KERNEL_OBJS  += $(BUILD_DIR)/crc32.o \
                 $(BUILD_DIR)/sha256.o \
                 $(BUILD_DIR)/firmware_format.o
-
-# Benchmark infrastructure
-ifeq ($(ENABLE_BENCH), 1)
-KERNEL_OBJS  += $(BUILD_DIR)/bench.o \
-                 $(BUILD_DIR)/bench_main.o \
-                 $(BUILD_DIR)/bench_memory.o \
-                 $(BUILD_DIR)/bench_vm.o \
-                 $(BUILD_DIR)/bench_scheduler.o \
-                 $(BUILD_DIR)/bench_fs.o \
-                 $(BUILD_DIR)/bench_gfx.o \
-                 $(BUILD_DIR)/bench_stress.o \
-                 $(BUILD_DIR)/bench_kernel_test.o \
-                 $(BUILD_DIR)/firmware_bench.o \
-                 $(BUILD_DIR)/secure_boot_bench.o \
-                 $(BUILD_DIR)/update_bench.o \
-                 $(BUILD_DIR)/fault_injection.o \
-                 $(BUILD_DIR)/metadata_test.o \
-                 $(BUILD_DIR)/image_test.o \
-                 $(BUILD_DIR)/rollback_test.o \
-                $(BUILD_DIR)/fault_campaign.o
-endif
 
 # Standalone Userland em-doom objects
 DOOM_SRCS := $(wildcard $(GAMES_DIR)/em-doom/linuxdoom-1.10/*.c)
@@ -226,7 +189,7 @@ QEMU_GFX_FLAGS := -M $(QEMU_MACHINE) -kernel $(BOOT_BIN) -drive file=$(OS_BIN),i
 # =============================================================================
 # Rules
 # =============================================================================
-.PHONY: all clean clean-all distclean qemu qemu-gfx debug gdb dump size bench bench-memory bench-vm bench-scheduler bench-fs bench-gfx stress test bench-compare
+.PHONY: all clean clean-all distclean qemu qemu-gfx debug gdb dump size
 .PRECIOUS: $(BUILD_DIR)/%.elf $(BUILD_DIR)/%.bin $(BUILD_DIR)/%.ld
 
 all: $(BUILD_DIR) $(BOOT_BIN) $(OS_BIN)
@@ -256,6 +219,10 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.el
 		mmd -i $@@@2098688 ::/TRASH; \
 		mmd -i $@@@2098688 ::/BMP; \
 		if [ -d assets/bmp ]; then mcopy -i $@@@2098688 assets/bmp/*.BMP ::/BMP/; fi; \
+		if [ -d assets/docs ]; then \
+			mcopy -i $@@@2098688 assets/docs/*.TXT ::/DOCS/; \
+			if [ -f assets/docs/README.TXT ]; then mcopy -i $@@@2098688 assets/docs/README.TXT ::/README.TXT; fi; \
+		fi; \
 	fi
 	@echo "Signing KERNEL.BIN as Firmware v1..."
 	@if [ ! -f stax_key.priv ]; then ./tools/stax-sign/stax-sign --gen-key stax_key; fi
@@ -264,6 +231,10 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.el
 	@dd if=$(BUILD_DIR)/firmware.stax of=$@ bs=512 seek=3 conv=notrunc 2>/dev/null
 	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
 	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
+	@if [ -f assets/docs/README.TXT ]; then \
+		mcopy -o -i $@@@2098688 assets/docs/README.TXT ::/README.TXT; \
+		mcopy -o -i $@@@2098688 assets/docs/README.TXT ::/DOCS/README.TXT; \
+	fi
 	@if [ -f $(BUILD_DIR)/hello.elf ]; then \
 		mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/HELLO.ELF; \
 		mcopy -o -i $@@@2098688 $(BUILD_DIR)/hello.elf ::/BIN/HELLO.ELF; \
@@ -327,12 +298,6 @@ $(BUILD_DIR)/%.o: $(FS_DIR)/fatfs/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(MM_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(GAMES_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/%.o: $(ENGINE_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
 $(BUILD_DIR)/%.o: $(GFX_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -O2 -ffast-math -c $< -o $@
 
@@ -366,12 +331,6 @@ $(BUILD_DIR)/%.o: firmware/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: boot/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(BENCH_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/%.o: $(BENCH_DIR)/firmware/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
 $(BUILD_DIR)/%.o: drivers/net/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -392,7 +351,6 @@ $(BUILD_DIR)/bearssl/%.o: third_party/bearssl/src/%.c | $(BUILD_DIR)
 
 tools/stax-sign/stax-sign: tools/stax-sign/stax-sign.c firmware/image_format/firmware_format.c crypto/sha256/sha256.c crypto/crc32/crc32.c crypto/monocypher.c
 	gcc -O2 -Iinclude tools/stax-sign/stax-sign.c firmware/image_format/firmware_format.c crypto/sha256/sha256.c crypto/crc32/crc32.c crypto/monocypher.c -o tools/stax-sign/stax-sign
-
 
 # DOOM files need special flags and the stax_compat.h included
 $(BUILD_DIR)/%.o: $(GAMES_DIR)/em-doom/linuxdoom-1.10/%.c | $(BUILD_DIR)
@@ -485,66 +443,3 @@ clean-all: clean
 	@echo "Cleaned everything, including os.bin."
 
 distclean: clean-all
-
-# ---------------------------------------------------------------------------
-# Benchmark targets — build + run in QEMU, capture output
-# ---------------------------------------------------------------------------
-# USAGE: make bench         → full benchmark suite
-#        make bench-memory  → memory sub-bench
-#        make bench-vm      → VM/page sub-bench
-#        make bench-scheduler → scheduler sub-bench
-#        make bench-fs      → filesystem sub-bench
-#        make bench-gfx     → graphics sub-bench
-#        make stress        → stress tests
-#        make test          → automated test suite
-#        make bench-compare → compare bench/baseline.csv with last run
-#
-# Results are captured to bench/results.csv (BENCH: prefixed lines)
-# ---------------------------------------------------------------------------
-bench: $(BOOT_BIN) $(OS_BIN)
-	@echo "Running STAX benchmark suite in QEMU..."
-	@echo "(Type 'bench' at the STAX prompt, then Ctrl-A X to exit)"
-	@echo "Capturing BENCH: CSV lines to bench/results.csv"
-	@mkdir -p bench
-	$(QEMU) $(QEMU_FLAGS) 2>&1 | tee /tmp/stax_bench_raw.txt | grep '^BENCH:' > bench/results.csv || true
-	@echo ""
-	@echo "Benchmark CSV saved to bench/results.csv"
-	@wc -l bench/results.csv 2>/dev/null && echo "benchmark data points" || echo "(no CSV output captured)"
-
-bench-memory: $(BOOT_BIN) $(OS_BIN)
-	@echo "Run 'bench --memory' at the STAX prompt"
-	$(QEMU) $(QEMU_FLAGS)
-
-bench-vm: $(BOOT_BIN) $(OS_BIN)
-	@echo "Run 'bench --vm' at the STAX prompt"
-	$(QEMU) $(QEMU_FLAGS)
-
-bench-scheduler: $(BOOT_BIN) $(OS_BIN)
-	@echo "Run 'bench --scheduler' at the STAX prompt"
-	$(QEMU) $(QEMU_FLAGS)
-
-bench-fs: $(BOOT_BIN) $(OS_BIN)
-	@echo "Run 'bench --fs' at the STAX prompt"
-	$(QEMU) $(QEMU_FLAGS)
-
-bench-gfx: $(BOOT_BIN) $(OS_BIN)
-	@echo "Run 'bench --gfx' at the STAX prompt"
-	$(QEMU) $(QEMU_FLAGS)
-
-stress: $(BOOT_BIN) $(OS_BIN)
-	@echo "Run 'stress' at the STAX prompt"
-	$(QEMU) $(QEMU_FLAGS)
-
-test: $(BOOT_BIN) $(OS_BIN)
-	@echo "Run 'test' at the STAX prompt for automated [PASS]/[FAIL] output"
-	$(QEMU) $(QEMU_FLAGS)
-
-# Compare two benchmark result CSV files
-# Usage: make bench-compare OLD=bench/baseline.csv NEW=bench/results.csv
-bench-compare:
-	@OLD=$${OLD:-bench/baseline.csv}; NEW=$${NEW:-bench/results.csv}; \
-	if [ ! -f "$$OLD" ]; then echo "No baseline: $$OLD. Run bench first and cp bench/results.csv bench/baseline.csv"; exit 1; fi; \
-	if [ ! -f "$$NEW" ]; then echo "No current results: $$NEW. Run bench first."; exit 1; fi; \
-	echo "Comparing $$OLD vs $$NEW"; \
-	echo "Name,Old_mean,New_mean,Delta%"; \
-	awk -F, 'NR==FNR{old[$$1]=$$5; next} { if(old[$$1]>0) { delta=int(($$5-old[$$1])*100/old[$$1]); print $$1 "," old[$$1] "," $$5 "," delta "%" } }' "$$OLD" "$$NEW"

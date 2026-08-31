@@ -80,14 +80,7 @@ void smc_netif_poll(struct netif *netif) {
             pbuf_remove_header(p, 2);
             pbuf_take(p, rx_buf, len);
 
-            if (1) {
-                kprintf("DUMP: ");
-                for (int i = 0; i < (p->tot_len < 40 ? p->tot_len : 40); i++) {
-                    kprintf("%x ", ((unsigned char*)p->payload)[i]);
-                    if (i % 16 == 15) kprintf("\n      ");
-                }
-                kprintf("\n");
-            }
+
 
             if (netif->input(p, netif) != ERR_OK) {
                 pbuf_free(p);
