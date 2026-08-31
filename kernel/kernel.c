@@ -110,6 +110,14 @@ void kernel_main(void)
     /* ---- Phase 6e: FAT filesystem ---- */
     fat_init();
 
+    /* Load shareware desktop wallpaper */
+    extern void wm_load_background(const char *filename);
+    extern uint16_t *desktop_bg_image;
+    wm_load_background("/BMP/BG.BMP");
+    if (!desktop_bg_image) {
+        wm_load_background("/BG.BMP");
+    }
+
     /* Initialize POSIX Pseudo-TTY Subsystem */
     extern void pty_init(void);
     pty_init();

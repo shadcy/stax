@@ -2,7 +2,7 @@ from PIL import Image
 import struct
 import sys
 
-def convert_to_16bit_bmp(input_path, output_path, target_width=640, target_height=480):
+def convert_to_16bit_bmp(input_path, output_path, target_width=1024, target_height=768):
     img = Image.open(input_path).convert('RGB')
     
     # Resize and crop to target_width x target_height

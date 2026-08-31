@@ -231,6 +231,10 @@ $(OS_BIN): $(KERNEL_BIN) $(BOOT_BIN) $(BUILD_DIR)/hello.elf $(BUILD_DIR)/doom.el
 	@dd if=$(BUILD_DIR)/firmware.stax of=$@ bs=512 seek=3 conv=notrunc 2>/dev/null
 	@mcopy -o -i $@@@2098688 build/kernel.bin ::/KERNEL.BIN
 	@mcopy -o -i $@@@2098688 build/firmware.stax ::/fw.stax
+	@if [ -d assets/bmp ]; then \
+		mcopy -o -i $@@@2098688 assets/bmp/*.BMP ::/BMP/; \
+		if [ -f assets/bmp/BG.BMP ]; then mcopy -o -i $@@@2098688 assets/bmp/BG.BMP ::/BG.BMP; fi; \
+	fi
 	@if [ -f assets/docs/README.TXT ]; then \
 		mcopy -o -i $@@@2098688 assets/docs/README.TXT ::/README.TXT; \
 		mcopy -o -i $@@@2098688 assets/docs/README.TXT ::/DOCS/README.TXT; \
